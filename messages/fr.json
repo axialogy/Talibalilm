@@ -1,0 +1,265 @@
+{
+  "meta": {
+    "siteName": "Institut Talib Alim",
+    "tagline": "Sciences islamiques et langue arabe",
+    "defaultDescription": "L’Institut Talib Alim enseigne les sciences islamiques et la langue arabe, en présentiel à Montereau-Fault-Yonne et en visioconférence."
+  },
+  "nav": {
+    "home": "Accueil",
+    "courses": "Tous les cours",
+    "about": "À propos",
+    "pricing": "Tarifs",
+    "contact": "Contact",
+    "dashboard": "Mon espace",
+    "login": "Connexion",
+    "register": "Créer un compte",
+    "logout": "Déconnexion",
+    "startLearning": "Commencer",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "skipToContent": "Aller au contenu",
+    "changeLanguage": "Changer de langue"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "search": "Rechercher",
+    "close": "Fermer",
+    "required": "obligatoire",
+    "optional": "facultatif"
+  },
+  "home": {
+    "hero": {
+      "eyebrow": "L’Institut Talib Alim",
+      "title": "Cours de sciences islamiques et de langue arabe",
+      "body": "L’éducation religieuse constitue un pilier essentiel pour la construction d’une communauté consciente, équilibrée et attachée à ses valeurs spirituelles.",
+      "cta": "Commencer le cours",
+      "ctaSecondary": "Voir les tarifs"
+    },
+    "featured": {
+      "eyebrow": "Notre catalogue",
+      "title": "Cours populaires",
+      "body": "L’Institut Talib Alim est un centre dédié à l’enseignement des sciences islamiques, proposant des formations en présentiel et à distance.",
+      "body2": "Nous accompagnons nos apprenants dans l’apprentissage des sciences de la croyance, du fiqh, du Coran et de l’histoire de l’islam, à travers une pédagogie accessible, progressive et respectueuse des valeurs islamiques.",
+      "cta": "Voir tous les cours"
+    },
+    "how": {
+      "eyebrow": "Comment ça marche",
+      "title": "Trois étapes, puis vous étudiez",
+      "step1Title": "Créez votre compte",
+      "step1Body": "Quelques secondes, une adresse e-mail, et vous pouvez déjà parcourir tout le catalogue et lire les leçons d’essai.",
+      "step2Title": "Prenez l’abonnement annuel",
+      "step2Body": "Un seul abonnement ouvre tous les cours, y compris ceux publiés après votre inscription. En ligne, ou en réglant sur place à l’institut.",
+      "step3Title": "Suivez les cours à votre rythme",
+      "step3Body": "Leçons vidéo et écrites, classes en direct, replays, quiz et devoirs corrigés — en présentiel comme en visioconférence."
+    },
+    "approach": {
+      "eyebrow": "Approche éducative globale",
+      "title": "Une formation complète et équilibrée",
+      "cta": "Débuter votre parcours",
+      "point1Title": "Encadrement qualifié",
+      "point1Body": "Un enseignement dispensé par des formateurs compétents et expérimentés.",
+      "point2Title": "Apprentissage adapté",
+      "point2Body": "Des cours accessibles en présentiel et à distance.",
+      "point3Title": "Programme rigoureux",
+      "point3Body": "Une formation structurée, fondée sur les sources authentiques."
+    },
+    "why": {
+      "eyebrow": "Caractéristiques de nos cours",
+      "title": "Pourquoi nous choisir ?",
+      "body": "Des cours dispensés par des enseignants compétents, alliant savoir religieux, pédagogie claire et accompagnement bienveillant pour un apprentissage solide et progressif.",
+      "reason1Title": "Un apprentissage flexible et accessible",
+      "reason1Body": "Les formations sont proposées en présentiel et en visioconférence, permettant aux apprenants de poursuivre leur cursus sans contrainte géographique.",
+      "reason2Title": "Un programme structuré et fiable",
+      "reason2Body": "Les contenus pédagogiques sont organisés de manière progressive et reposent sur les sources authentiques ainsi que sur l’étude des grandes écoles juridiques reconnues.",
+      "reason3Title": "Une formation complète et équilibrée",
+      "reason3Body": "L’enseignement vise à développer à la fois la compréhension théorique et la mise en pratique, dans un cadre éducatif fondé sur l’éthique, la rigueur et le respect des valeurs islamiques."
+    },
+    "testimonials": {
+      "eyebrow": "Vos retours",
+      "title": "Approuvé par nos étudiantes et nos enseignants",
+      "ratingLabel": "{count, plural, =1 {# évaluation} other {# évaluations}}"
+    }
+  },
+  "courses": {
+    "title": "Tous les cours",
+    "lead": "Sciences de la croyance, jurisprudence, sciences du Coran et du hadith, exégèse et langue arabe — en présentiel à Montereau-Fault-Yonne comme en visioconférence.",
+    "searchPlaceholder": "Rechercher un cours…",
+    "searchLabel": "Rechercher un cours",
+    "filterSubject": "Matière",
+    "filterLevel": "Niveau",
+    "filterLanguage": "Langue",
+    "filterAll": "Toutes",
+    "filterAllLevels": "Tous",
+    "resultCount": "{count, plural, =0 {Aucun cours} =1 {# cours disponible} other {# cours disponibles}}",
+    "empty": "Aucun cours ne correspond à cette recherche.",
+    "clearFilters": "Effacer les filtres",
+    "card": {
+      "by": "Par {name}",
+      "viewCourse": "Voir le cours",
+      "lessons": "{count, plural, =1 {# leçon} other {# leçons}}",
+      "duration": "{count, plural, =1 {# semaine} other {# semaines}}"
+    },
+    "level": {
+      "all": "Tous niveaux",
+      "beginner": "Débutant",
+      "intermediate": "Intermédiaire",
+      "advanced": "Avancé"
+    },
+    "category": {
+      "aqida": "Croyance",
+      "fiqh": "Jurisprudence",
+      "coran": "Coran",
+      "hadith": "Hadith",
+      "tafsir": "Exégèse",
+      "langue": "Langue arabe",
+      "histoire": "Histoire"
+    },
+    "format": {
+      "presentiel": "Présentiel",
+      "visio": "Visioconférence",
+      "hybride": "Présentiel & visio"
+    },
+    "detail": {
+      "about": "Présentation",
+      "syllabus": "Programme",
+      "objectives": "À l’issue du cursus",
+      "instructor": "L’enseignant",
+      "module": "Module {number}",
+      "previewBadge": "Leçon d’essai",
+      "previewCta": "Regarder l’extrait",
+      "lockedLabel": "Réservé aux membres",
+      "lockedHint": "Cette leçon fait partie de l’abonnement annuel.",
+      "enrollCta": "S’abonner pour accéder",
+      "continueCta": "Continuer le cours",
+      "membershipNote": "Un seul abonnement ouvre tous les cours de l’institut.",
+      "facts": {
+        "duration": "Durée",
+        "lessons": "Séances",
+        "schedule": "Rythme",
+        "format": "Format",
+        "level": "Niveau"
+      },
+      "related": "Poursuivre avec",
+      "notFoundTitle": "Ce cours n’existe pas",
+      "notFoundBody": "Il a peut-être été renommé, ou le lien est incomplet.",
+      "notFoundCta": "Voir tous les cours"
+    }
+  },
+  "pricing": {
+    "title": "Un abonnement, tout l’institut",
+    "lead": "Un seul tarif annuel ouvre l’ensemble des cours, y compris ceux publiés pendant votre année d’abonnement.",
+    "perYear": "par an",
+    "cta": "S’abonner en ligne",
+    "ctaOffice": "Régler sur place",
+    "officeNote": "Vous pouvez aussi régler en espèces à l’institut : nous vous remettons un code à saisir ici, et votre accès s’ouvre immédiatement.",
+    "features": {
+      "allCourses": "Accès à tous les cours de l’institut",
+      "futureCourses": "Les cours publiés pendant votre abonnement, inclus",
+      "live": "Classes en direct avec l’enseignant",
+      "replays": "Replays de toutes les séances",
+      "quizzes": "Quiz et devoirs corrigés",
+      "certificate": "Attestation de suivi"
+    },
+    "noAutoRenew": "Sans reconduction automatique",
+    "noAutoRenewBody": "L’abonnement dure 365 jours et s’arrête à échéance. Aucune carte n’est conservée, aucun prélèvement n’est déclenché sans votre accord.",
+    "faqTitle": "Questions fréquentes",
+    "faq1Q": "L’abonnement se renouvelle-t-il tout seul ?",
+    "faq1A": "Non. Il dure 365 jours puis expire. Le renouvellement est un achat volontaire de votre part.",
+    "faq2Q": "Que se passe-t-il si je renouvelle avant l’échéance ?",
+    "faq2A": "Les 365 nouveaux jours s’ajoutent au temps qu’il vous reste. Vous ne perdez jamais de jours en renouvelant tôt.",
+    "faq3Q": "Puis-je payer sur place ?",
+    "faq3A": "Oui. L’institut encaisse les espèces et vous remet un code à usage unique. Vous le saisissez au moment de valider, le total passe à zéro, et l’accès s’ouvre exactement comme un paiement en ligne.",
+    "faq4Q": "Puis-je acheter un seul cours ?",
+    "faq4A": "Non, et c’est volontaire. Les matières se répondent : le fiqh s’appuie sur les sciences du hadith, l’exégèse sur les sciences du Coran. L’abonnement unique évite d’avoir à choisir."
+  },
+  "auth": {
+    "loginTitle": "Connexion",
+    "loginLead": "Retrouvez vos cours, vos classes en direct et vos replays.",
+    "registerTitle": "Créer un compte",
+    "registerLead": "Le compte est gratuit. Il vous donne accès au catalogue et aux leçons d’essai ; l’abonnement s’ajoute quand vous le souhaitez.",
+    "forgotTitle": "Mot de passe oublié",
+    "forgotLead": "Indiquez votre adresse e-mail : nous vous envoyons un lien de réinitialisation.",
+    "resetTitle": "Nouveau mot de passe",
+    "resetLead": "Choisissez un nouveau mot de passe pour votre compte.",
+    "verifyTitle": "Vérifiez votre adresse e-mail",
+    "verifyLead": "Nous avons envoyé un lien de confirmation à {email}. Ouvrez-le pour activer votre compte.",
+    "verifyResend": "Renvoyer le lien",
+    "verifyResent": "Lien renvoyé. Pensez à regarder dans les indésirables.",
+    "fullName": "Nom et prénom",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "passwordConfirm": "Confirmer le mot de passe",
+    "phone": "Téléphone",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "submitLogin": "Se connecter",
+    "submitRegister": "Créer mon compte",
+    "submitForgot": "Envoyer le lien",
+    "submitReset": "Enregistrer le mot de passe",
+    "orMagicLink": "Ou recevez un lien de connexion",
+    "sendMagicLink": "Recevoir un lien de connexion",
+    "magicLinkSent": "Lien envoyé. Ouvrez-le depuis cet appareil.",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Vous avez déjà un compte ?",
+    "forgotLink": "Mot de passe oublié ?",
+    "backToLogin": "Retour à la connexion",
+    "acceptTerms": "J’accepte les <terms>conditions générales</terms> et la <privacy>politique de confidentialité</privacy>.",
+    "passwordHint": "Au moins 8 caractères, dont une lettre et un chiffre.",
+    "resetSent": "Si un compte existe pour cette adresse, le lien est parti.",
+    "resetDone": "Mot de passe enregistré. Vous pouvez vous connecter.",
+    "signedOut": "Vous êtes déconnecté."
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "emailInvalid": "Cette adresse e-mail n’est pas valide.",
+    "passwordShort": "Le mot de passe doit faire au moins 8 caractères.",
+    "passwordWeak": "Le mot de passe doit contenir au moins une lettre et un chiffre.",
+    "passwordMismatch": "Les deux mots de passe ne correspondent pas.",
+    "nameShort": "Indiquez votre nom complet.",
+    "phoneInvalid": "Ce numéro de téléphone n’est pas valide.",
+    "termsRequired": "Vous devez accepter les conditions pour continuer."
+  },
+  "authErrors": {
+    "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
+    "emailNotConfirmed": "Votre adresse e-mail n’est pas encore confirmée. Ouvrez le lien que nous vous avons envoyé.",
+    "emailTaken": "Un compte existe déjà pour cette adresse.",
+    "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+    "expiredLink": "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.",
+    "unexpected": "Connexion impossible pour le moment. Réessayez dans un instant."
+  },
+  "footer": {
+    "tagline": "Apprendre et se former",
+    "body": "Les formations sont proposées en présentiel et en visioconférence, permettant aux apprenants de poursuivre leur cursus sans contrainte géographique.",
+    "contactTitle": "Nous contacter",
+    "address": "Adresse",
+    "phone": "Téléphone",
+    "email": "E-mail",
+    "navTitle": "Naviguer",
+    "legalTitle": "Informations",
+    "terms": "Conditions générales",
+    "privacy": "Politique de confidentialité",
+    "cookies": "Cookies",
+    "rights": "Tous droits réservés."
+  },
+  "legal": {
+    "termsTitle": "Conditions générales",
+    "privacyTitle": "Politique de confidentialité",
+    "cookiesTitle": "Gestion des cookies",
+    "lastUpdated": "Dernière mise à jour : {date}",
+    "placeholder": "Ce document est en cours de rédaction avec le conseil juridique de l’institut. Il sera publié avant l’ouverture des abonnements."
+  },
+  "cookies": {
+    "title": "Cookies",
+    "body": "Nous utilisons des cookies nécessaires au fonctionnement du site. Aucun cookie de mesure d’audience ou de publicité n’est déposé sans votre accord.",
+    "accept": "Tout accepter",
+    "essential": "Nécessaires uniquement",
+    "manage": "Gérer mes choix"
+  }
+}

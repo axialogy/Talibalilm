@@ -1,0 +1,85 @@
+# Talibalim — design tokens
+#
+# PROVENANCE: derived from a full-page screenshot of the live WordPress site
+# (Institut Talib Alim) supplied by the client. The `ui-reference/` directory
+# described in the build spec was never delivered, so these stand in for the
+# extracted `tokens.txt` until the real one arrives. They were sampled by eye
+# from the rendered page, not read out of the stylesheet — treat any value as
+# correctable, and correct it HERE, then mirror it into
+# src/app/globals.css @theme. Nothing else in the codebase hardcodes a colour.
+
+## Colour
+
+### Brand — emerald
+Carries every action: buttons, badges, icon chips, active nav, focus rings.
+brand-50    #effaf7
+brand-100   #d8f3eb
+brand-200   #b3e6d7
+brand-300   #7fd2ba
+brand-400   #39c69e
+brand-500   #17a17a   <- primary, sampled from the site's CTA pill
+brand-600   #118866   <- hover
+brand-700   #0f6c53
+brand-800   #0f5241   <- dark band background
+brand-900   #0e3a30
+
+### Gold — identity
+The logo, rating stars, hairlines on course covers. Never a filled button:
+a gold action competes with an emerald one and the page stops telling you
+where to click.
+gold-50     #fbf7ef
+gold-100    #f4ead7
+gold-200    #e8d5b0
+gold-300    #dcc28f
+gold-400    #d1b275
+gold-500    #c4a05a   <- logo calligraphy
+gold-600    #a8843e
+gold-700    #886830
+
+### Ink — text
+A green-black, not #000. Pure black next to emerald on white reads cold.
+ink         #16221f   headings, primary text
+ink-soft    #2b3b38   secondary
+ink-muted   #637471   body copy, captions, inactive nav
+
+### Surfaces
+background  #ffffff
+surface     #f2f7f6   section backgrounds, cards on white
+accent      #e9f7f3   tinted callouts
+border      #e5ebe9   hairlines, input borders
+
+### Hero wash
+Linear gradient, 135deg: #edf2f1 -> #f5f8f7 -> #e7eeec
+Bottom-right corner radius 72px (mobile) / 140px (lg and up).
+
+## Type
+
+Display   Poppins        600 / 500 — headings, buttons, nav
+Body      Geist          400 / 500 — paragraphs, form fields
+Arabic    Tajawal        400 / 500 / 700 — all Arabic text, and every heading
+                         when locale = ar (Poppins has no Arabic glyphs)
+
+All three self-hosted from /public/fonts as woff2. Nothing is fetched from a
+font CDN, so no text is render-blocked on a third party.
+
+Scale (clamped, fluid between the two ends):
+h1        clamp(2rem, 5.2vw, 3.125rem)   600   leading 1.14   tracking -0.03em
+h2        clamp(1.75rem, 3.2vw, 2.125rem) 600  leading 1.18   tracking -0.02em
+h3        1.0625rem                       600   leading 1.35
+body      0.9375rem                       400   leading 1.65
+small     0.8125rem                       400   leading 1.55
+eyebrow   0.6875rem  uppercase  tracking 0.18em  500
+
+## Spacing and shape
+
+Page gutter    20px mobile / 24px sm / 32px lg
+Content width  1200px max
+Section rhythm 64px mobile / 80px desktop vertical padding
+Radius         card 16px · pill 999px · input 12px · button 999px
+Grid gap       24px
+
+## Elevation
+
+card     0 1px 2px 0 rgb(22 34 31 / .04), 0 8px 28px -12px rgb(22 34 31 / .12)
+lifted   0 4px 12px -4px rgb(22 34 31 / .08), 0 16px 40px -12px rgb(22 34 31 / .12)
+brand    0 8px 24px -8px rgb(23 161 122 / .45)     CTA hover only

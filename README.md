@@ -1,44 +1,28 @@
-# Grow & Glow
+# Talibalim
 
-A youth lifestyle store — fashion, self-expression, and light emotional support.
-Storefront plus a full admin dashboard, built from the brand book.
+Learning platform for a language school in France, replacing a WordPress site
+running Tutor LMS Pro and a custom WebRTC plugin (MeetPress).
 
-> growth is a journey, not a solution.
-
----
-
-## The idea, in three parts
-
-**Reverse typography.** Every piece carries a message printed backwards. On the
-hanger it reads as a graphic; in the mirror it reads as a sentence — one that
-arrives exactly when you are already looking at yourself. The site renders this
-literally: product art mirrors the message, and a "hold up the mirror" toggle
-flips it back.
-
-**Hidden QR.** Each garment's care label carries a code. Scanning it opens
-`/unlock?code=…` with a note, a playlist, or a community link tied to that
-piece. Codes and their content are managed in the dashboard, with scan counts.
-
-**Soft healing glow, mirrored by reality.** Drifting pastel gradients for the
-calm; high-contrast reflective surfaces for the honesty. The colour temperature
-stays warm throughout — cold would read as clinical, and this brand is
-explicitly a friend, not a therapist.
+**Phase 1 of 6 is complete.** See `docs/PHASE-1.md` for what works, what is
+stubbed, and the open security items.
 
 ---
 
 ## Stack
 
-| | |
+| Layer | Choice |
 |---|---|
-| Build | Vite 7 · TypeScript 5.9 |
-| UI | React 19 · Tailwind CSS 3.4 · shadcn/ui (Radix) |
-| Routing | TanStack Router (file-based, hash history) |
-| Charts | Recharts |
-| Backend | Supabase — **optional**, see below |
-| State | React context + `localStorage` |
+| Framework | Next.js 15 (App Router), TypeScript strict |
+| Styling | Tailwind CSS v4, tokens in `src/app/globals.css` |
+| Database | Supabase Postgres, RLS on every table |
+| Auth | Supabase Auth — password + magic link |
+| i18n | next-intl — French (default, unprefixed) and Arabic (`/ar`, RTL) |
+| Testing | Vitest (unit), Playwright (e2e), psql (RLS policies) |
+| Hosting | Vercel |
 
-Hash history means the built `dist/` runs on any static host with no rewrite
-rules: GitHub Pages, Netlify drop, Vercel, or a plain folder.
+Phases 3–5 add Stripe, LiveKit, Cloudflare R2, Bunny Stream and Resend. Their
+env vars are already listed in `.env.example` so the deployment is configured
+once.
 
 ---
 
@@ -46,131 +30,99 @@ rules: GitHub Pages, Netlify drop, Vercel, or a plain folder.
 
 ```bash
 npm install
+cp .env.example .env.local     # fill in the Supabase values
+npm run dev                    # http://localhost:3000
 ```
+
+The marketing site renders without Supabase configured — `supabaseConfigured`
+in `src/lib/env.ts` degrades the auth surface instead of throwing, so the
+catalogue is browsable before the project exists.
 
 ```bash
-npm run dev
-```
-
-Storefront at `http://localhost:3000`, dashboard at `http://localhost:3000/#/admin`.
-
-```bash
-npm run build
+npm run build       # production build
+npm run typecheck   # tsc --noEmit
+npm run lint
+npm test            # vitest
+npm run test:e2e    # playwright, against a production build
+npm run test:rls    # policy tests against a scratch Postgres
 ```
 
 ---
 
-## Dashboard
-
-`/#/admin` — demo credentials:
-
-```
-admin@growandglow.dz / glow2026
-```
-
-| Screen | What it does |
-|---|---|
-| Overview | Revenue, orders, pending count, 14-day chart, best sellers |
-| Orders | Status workflow, expandable detail, WhatsApp link, CSV export |
-| Products | Full editor — sizes, colourways, bundles, photos, mirror message, unlock code |
-| Drops | Seasonal collections with a statement line and publish toggle |
-| Reviews | Approve, unpublish, delete; bulk approve |
-| Journal | Write and publish notes; read time auto-estimated |
-| Unlock codes | Manage QR targets, copy the printable URL, watch scan counts |
-| Customers | Built automatically from orders, sorted by spend |
-| Settings | Brand name, accent colour, contact, delivery pricing, announcement bar |
-
-> **The login is client-side only.** It keeps the dashboard out of the way of
-> ordinary visitors, but anyone reading the JS bundle can find the credentials.
-> Before running a real store, move it behind Supabase Auth and tighten the RLS
-> policies — `supabase_schema.sql` marks exactly which block to replace.
-
----
-
-## Supabase (optional)
-
-Without env vars the app runs entirely from `localStorage` — every feature
-works, the data just lives in that one browser.
-
-To turn on the shared backend:
-
-1. Run [`supabase_schema.sql`](supabase_schema.sql) in the SQL editor.
-2. Create a **public** Storage bucket called `product-images` and add the two
-   policies noted at the bottom of that file.
-3. Add the env vars:
-
-```bash
-cp .env.example .env
-```
-
-```
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-```
-
-The first time you open the dashboard with Supabase on, the local catalog is
-pushed up automatically, so nothing is lost in the switch.
-
-**Egress design.** A visitor makes four small GETs per load (products, drops,
-published reviews, published posts) via plain `fetch` — the ~100 KB supabase-js
-client is dynamically imported and never lands in the main bundle. Photos come
-from the Storage CDN. Admin notifications are one websocket carrying INSERT
-events. Nothing polls.
-
----
-
-## Product art
-
-Products with no uploaded photo render as generated SVG: the garment silhouette
-in its selected colourway, over the brand's pastel wash, with the piece's own
-message printed backwards across the chest. So the shop looks finished before a
-single photo exists, and the reverse-print idea is visible from the first
-screen. Uploaded photos always take over.
-
-Uploads are downscaled to 1200px and re-encoded as JPEG in the browser before
-they go anywhere — a 4 MB phone photo lands at roughly 120 KB.
-
----
-
-## Languages
-
-English (default, LTR) and Arabic (RTL). English ships in the main bundle;
-Arabic is fetched on first switch. `ar.ts` is typed against `en.ts`, so adding
-an English key fails the build until it is translated.
-
-Direction is handled with logical CSS properties, so one set of classes serves
-both. Fonts: Playfair Display for display type, Geist for body, Tajawal for
-Arabic — all self-hosted, nothing render-blocking on a third party.
-
----
-
-## Project layout
+## Layout
 
 ```
 src/
-├── components/
-│   ├── admin/AdminUI.tsx     Shared dashboard primitives
-│   ├── shop/                 ProductCard, ReviewsSection
-│   ├── MirrorText.tsx        Reverse typography + interactive mirror
-│   ├── Navbar.tsx  Footer.tsx  Logo.tsx  LanguageSwitcher.tsx
-├── context/GlowStore.tsx     All state and actions
-├── data/seed.ts              Catalog, drops, journal, unlock codes
-├── i18n/                     en.ts (source of truth) · ar.ts · index.tsx
-├── lib/
-│   ├── productArt.ts         Generated garment SVGs
-│   ├── pricing.ts            Bundles, delivery, currency
-│   ├── supabaseSync.ts       Every remote read and write
-│   ├── images.ts  slug.ts  wilayas.ts  orderStatus.ts
-├── routes/                   File-based routes (storefront + /admin/*)
-└── types/index.ts            Domain model
+  app/
+    [locale]/          every page; French unprefixed, Arabic under /ar
+      (auth)/          login, register, forgot/reset password, verify
+      courses/         catalogue and course detail
+      dashboard/       Phase 1 stub — the real learning surface is Phase 2
+      legal/[doc]/     terms, privacy, cookies
+    auth/callback/     where every emailed link lands (outside [locale])
+    actions/           server actions
+  components/
+    layout/            header, footer, logo, locale switcher
+    marketing/         course card, generated cover art, page hero, filters
+    auth/              forms
+    ui/                button, field, badge
+  lib/
+    supabase/          browser, server and admin clients + generated types
+    validation/        Zod schemas shared by form and server action
+    content/           Phase 1 fixtures, shaped like the Phase 2 tables
+  i18n/                routing, navigation, request config
+messages/              fr.json and ar.json — every UI string
+supabase/
+  migrations/          schema; each table's RLS ships in the same file
+  tests/               SQL policy tests + a local auth harness
+ui-reference/          tokens.txt — the design source of truth
 ```
 
 ---
 
-## Accessibility
+## The access-control model
 
-Focus rings are restyled, never removed. Mirrored text is flipped with a CSS
-transform, so the real sentence stays in the DOM for screen readers, search
-engines and copy-paste. Touch targets meet 44px. Every decorative gradient is
-`aria-hidden` and stops moving under `prefers-reduced-motion`. Tables scroll
-inside their own container so the page body never scrolls sideways.
+The old site's security was "the plugin hides the button". This one is built
+the other way round: the database refuses, and the app is merely polite about
+it.
+
+- Policies are written in the same migration as the table they protect.
+- `public.user_role()`, `is_staff()` and `is_admin()` are `security definer`
+  with a pinned `search_path`, so a policy on `profiles` can read `profiles`
+  without recursing and without being hijacked by a caller-set search path.
+- **RLS is row-level, so it cannot protect a column.** `profiles.role` is kept
+  out of reach by a *column grant* — `authenticated` may update `full_name`,
+  `phone` and `locale`, and nothing else. Without that, `profiles_update_own`
+  would happily let a student set their own role to `admin`, because the row
+  still belongs to them. `supabase/tests/rls_profiles.sql` asserts exactly
+  this, against a real Postgres.
+- The same constraint shapes Phase 2: the spec asks for lesson *titles* to be
+  public while `content` and `video_id` stay members-only. That is two
+  sensitivities in one row, which no single policy can express, so the gated
+  fields move to their own `lesson_content` table with its own policy.
+
+Run the policy tests with `npm run test:rls`. They need a reachable Postgres —
+`supabase start`, or any local instance; see `supabase/tests/run.sh`.
+
+---
+
+## Design tokens
+
+`ui-reference/tokens.txt` is the source of truth and `src/app/globals.css`
+mirrors it. Correct a colour in both, never in a component.
+
+Emerald carries every action. Gold is identity only — the logo, a hairline on
+a cover — and never becomes a filled button, because two filled accents on one
+screen stop telling the reader where to click. Ink is a green-black rather than
+`#000`, which reads cold next to emerald on white.
+
+The tokens were sampled from a screenshot of the live site; the `ui-reference/`
+export described in the build spec was never delivered. Treat any value as
+correctable.
+
+## Brand assets
+
+`public/branding/` holds SVG placeholders. `src/lib/artwork.ts` resolves the
+real raster file when it exists and falls back to the placeholder otherwise —
+on the **server**, so the correct URL is in the HTML. See
+`public/branding/README.md` for the filenames.
