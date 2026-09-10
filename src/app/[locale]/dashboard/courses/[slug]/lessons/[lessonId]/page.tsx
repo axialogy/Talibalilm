@@ -7,7 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CompleteToggle } from '@/components/learn/CompleteToggle';
 import { getCourse } from '@/lib/data/courses';
-import { getCourseProgress, getLessonContent, hasActiveMembership, touchEnrollment } from '@/lib/data/learning';
+import {
+  getCourseProgress,
+  getLessonContent,
+  hasCourseAccess,
+  touchEnrollment,
+} from '@/lib/data/learning';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { courseLessons } from '@/lib/content/types';
@@ -53,9 +58,11 @@ export default async function LessonPage({
   // Asked for unconditionally. RLS answers with null for a non-member, so the
   // paywall below is driven by the database's decision, not by ours.
   const content = await getLessonContent(lesson.id);
-  const isMember = await hasActiveMembership();
+  // Only for the padlock icons in the sidebar — access to THIS lesson is
+  // decided by whether `content` came back, not by this flag.
+  const hasAccess = await hasCourseAccess(course.id);
 
-  if (isMember) await touchEnrollment(course.id, user.id);
+  if (hasAccess) await touchEnrollment(course.id, user.id);
 
   const progress = await getCourseProgress(lessons.map((l) => l.id));
   const done = progress.get(lesson.id)?.status === 'completed';
@@ -190,7 +197,7 @@ export default async function LessonPage({
                         >
                           {isDone ? (
                             <CheckCircle2 className="size-3.5 shrink-0 text-brand-500" aria-hidden="true" />
-                          ) : l.is_preview || isMember ? (
+                          ) : l.is_preview || hasAccess ? (
                             <PlayCircle className="size-3.5 shrink-0 text-ink-muted/60" aria-hidden="true" />
                           ) : (
                             <Circle className="size-3.5 shrink-0 text-ink-muted/40" aria-hidden="true" />

@@ -18,6 +18,15 @@ export type VideoProvider = 'bunny' | 'youtube' | 'none';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled';
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 
+export type DeliveryMode = 'presentiel' | 'online';
+export type CursusKind = 'module' | 'approfondi';
+export type ProductKind = 'module' | 'cursus';
+export type CatalogStatus = 'draft' | 'published' | 'archived';
+export type EntitlementScope = 'course' | 'cursus' | 'site';
+export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+export type PaymentRoute = 'paypal' | 'office' | 'free';
+export type PackPricing = 'sum' | 'fixed' | 'percent';
+
 
 export interface Database {
   public: {
@@ -194,21 +203,61 @@ export interface Database {
           },
         ];
       };
-      memberships: {
+      entitlements: {
         Row: {
           id: string;
           user_id: string;
+          scope: EntitlementScope;
+          course_id: string | null;
+          cursus_id: string | null;
+          year_index: number;
+          delivery: DeliveryMode;
           status: MembershipStatus;
           starts_at: string;
           expires_at: string;
+          source_order_id: string | null;
+          granted_by: string | null;
+          note: string;
           created_at: string;
           updated_at: string;
         };
-        // No client-writable shape: granting membership is a service-role
-        // action from a verified payment or an audited admin action.
-        Insert: never;
-        Update: never;
-        Relationships: [];
+        // Writable shapes exist because the service role genuinely inserts
+        // here after a verified payment. No `authenticated` grant does — see
+        // the grants at the foot of the commerce migration.
+        Insert: {
+          user_id: string;
+          scope: EntitlementScope;
+          course_id?: string | null;
+          cursus_id?: string | null;
+          year_index?: number;
+          delivery?: DeliveryMode;
+          expires_at: string;
+          starts_at?: string;
+          source_order_id?: string | null;
+          granted_by?: string | null;
+          note?: string;
+        };
+        Update: {
+          status?: MembershipStatus;
+          expires_at?: string;
+          note?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'entitlements_course_id_fkey';
+            columns: ['course_id'];
+            isOneToOne: false;
+            referencedRelation: 'courses';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'entitlements_cursus_id_fkey';
+            columns: ['cursus_id'];
+            isOneToOne: false;
+            referencedRelation: 'cursus';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       enrollments: {
         Row: {
@@ -263,6 +312,318 @@ export interface Database {
           },
         ];
       };
+      cursus: {
+        Row: {
+          id: string;
+          slug: string;
+          kind: CursusKind;
+          title: string;
+          subtitle: string;
+          description: string;
+          year_count: number;
+          status: CatalogStatus;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          slug: string;
+          kind: CursusKind;
+          title: string;
+          subtitle?: string;
+          description?: string;
+          year_count?: number;
+          status?: CatalogStatus;
+          display_order?: number;
+        };
+        Update: Partial<{
+          slug: string;
+          title: string;
+          subtitle: string;
+          description: string;
+          year_count: number;
+          status: CatalogStatus;
+          display_order: number;
+        }>;
+        Relationships: [];
+      };
+      cursus_courses: {
+        Row: {
+          cursus_id: string;
+          course_id: string;
+          delivery: DeliveryMode;
+          year_index: number;
+          position: number;
+        };
+        Insert: {
+          cursus_id: string;
+          course_id: string;
+          delivery: DeliveryMode;
+          year_index?: number;
+          position?: number;
+        };
+        Update: Partial<{ year_index: number; position: number }>;
+        Relationships: [
+          {
+            foreignKeyName: 'cursus_courses_course_id_fkey';
+            columns: ['course_id'];
+            isOneToOne: false;
+            referencedRelation: 'courses';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'cursus_courses_cursus_id_fkey';
+            columns: ['cursus_id'];
+            isOneToOne: false;
+            referencedRelation: 'cursus';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      products: {
+        Row: {
+          id: string;
+          kind: ProductKind;
+          course_id: string | null;
+          cursus_id: string | null;
+          year_index: number;
+          delivery: DeliveryMode;
+          price_cents: number;
+          currency: string;
+          duration_days: number;
+          status: CatalogStatus;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          kind: ProductKind;
+          course_id?: string | null;
+          cursus_id?: string | null;
+          year_index?: number;
+          delivery: DeliveryMode;
+          price_cents: number;
+          currency?: string;
+          duration_days?: number;
+          status?: CatalogStatus;
+          display_order?: number;
+        };
+        Update: Partial<{
+          price_cents: number;
+          duration_days: number;
+          status: CatalogStatus;
+          display_order: number;
+          year_index: number;
+        }>;
+        Relationships: [
+          {
+            foreignKeyName: 'products_course_id_fkey';
+            columns: ['course_id'];
+            isOneToOne: false;
+            referencedRelation: 'courses';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'products_cursus_id_fkey';
+            columns: ['cursus_id'];
+            isOneToOne: false;
+            referencedRelation: 'cursus';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      packs: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          description: string;
+          delivery: DeliveryMode;
+          pricing: PackPricing;
+          price_cents: number | null;
+          percent_off: number | null;
+          currency: string;
+          status: CatalogStatus;
+          starts_at: string | null;
+          ends_at: string | null;
+          max_redemptions: number | null;
+          redeemed_count: number;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          slug: string;
+          title: string;
+          description?: string;
+          delivery: DeliveryMode;
+          pricing?: PackPricing;
+          price_cents?: number | null;
+          percent_off?: number | null;
+          status?: CatalogStatus;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          max_redemptions?: number | null;
+          display_order?: number;
+        };
+        Update: Partial<{
+          title: string;
+          description: string;
+          pricing: PackPricing;
+          price_cents: number | null;
+          percent_off: number | null;
+          status: CatalogStatus;
+          starts_at: string | null;
+          ends_at: string | null;
+          max_redemptions: number | null;
+          display_order: number;
+        }>;
+        Relationships: [];
+      };
+      pack_items: {
+        Row: {
+          pack_id: string;
+          product_id: string;
+          is_free: boolean;
+          position: number;
+        };
+        Insert: { pack_id: string; product_id: string; is_free?: boolean; position?: number };
+        Update: Partial<{ is_free: boolean; position: number }>;
+        Relationships: [
+          {
+            foreignKeyName: 'pack_items_pack_id_fkey';
+            columns: ['pack_id'];
+            isOneToOne: false;
+            referencedRelation: 'packs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pack_items_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      coupons: {
+        Row: {
+          id: string;
+          code: string;
+          percent_off: number | null;
+          amount_off_cents: number | null;
+          currency: string;
+          max_redemptions: number | null;
+          redeemed_count: number;
+          expires_at: string | null;
+          is_office: boolean;
+          batch: string;
+          note: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          code: string;
+          percent_off?: number | null;
+          amount_off_cents?: number | null;
+          max_redemptions?: number | null;
+          expires_at?: string | null;
+          is_office?: boolean;
+          batch?: string;
+          note?: string;
+          created_by?: string | null;
+        };
+        Update: Partial<{ max_redemptions: number | null; expires_at: string | null; note: string }>;
+        Relationships: [];
+      };
+      orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          status: OrderStatus;
+          route: PaymentRoute;
+          delivery: DeliveryMode;
+          subtotal_cents: number;
+          discount_cents: number;
+          total_cents: number;
+          currency: string;
+          coupon_id: string | null;
+          pack_id: string | null;
+          provider_order_id: string | null;
+          provider_capture_id: string | null;
+          paid_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        // Service role only. `authenticated` holds SELECT and nothing else, so
+        // a browser cannot name its own total.
+        Insert: {
+          id?: string;
+          user_id: string;
+          route: PaymentRoute;
+          delivery: DeliveryMode;
+          subtotal_cents: number;
+          discount_cents?: number;
+          total_cents: number;
+          status?: OrderStatus;
+          coupon_id?: string | null;
+          pack_id?: string | null;
+          provider_order_id?: string | null;
+        };
+        Update: Partial<{
+          status: OrderStatus;
+          provider_order_id: string | null;
+          provider_capture_id: string | null;
+          paid_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          product_id: string;
+          kind: ProductKind;
+          course_id: string | null;
+          cursus_id: string | null;
+          year_index: number;
+          delivery: DeliveryMode;
+          unit_price_cents: number;
+          duration_days: number;
+          is_free: boolean;
+          title: string;
+        };
+        Insert: {
+          order_id: string;
+          product_id: string;
+          kind: ProductKind;
+          course_id?: string | null;
+          cursus_id?: string | null;
+          year_index?: number;
+          delivery: DeliveryMode;
+          unit_price_cents: number;
+          duration_days: number;
+          is_free?: boolean;
+          title?: string;
+        };
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'order_items_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<never, never>;
     Functions: {
@@ -278,14 +639,42 @@ export interface Database {
         Args: { uid?: string };
         Returns: boolean;
       };
-      has_active_membership: {
+      has_course_access: {
+        Args: { cid: string; uid?: string };
+        Returns: boolean;
+      };
+      has_lesson_access: {
+        Args: { lid: string; uid?: string };
+        Returns: boolean;
+      };
+      has_any_entitlement: {
         Args: { uid?: string };
         Returns: boolean;
+      };
+      grant_order_entitlements: {
+        Args: { oid: string };
+        Returns: number;
+      };
+      redeem_coupon: {
+        Args: { coupon_code: string };
+        Returns: string | null;
+      };
+      expire_entitlements: {
+        Args: Record<never, never>;
+        Returns: number;
       };
     };
     Enums: {
       user_role: UserRole;
       app_locale: AppLocale;
+      delivery_mode: DeliveryMode;
+      cursus_kind: CursusKind;
+      product_kind: ProductKind;
+      catalog_status: CatalogStatus;
+      entitlement_scope: EntitlementScope;
+      order_status: OrderStatus;
+      payment_route: PaymentRoute;
+      pack_pricing: PackPricing;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -296,5 +685,13 @@ export type CourseRow = Database['public']['Tables']['courses']['Row'];
 export type ModuleRow = Database['public']['Tables']['modules']['Row'];
 export type LessonRow = Database['public']['Tables']['lessons']['Row'];
 export type LessonContentRow = Database['public']['Tables']['lesson_content']['Row'];
-export type MembershipRow = Database['public']['Tables']['memberships']['Row'];
+export type EntitlementRow = Database['public']['Tables']['entitlements']['Row'];
+export type CursusRow = Database['public']['Tables']['cursus']['Row'];
+export type CursusCourseRow = Database['public']['Tables']['cursus_courses']['Row'];
+export type ProductRow = Database['public']['Tables']['products']['Row'];
+export type PackRow = Database['public']['Tables']['packs']['Row'];
+export type PackItemRow = Database['public']['Tables']['pack_items']['Row'];
+export type CouponRow = Database['public']['Tables']['coupons']['Row'];
+export type OrderRow = Database['public']['Tables']['orders']['Row'];
+export type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
 export type ProgressRow = Database['public']['Tables']['lesson_progress']['Row'];

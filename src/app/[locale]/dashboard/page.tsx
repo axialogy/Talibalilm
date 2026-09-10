@@ -5,7 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/marketing/PageHero';
 import { requireViewer } from '@/lib/auth/guards';
-import { daysRemaining, getMembership } from '@/lib/data/learning';
+import { daysRemaining, getEntitlements } from '@/lib/data/learning';
 import { listCourses } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
@@ -26,8 +26,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const tNav = await getTranslations('nav');
   const tCourses = await getTranslations('courses');
 
-  const membership = await getMembership();
-  const remaining = daysRemaining(membership);
+  const entitlements = await getEntitlements();
+  const hasAccess = entitlements.length > 0;
+  const remaining = daysRemaining(entitlements);
   const isStaff = viewer.role === 'instructor' || viewer.role === 'admin';
 
   // Courses this student has opened, most recent first. Enrolment is a
@@ -121,18 +122,18 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
             <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
               <div className="flex items-center gap-2">
                 <ShieldCheck
-                  className={membership ? 'size-4 text-brand-500' : 'size-4 text-ink-muted'}
+                  className={hasAccess ? 'size-4 text-brand-500' : 'size-4 text-ink-muted'}
                   aria-hidden="true"
                 />
                 <p className="text-[13px] font-medium text-ink">
-                  {membership ? t('membershipActive') : t('membershipNone')}
+                  {hasAccess ? t('membershipActive') : t('membershipNone')}
                 </p>
               </div>
               {remaining !== null && (
                 <p className="mt-1 text-[11px] text-ink-muted">{t('expiresIn', { days: remaining })}</p>
               )}
-              <Button asChild size="sm" variant={membership ? 'ghost' : 'primary'} className="mt-4">
-                <Link href="/pricing">{membership ? t('renew') : tCourses('detail.enrollCta')}</Link>
+              <Button asChild size="sm" variant={hasAccess ? 'ghost' : 'primary'} className="mt-4">
+                <Link href="/pricing">{hasAccess ? t('renew') : tCourses('detail.enrollCta')}</Link>
               </Button>
             </div>
 

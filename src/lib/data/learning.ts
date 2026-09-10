@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
-import type { LessonContentRow, MembershipRow, ProgressRow } from '@/lib/supabase/database.types';
+import type { EntitlementRow, LessonContentRow, ProgressRow } from '@/lib/supabase/database.types';
 
 /**
  * Member-only reads.
@@ -38,31 +38,61 @@ export async function getLessonContent(lessonId: string): Promise<LessonContent 
   };
 }
 
-export async function getMembership(): Promise<MembershipRow | null> {
-  if (!supabaseConfigured) return null;
+/**
+ * Everything the reader currently holds, soonest expiry first.
+ *
+ * RLS returns only their own rows, so there is no `user_id` filter here —
+ * adding one would suggest the filtering is this function's job when it is
+ * the database's.
+ */
+export async function getEntitlements(): Promise<EntitlementRow[]> {
+  if (!supabaseConfigured) return [];
 
   const supabase = await createClient();
   const { data } = await supabase
-    .from('memberships')
+    .from('entitlements')
     .select('*')
     .eq('status', 'active')
-    .maybeSingle();
+    .order('expires_at', { ascending: true });
 
   // Trust the clock rather than the stored status: the nightly sweep may not
   // have run, and the RLS gate makes the same judgement.
-  if (!data) return null;
-  return new Date(data.expires_at) > new Date() ? data : null;
+  const now = Date.now();
+  return (data ?? []).filter((row) => new Date(row.expires_at).getTime() > now);
 }
 
-export async function hasActiveMembership(): Promise<boolean> {
-  return (await getMembership()) !== null;
+/**
+ * Whether the reader may open a specific course.
+ *
+ * Asked of the database rather than worked out here. `has_course_access` is
+ * the same function the RLS policy calls, so the page and the gate can never
+ * disagree about who is allowed in — which is exactly the drift that made the
+ * old plugin leak.
+ */
+export async function hasCourseAccess(courseId: string): Promise<boolean> {
+  if (!supabaseConfigured) return false;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('has_course_access', { cid: courseId });
+  if (error) return false;
+  return data === true;
 }
 
-/** Days left, or null when there is no live membership. */
-export function daysRemaining(membership: MembershipRow | null): number | null {
-  if (!membership) return null;
-  const ms = new Date(membership.expires_at).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / 86_400_000));
+/**
+ * Whether the reader holds anything at all.
+ *
+ * Only for choosing between "subscribe" and "renew" in the interface. Never a
+ * gate — a gate is always about one specific course.
+ */
+export async function hasAnyEntitlement(): Promise<boolean> {
+  return (await getEntitlements()).length > 0;
+}
+
+/** Days left on the entitlement that runs longest, or null when there are none. */
+export function daysRemaining(entitlements: EntitlementRow[]): number | null {
+  if (entitlements.length === 0) return null;
+  const latest = Math.max(...entitlements.map((e) => new Date(e.expires_at).getTime()));
+  return Math.max(0, Math.ceil((latest - Date.now()) / 86_400_000));
 }
 
 export async function getCourseProgress(lessonIds: string[]): Promise<Map<string, ProgressRow>> {
@@ -79,9 +109,9 @@ export async function getCourseProgress(lessonIds: string[]): Promise<Map<string
 /**
  * Record that the student opened this course.
  *
- * Enrolment is a bookmark, not a gate — rule 3 says one membership unlocks
- * everything — so it is created on first access rather than by an explicit
- * act, and a failure here must never block the lesson from rendering.
+ * Enrolment is a bookmark, not a gate: what decides access is the entitlement,
+ * so this is created on first access rather than by an explicit act, and a
+ * failure here must never block the lesson from rendering.
  */
 export async function touchEnrollment(courseId: string, userId: string): Promise<void> {
   if (!supabaseConfigured) return;

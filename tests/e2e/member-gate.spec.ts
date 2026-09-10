@@ -62,8 +62,8 @@ test.describe('the member gate — REST API', () => {
     expect(rows.length).toBeLessThanOrEqual(previewIds.length);
   });
 
-  test('the anon key cannot grant itself a membership', async ({ request }) => {
-    const response = await request.post(`${SUPABASE_URL}/rest/v1/memberships`, {
+  test('the anon key cannot grant itself an entitlement', async ({ request }) => {
+    const response = await request.post(`${SUPABASE_URL}/rest/v1/entitlements`, {
       headers: {
         apikey: ANON_KEY!,
         Authorization: `Bearer ${ANON_KEY}`,
@@ -71,11 +71,40 @@ test.describe('the member gate — REST API', () => {
       },
       data: {
         user_id: '00000000-0000-0000-0000-000000000000',
+        scope: 'site',
         expires_at: new Date(Date.now() + 86_400_000).toISOString(),
       },
     });
 
     // 401/403 from the grant, or 404 because the table is not exposed to anon.
+    expect(response.status()).toBeGreaterThanOrEqual(400);
+  });
+
+  test('the anon key cannot create an order and name its own total', async ({ request }) => {
+    const response = await request.post(`${SUPABASE_URL}/rest/v1/orders`, {
+      headers: {
+        apikey: ANON_KEY!,
+        Authorization: `Bearer ${ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      data: {
+        user_id: '00000000-0000-0000-0000-000000000000',
+        route: 'paypal',
+        delivery: 'online',
+        subtotal_cents: 1,
+        total_cents: 1,
+      },
+    });
+
+    expect(response.status()).toBeGreaterThanOrEqual(400);
+  });
+
+  test('the anon key cannot read the coupon table', async ({ request }) => {
+    // A percent-off code is worth money, and the office batch is worth a year.
+    const response = await request.get(`${SUPABASE_URL}/rest/v1/coupons?select=code`, {
+      headers: { apikey: ANON_KEY!, Authorization: `Bearer ${ANON_KEY}` },
+    });
+
     expect(response.status()).toBeGreaterThanOrEqual(400);
   });
 

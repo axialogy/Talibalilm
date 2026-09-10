@@ -28,14 +28,18 @@ insert into auth.users (id, email, raw_user_meta_data) values
 update public.profiles set role = 'instructor'
   where id = 'a0000000-0000-0000-0000-000000000004';
 
-insert into public.memberships (user_id, status, starts_at, expires_at) values
-  ('a0000000-0000-0000-0000-000000000002', 'active',
+-- Site-scope entitlements: the shape the old single membership had. This file
+-- keeps testing the CONTENT gate — preview, publication, staff, the clock —
+-- with the simplest possible grant. rls_commerce.sql tests the per-course and
+-- per-cursus scoping that replaced it.
+insert into public.entitlements (user_id, scope, status, starts_at, expires_at) values
+  ('a0000000-0000-0000-0000-000000000002', 'site', 'active',
    now() - interval '165 days', now() + interval '200 days'),
-  ('a0000000-0000-0000-0000-000000000003', 'expired',
+  ('a0000000-0000-0000-0000-000000000003', 'site', 'expired',
    now() - interval '375 days', now() - interval '10 days'),
   -- Still flagged active but past its date: the nightly sweep has not run yet.
   -- The gate must refuse this on the clock alone.
-  ('a0000000-0000-0000-0000-000000000005', 'active',
+  ('a0000000-0000-0000-0000-000000000005', 'site', 'active',
    now() - interval '366 days', now() - interval '1 day');
 
 insert into public.courses (id, slug, title, title_ar, status, published_at, instructor_id) values
@@ -143,11 +147,11 @@ end $$;
 
 do $$
 begin
-  raise notice 'the gate — expired and stale memberships';
+  raise notice 'the gate — expired and stale entitlements';
 
   call auth.login_as('a0000000-0000-0000-0000-000000000003');
   perform public.assert((select count(*) from public.lesson_content) = 1,
-    'an EXPIRED membership grants nothing beyond the preview');
+    'an EXPIRED entitlement grants nothing beyond the preview');
   reset role;
 
   -- The one that a status-column-only check would get wrong.
@@ -256,11 +260,11 @@ end $$;
 
 do $$
 begin
-  raise notice 'membership integrity';
+  raise notice 'entitlement integrity';
   call auth.login_as('a0000000-0000-0000-0000-000000000001');
 
-  perform public.assert((select count(*) from public.memberships) = 0,
-    'a member cannot see anyone else''s membership, nor invent their own');
+  perform public.assert((select count(*) from public.entitlements) = 0,
+    'a member cannot see anyone else''s entitlement, nor invent their own');
 
   reset role;
 end $$;
@@ -270,13 +274,13 @@ declare granted boolean := false;
 begin
   call auth.login_as('a0000000-0000-0000-0000-000000000001');
   begin
-    insert into public.memberships (user_id, expires_at)
-    values ('a0000000-0000-0000-0000-000000000001', now() + interval '365 days');
+    insert into public.entitlements (user_id, scope, expires_at)
+    values ('a0000000-0000-0000-0000-000000000001', 'site', now() + interval '365 days');
     granted := true;
   exception when insufficient_privilege then granted := false;
   end;
   perform public.assert(not granted,
-    'a user CANNOT grant themselves a membership — no insert privilege exists at all');
+    'a user CANNOT grant themselves an entitlement — no insert privilege exists at all');
   reset role;
 end $$;
 
