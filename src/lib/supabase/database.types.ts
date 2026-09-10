@@ -26,6 +26,7 @@ export type EntitlementScope = 'course' | 'cursus' | 'site';
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
 export type PaymentRoute = 'paypal' | 'office' | 'free';
 export type PackPricing = 'sum' | 'fixed' | 'percent';
+export type PaypalEnvironment = 'sandbox' | 'live';
 
 
 export interface Database {
@@ -388,6 +389,12 @@ export interface Database {
           cursus_id: string | null;
           year_index: number;
           delivery: DeliveryMode;
+          time_slot: string;
+          schedule_label: string;
+          hours_per_year: number | null;
+          /** Tenths of an hour: "3h/semaine" is 30. */
+          hours_per_week: number | null;
+          language: string;
           price_cents: number;
           currency: string;
           duration_days: number;
@@ -402,6 +409,11 @@ export interface Database {
           cursus_id?: string | null;
           year_index?: number;
           delivery: DeliveryMode;
+          time_slot?: string;
+          schedule_label?: string;
+          hours_per_year?: number | null;
+          hours_per_week?: number | null;
+          language?: string;
           price_cents: number;
           currency?: string;
           duration_days?: number;
@@ -414,6 +426,11 @@ export interface Database {
           status: CatalogStatus;
           display_order: number;
           year_index: number;
+          time_slot: string;
+          schedule_label: string;
+          hours_per_year: number | null;
+          hours_per_week: number | null;
+          language: string;
         }>;
         Relationships: [
           {
@@ -592,6 +609,8 @@ export interface Database {
           duration_days: number;
           is_free: boolean;
           title: string;
+          time_slot: string;
+          schedule_label: string;
         };
         Insert: {
           order_id: string;
@@ -605,6 +624,8 @@ export interface Database {
           duration_days: number;
           is_free?: boolean;
           title?: string;
+          time_slot?: string;
+          schedule_label?: string;
         };
         Update: never;
         Relationships: [
@@ -623,6 +644,36 @@ export interface Database {
             referencedColumns: ['id'];
           },
         ];
+      };
+      payment_settings: {
+        Row: {
+          id: boolean;
+          environment: PaypalEnvironment;
+          client_id: string;
+          client_secret: string;
+          webhook_id: string;
+          merchant_email: string;
+          currency: string;
+          enabled: boolean;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        // Service role only, and only from `src/lib/paypal`. Neither `anon`
+        // nor `authenticated` holds any grant on this table, so an admin's
+        // browser session cannot read the secret even though the admin is the
+        // one who set it.
+        Insert: never;
+        Update: Partial<{
+          environment: PaypalEnvironment;
+          client_id: string;
+          client_secret: string;
+          webhook_id: string;
+          merchant_email: string;
+          currency: string;
+          enabled: boolean;
+          updated_by: string | null;
+        }>;
+        Relationships: [];
       };
     };
     Views: Record<never, never>;
@@ -663,6 +714,14 @@ export interface Database {
         Args: Record<never, never>;
         Returns: number;
       };
+      release_coupon: {
+        Args: { coupon_id: string };
+        Returns: boolean;
+      };
+      payment_settings_status: {
+        Args: Record<never, never>;
+        Returns: Json;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -675,6 +734,7 @@ export interface Database {
       order_status: OrderStatus;
       payment_route: PaymentRoute;
       pack_pricing: PackPricing;
+      paypal_environment: PaypalEnvironment;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -694,4 +754,5 @@ export type PackItemRow = Database['public']['Tables']['pack_items']['Row'];
 export type CouponRow = Database['public']['Tables']['coupons']['Row'];
 export type OrderRow = Database['public']['Tables']['orders']['Row'];
 export type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
+export type PaymentSettingsRow = Database['public']['Tables']['payment_settings']['Row'];
 export type ProgressRow = Database['public']['Tables']['lesson_progress']['Row'];

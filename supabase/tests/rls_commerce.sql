@@ -482,6 +482,119 @@ begin
     'and the row now reads as expired');
 end $$;
 
+-- --- payment credentials --------------------------------------------------
+
+do $$
+declare refused boolean := false; status json;
+begin
+  raise notice 'the PayPal secret is out of reach of every browser session';
+
+  update public.payment_settings
+     set client_id = 'AXbogus', client_secret = 'SECRET-DO-NOT-LEAK',
+         webhook_id = 'WH-123', enabled = true
+   where id;
+
+  -- An admin is the person who typed the secret in, and still cannot read it
+  -- back: the table carries no grant for `authenticated` at all, so a stolen
+  -- admin session cannot exfiltrate it.
+  call auth.login_as('a0000000-0000-0000-0000-000000000005');
+  begin
+    perform count(*) from public.payment_settings;
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused,
+    'an ADMIN cannot select from payment_settings — the grant does not exist');
+
+  status := public.payment_settings_status();
+  perform public.assert((status ->> 'has_secret')::boolean,
+    'the admin is told a secret is set');
+  perform public.assert(status::text not like '%SECRET-DO-NOT-LEAK%',
+    'but is never told what it is');
+  perform public.assert(status ->> 'client_id' = 'AXbogus',
+    'the client id comes back in full — PayPal publishes it in the browser anyway');
+  reset role;
+
+  refused := false;
+  call auth.login_as('a0000000-0000-0000-0000-000000000001');
+  begin
+    perform public.payment_settings_status();
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'a student is refused the status too');
+  reset role;
+end $$;
+
+do $$
+declare ok boolean := false;
+begin
+  raise notice 'payment settings cannot be switched on half-configured';
+  begin
+    update public.payment_settings set client_secret = '', enabled = true where id;
+    ok := true;
+  exception when check_violation then ok := false;
+  end;
+  perform public.assert(not ok,
+    'enabling PayPal without credentials is refused — it would fail at the worst moment');
+end $$;
+
+-- --- giving a coupon back -------------------------------------------------
+
+do $$
+declare claimed uuid;
+begin
+  raise notice 'an abandoned checkout hands its coupon back';
+
+  claimed := public.redeem_coupon('CAISSE-0002');
+  perform public.assert(claimed is null, 'the code from the earlier test is still spent');
+
+  perform public.release_coupon(
+    (select id from public.coupons where code = 'CAISSE-0002'));
+  perform public.assert(public.redeem_coupon('CAISSE-0002') is not null,
+    'and works again once the order that claimed it was cancelled');
+end $$;
+
+do $$
+declare before_count integer; after_count integer;
+begin
+  raise notice 'a double release cannot invent redemptions';
+
+  update public.coupons set redeemed_count = 0 where code = 'CAISSE-0001';
+  perform public.release_coupon((select id from public.coupons where code = 'CAISSE-0001'));
+  perform public.release_coupon((select id from public.coupons where code = 'CAISSE-0001'));
+
+  select redeemed_count into after_count from public.coupons where code = 'CAISSE-0001';
+  perform public.assert(after_count = 0,
+    'the count floors at zero rather than going negative');
+end $$;
+
+-- --- one price per course, per mode, per slot ------------------------------
+
+do $$
+declare ok boolean := false;
+begin
+  raise notice 'the price list allows one row per slot and no more';
+
+  -- The same course, same mode, a DIFFERENT slot: the school runs Sciences
+  -- Islamiques on Friday evening and again on Saturday morning, at its own
+  -- price. This has to be allowed.
+  insert into public.products
+    (kind, course_id, delivery, time_slot, price_cents, status, language)
+  values ('module', 'c0000000-0000-0000-0000-000000000001', 'online',
+          'weekend-matin', 25000, 'published', 'fr');
+  perform public.assert(true, 'the same course may be sold again in another time slot');
+
+  begin
+    insert into public.products
+      (kind, course_id, delivery, time_slot, price_cents, status, language)
+    values ('module', 'c0000000-0000-0000-0000-000000000001', 'online',
+            'weekend-matin', 19900, 'published', 'fr');
+    ok := true;
+  exception when unique_violation then ok := false;
+  end;
+  perform public.assert(not ok,
+    'but two live prices for the SAME slot are refused — which one would be charged?');
+end $$;
+
 drop function public.can_read(uuid);
 drop function public.assert(boolean, text);
 

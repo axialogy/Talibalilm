@@ -18,7 +18,7 @@ import type { AbstractIntlMessages } from 'next-intl';
  * starts using a namespace that is not listed, so this cannot silently drift
  * into a MISSING_MESSAGE at runtime.
  */
-const CLIENT_NAMESPACES = ['meta', 'nav', 'auth', 'courses', 'learn'] as const;
+const CLIENT_NAMESPACES = ['meta', 'nav', 'auth', 'courses', 'learn', 'checkout'] as const;
 
 /** Admin labels ride along only inside the admin subtree. */
 const ADMIN_NAMESPACES = [...CLIENT_NAMESPACES, 'admin'] as const;

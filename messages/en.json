@@ -242,7 +242,20 @@
     "payPending": "PayPal payment is wired up in the next stage of the build; the summary below is already the one that will be charged.",
     "confirmTitle": "Enrolment confirmed",
     "confirmLead": "Your access is open. You will find it in your space.",
-    "confirmCta": "Go to my space"
+    "confirmCta": "Go to my space",
+    "payUnavailable": "Online payment is not configured yet. You can pay at the institute.",
+    "payRefused": "PayPal could not open the payment. Try again in a moment.",
+    "payCancelled": "Payment cancelled. Your selection is untouched.",
+    "payMismatch": "The amount taken does not match the order. Nothing was granted; please contact us.",
+    "payNotCompleted": "The payment did not go through.",
+    "payUnexpected": "We could not finish this payment. Try again or contact the institute.",
+    "officeCodeLabel": "Code handed to you at reception",
+    "officeCodeApply": "Use the code",
+    "codeInvalid": "That code is not in the right format.",
+    "codeRefused": "That code is unknown, expired or already used.",
+    "codePartial": "That code does not cover the whole total. The rest is payable by PayPal.",
+    "confirmRef": "Order no. {ref}",
+    "confirmItems": "What is now open"
   },
   "auth": {
     "loginTitle": "Log in",

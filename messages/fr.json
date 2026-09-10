@@ -242,7 +242,20 @@
     "payPending": "Le paiement PayPal est branché à l’étape suivante du chantier ; le récapitulatif ci-dessous est déjà celui qui sera facturé.",
     "confirmTitle": "Inscription confirmée",
     "confirmLead": "Votre accès est ouvert. Vous le retrouvez dans votre espace.",
-    "confirmCta": "Aller à mon espace"
+    "confirmCta": "Aller à mon espace",
+    "payUnavailable": "Le paiement en ligne n’est pas encore configuré. Vous pouvez régler à l’institut.",
+    "payRefused": "PayPal n’a pas pu ouvrir le paiement. Réessayez dans un instant.",
+    "payCancelled": "Paiement annulé. Votre sélection est intacte.",
+    "payMismatch": "Le montant encaissé ne correspond pas à la commande. Rien n’a été validé ; contactez-nous.",
+    "payNotCompleted": "Le paiement n’a pas abouti.",
+    "payUnexpected": "Impossible de finaliser ce paiement. Réessayez ou contactez l’institut.",
+    "officeCodeLabel": "Code remis à l’accueil",
+    "officeCodeApply": "Valider le code",
+    "codeInvalid": "Ce code n’a pas le bon format.",
+    "codeRefused": "Ce code est inconnu, expiré ou déjà utilisé.",
+    "codePartial": "Ce code ne couvre pas la totalité. Le reste est à régler par PayPal.",
+    "confirmRef": "Commande n° {ref}",
+    "confirmItems": "Ce qui est ouvert"
   },
   "auth": {
     "loginTitle": "Connexion",
