@@ -339,6 +339,7 @@ export interface Database {
         };
         Update: Partial<{
           slug: string;
+          kind: CursusKind;
           title: string;
           subtitle: string;
           description: string;
@@ -421,16 +422,21 @@ export interface Database {
           display_order?: number;
         };
         Update: Partial<{
-          price_cents: number;
-          duration_days: number;
-          status: CatalogStatus;
-          display_order: number;
+          kind: ProductKind;
+          course_id: string | null;
+          cursus_id: string | null;
           year_index: number;
+          delivery: DeliveryMode;
           time_slot: string;
           schedule_label: string;
           hours_per_year: number | null;
           hours_per_week: number | null;
           language: string;
+          price_cents: number;
+          currency: string;
+          duration_days: number;
+          status: CatalogStatus;
+          display_order: number;
         }>;
         Relationships: [
           {
@@ -484,8 +490,10 @@ export interface Database {
           display_order?: number;
         };
         Update: Partial<{
+          slug: string;
           title: string;
           description: string;
+          delivery: DeliveryMode;
           pricing: PackPricing;
           price_cents: number | null;
           percent_off: number | null;

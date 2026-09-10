@@ -2,7 +2,7 @@ import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server
 import { NextIntlClientProvider } from 'next-intl';
 import { adminClientMessages } from '@/i18n/client-messages';
 import type { Metadata } from 'next';
-import { BookOpen, LayoutDashboard } from 'lucide-react';
+import { BookOpen, CreditCard, GraduationCap, LayoutDashboard, Tag, Wallet } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireStaff } from '@/lib/auth/guards';
 import { supabaseConfigured } from '@/lib/env';
@@ -41,21 +41,28 @@ export default async function AdminLayout({
             {viewer.fullName || viewer.email} · {viewer.role}
           </p>
         </div>
-        <nav className="flex gap-1">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600"
-          >
-            <LayoutDashboard className="size-4" aria-hidden="true" />
-            {t('title')}
-          </Link>
-          <Link
-            href="/admin/courses"
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600"
-          >
-            <BookOpen className="size-4" aria-hidden="true" />
-            {t('courses')}
-          </Link>
+        <nav className="flex flex-wrap gap-1">
+          {(
+            [
+              ['/dashboard', LayoutDashboard, t('title')],
+              ['/admin/courses', BookOpen, t('courses')],
+              ['/admin/cursus', GraduationCap, t('cursusNav')],
+              ['/admin/pricing', Tag, t('pricing')],
+              ['/admin/packs', CreditCard, t('packs')],
+              ...(viewer.role === 'admin'
+                ? [['/admin/payments', Wallet, t('payments')] as const]
+                : []),
+            ] as const
+          ).map(([href, Icon, label]) => (
+            <Link
+              key={href}
+              href={href}
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600"
+            >
+              <Icon className="size-4" aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
         </nav>
       </div>
 

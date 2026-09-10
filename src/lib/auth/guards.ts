@@ -58,3 +58,17 @@ export async function requireStaff(): Promise<Viewer> {
   if (viewer.role !== 'instructor' && viewer.role !== 'admin') redirect('/dashboard');
   return viewer;
 }
+
+/**
+ * Admin-only pages and actions.
+ *
+ * Unlike `requireStaff`, this one IS the control in one place: payment
+ * settings carry no RLS policy to fall back on, because no browser session
+ * holds any grant on that table at all. Anything reaching for the service role
+ * on an admin's behalf has to pass through here first.
+ */
+export async function requireAdmin(): Promise<Viewer> {
+  const viewer = await requireViewer();
+  if (viewer.role !== 'admin') redirect('/dashboard');
+  return viewer;
+}
