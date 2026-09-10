@@ -56,10 +56,17 @@ export function CourseArt({
 }) {
   const t = TONES[tone];
 
-  // Sized to the space it has rather than to a bracket: Arabic connected
-  // script runs about 0.46em per character, and a long discipline name
-  // otherwise runs straight through the gold frame.
-  const arSize = Math.max(18, Math.min(60, Math.round(316 / Math.max(1, titleAr.length * 0.46))));
+  // Sized to the space it has rather than to a bracket, because a long
+  // discipline name otherwise runs straight through the gold frame.
+  //
+  // The frame leaves 312 units of the 400-wide viewBox, and 300 keeps a
+  // margin. Alexandria's Arabic measures between 0.47 and 0.56 em per
+  // character across the catalogue — connected script varies a lot with which
+  // letters join — so the divisor is the WIDEST of those, not the average: a
+  // short name coming out slightly small is invisible, a long one overflowing
+  // is not. Re-measure this if the face ever changes again; the previous 0.46
+  // was tuned for Tajawal and overflowed five of six covers under Alexandria.
+  const arSize = Math.max(18, Math.min(60, Math.round(300 / Math.max(1, titleAr.length * 0.56))));
   const titleLines = wrap(title, 30, 2);
 
   return (
@@ -96,7 +103,7 @@ export function CourseArt({
           textAnchor="middle"
           fill={t.ink}
           opacity="0.72"
-          fontFamily="Poppins, Geist, system-ui, sans-serif"
+          fontFamily="Alexandria, system-ui, sans-serif"
           fontSize="13"
           fontWeight="500"
           letterSpacing="3"
@@ -110,7 +117,7 @@ export function CourseArt({
         y="168"
         textAnchor="middle"
         fill={t.ink}
-        fontFamily="Tajawal, system-ui, sans-serif"
+        fontFamily="Alexandria, system-ui, sans-serif"
         fontSize={arSize}
         fontWeight="700"
         direction="rtl"
@@ -126,7 +133,7 @@ export function CourseArt({
         textAnchor="middle"
         fill={t.ink}
         opacity="0.9"
-        fontFamily="Poppins, Geist, system-ui, sans-serif"
+        fontFamily="Alexandria, system-ui, sans-serif"
         fontSize="15"
         fontWeight="500"
       >
