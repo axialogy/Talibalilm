@@ -177,7 +177,7 @@ export default async function CoursePage({
               <div className="p-6">
                 <p className="text-xs text-ink-muted">{t('detail.membershipNote')}</p>
                 <Button asChild block size="lg" className="mt-4">
-                  <Link href="/pricing">{t('detail.enrollCta')}</Link>
+                  <Link href="/checkout">{t('detail.enrollCta')}</Link>
                 </Button>
               </div>
             </div>

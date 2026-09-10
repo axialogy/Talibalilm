@@ -128,7 +128,7 @@ export default async function LessonPage({
               {t('lockedBody')}
             </p>
             <Button asChild className="mt-6">
-              <Link href="/pricing">{tCourses('detail.enrollCta')}</Link>
+              <Link href="/checkout">{tCourses('detail.enrollCta')}</Link>
             </Button>
           </div>
         )}

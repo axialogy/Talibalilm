@@ -133,7 +133,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                 <p className="mt-1 text-[11px] text-ink-muted">{t('expiresIn', { days: remaining })}</p>
               )}
               <Button asChild size="sm" variant={hasAccess ? 'ghost' : 'primary'} className="mt-4">
-                <Link href="/pricing">{hasAccess ? t('renew') : tCourses('detail.enrollCta')}</Link>
+                <Link href="/checkout">{hasAccess ? t('renew') : tCourses('detail.enrollCta')}</Link>
               </Button>
             </div>
 

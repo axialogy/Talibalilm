@@ -220,7 +220,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted">{tPricing('lead')}</p>
           </div>
           <Button asChild size="lg" className="shrink-0">
-            <Link href="/pricing">{tPricing('cta')}</Link>
+            <Link href="/checkout">{tPricing('cta')}</Link>
           </Button>
         </div>
       </section>

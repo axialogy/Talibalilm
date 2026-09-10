@@ -89,7 +89,7 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
               {t('login')}
             </Link>
             <Button asChild size="sm" className="hidden sm:inline-flex">
-              <Link href="/register">{t('startLearning')}</Link>
+              <Link href="/checkout">{t('startLearning')}</Link>
             </Button>
 
             <button
@@ -148,7 +148,7 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
           </div>
 
           <Button asChild block className="mt-5">
-            <Link href="/register" onClick={() => setOpen(false)}>
+            <Link href="/checkout" onClick={() => setOpen(false)}>
               {t('startLearning')}
             </Link>
           </Button>
