@@ -314,7 +314,10 @@
     "emailTaken": "Un compte existe déjà pour cette adresse.",
     "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
     "expiredLink": "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.",
-    "unexpected": "Connexion impossible pour le moment. Réessayez dans un instant."
+    "unexpected": "Connexion impossible pour le moment. Réessayez dans un instant.",
+    "weakPassword": "Ce mot de passe est trop faible. Choisissez-en un plus long.",
+    "signupsDisabled": "Les inscriptions sont fermées pour le moment.",
+    "databaseError": "Votre compte n’a pas pu être créé. L’institut a été prévenu ; réessayez plus tard."
   },
   "footer": {
     "tagline": "Apprendre et se former",

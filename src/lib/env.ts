@@ -14,7 +14,12 @@ import { z } from 'zod';
 const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
-  NEXT_PUBLIC_SITE_URL: z.string().url(),
+  // Optional on purpose. `siteUrl()` falls back to VERCEL_URL, which is the
+  // only correct value on a preview deployment — so requiring it here would
+  // make `supabaseConfigured` false on every preview and turn every sign-in
+  // into "service unavailable". Whether the database is reachable has nothing
+  // to do with knowing our own public URL.
+  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 });
 
 const serverSchema = z.object({
@@ -35,6 +40,21 @@ const parsedPublic = publicSchema.safeParse(rawPublic);
  * the public catalogue has to keep rendering before the project exists.
  */
 export const supabaseConfigured = parsedPublic.success;
+
+/**
+ * Why the environment was rejected, for the server log.
+ *
+ * Never shown to a visitor — "the site is misconfigured" is not their problem
+ * and naming the missing variable tells an attacker how far along the setup
+ * is. But an operator staring at a generic error needs somewhere to look, and
+ * before this existed there was nowhere.
+ */
+export function envProblem(): string | null {
+  if (parsedPublic.success) return null;
+  return parsedPublic.error.issues
+    .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+    .join('; ');
+}
 
 export function publicEnv(): z.infer<typeof publicSchema> {
   if (!parsedPublic.success) {

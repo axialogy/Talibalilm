@@ -4,7 +4,8 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
-import { supabaseConfigured, siteUrl } from '@/lib/env';
+import { envProblem, supabaseConfigured, siteUrl } from '@/lib/env';
+import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 import {
   forgotPasswordSchema,
@@ -45,22 +46,35 @@ async function resolveFieldErrors(
 }
 
 async function notConfigured(): Promise<ActionState> {
+  // The visitor gets the same non-specific sentence as any other outage —
+  // naming the missing variable would tell a stranger how far along the setup
+  // is. The operator gets the detail in the server log, which is the only
+  // place anyone can act on it.
+  console.error('[auth] Supabase is not configured —', envProblem());
   const t = await getTranslations('authErrors');
   return { ok: false, message: t('unexpected') };
 }
 
-/** Map Supabase's error strings onto our localised messages. */
+/**
+ * Map Supabase's error strings onto our localised messages.
+ *
+ * Anything that falls through to the catch-all is logged with the raw text.
+ * Before that, an unmapped error and a missing environment variable produced
+ * exactly the same sentence with nothing written down anywhere — which is
+ * indistinguishable from the site simply being broken.
+ */
 async function authErrorMessage(raw: string): Promise<string> {
-  const t = await getTranslations('authErrors');
-  const lower = raw.toLowerCase();
-  if (lower.includes('invalid login credentials')) return t('invalidCredentials');
-  if (lower.includes('email not confirmed')) return t('emailNotConfirmed');
-  if (lower.includes('already registered') || lower.includes('already been registered')) {
-    return t('emailTaken');
+  const key = classifyAuthError(raw);
+  if (key === 'unexpected') console.error('[auth] unmapped Supabase error:', raw);
+  if (key === 'databaseError') {
+    console.error(
+      '[auth] Supabase rejected the write:',
+      raw,
+      '— usually handle_new_user failing, which means the migrations are missing or partial.',
+    );
   }
-  if (lower.includes('rate limit') || lower.includes('too many')) return t('rateLimited');
-  if (lower.includes('expired') || lower.includes('invalid token')) return t('expiredLink');
-  return t('unexpected');
+  const t = await getTranslations('authErrors');
+  return t(key);
 }
 
 async function guard(scope: string, limit: number): Promise<ActionState | null> {

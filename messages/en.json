@@ -314,7 +314,10 @@
     "emailTaken": "An account already exists for this address.",
     "rateLimited": "Too many attempts. Try again in a few minutes.",
     "expiredLink": "This link has expired or has already been used. Ask for a new one.",
-    "unexpected": "We cannot sign you in at the moment. Try again in a moment."
+    "unexpected": "We cannot sign you in at the moment. Try again in a moment.",
+    "weakPassword": "That password is too weak. Choose a longer one.",
+    "signupsDisabled": "Registration is closed at the moment.",
+    "databaseError": "Your account could not be created. The institute has been notified; try again later."
   },
   "footer": {
     "tagline": "Learn and train",
