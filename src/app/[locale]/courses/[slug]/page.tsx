@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CourseArt } from '@/components/marketing/CourseArt';
 import { CourseCard } from '@/components/marketing/CourseCard';
-import { getCourse, getInstructor, listCourses, relatedCourses } from '@/lib/content/courses';
+import { buildTimeCourseSlugs, getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
@@ -15,11 +15,19 @@ import { routing } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
 /** Pre-render every course in every locale; ISR refreshes them hourly. */
+/**
+ * Seeded from the fixtures because this runs at build time, when the request
+ * context RLS needs does not exist. `revalidate` below plus `dynamicParams`
+ * means a course created later is rendered on first request and then cached —
+ * so the admin does not have to redeploy to publish.
+ */
 export function generateStaticParams() {
   return routing.locales.flatMap((locale) =>
-    listCourses().map((course) => ({ locale, slug: course.slug })),
+    buildTimeCourseSlugs().map((slug) => ({ locale, slug })),
   );
 }
+
+export const dynamicParams = true;
 
 export const revalidate = 3600;
 
@@ -29,7 +37,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const course = getCourse(slug);
+  const course = await getCourse(slug);
   if (!course) return {};
 
   const t = await getTranslations({ locale, namespace: 'courses' });
@@ -64,14 +72,14 @@ export default async function CoursePage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const course = getCourse(slug);
-  if (!course) notFound();
+  const course = await getCourse(slug);
+  if (!course || course.status !== 'published') notFound();
 
   const t = await getTranslations('courses');
   const tMeta = await getTranslations('meta');
   const tNav = await getTranslations('nav');
-  const instructor = getInstructor(course.instructor_id);
-  const related = relatedCourses(course);
+  const instructor = await getInstructor(course.instructor_id);
+  const related = await relatedCourses(course);
   const lessons = lessonCount(course);
 
   const jsonLd = {

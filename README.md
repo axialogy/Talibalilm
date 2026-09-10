@@ -3,8 +3,9 @@
 Learning platform for a language school in France, replacing a WordPress site
 running Tutor LMS Pro and a custom WebRTC plugin (MeetPress).
 
-**Phase 1 of 6 is complete.** See `docs/PHASE-1.md` for what works, what is
-stubbed, and the open security items.
+**Phases 1 and 2 of 6 are complete.** See `docs/PHASE-1.md` and
+`docs/PHASE-2.md` for what works, what is stubbed, and the open security items.
+`docs/DEPLOY.md` is the Vercel and Supabase setup.
 
 ---
 
@@ -18,6 +19,7 @@ stubbed, and the open security items.
 | Auth | Supabase Auth — password + magic link |
 | i18n | next-intl — French (default, unprefixed) and Arabic (`/ar`, RTL) |
 | Testing | Vitest (unit), Playwright (e2e), psql (RLS policies) |
+| Editing | Admin course builder at `/admin/courses` |
 | Hosting | Vercel |
 
 Phases 3–5 add Stripe, LiveKit, Cloudflare R2, Bunny Stream and Resend. Their
@@ -96,10 +98,13 @@ it.
   would happily let a student set their own role to `admin`, because the row
   still belongs to them. `supabase/tests/rls_profiles.sql` asserts exactly
   this, against a real Postgres.
-- The same constraint shapes Phase 2: the spec asks for lesson *titles* to be
+- The same constraint shaped Phase 2: the spec asks for lesson *titles* to be
   public while `content` and `video_id` stay members-only. That is two
   sensitivities in one row, which no single policy can express, so the gated
-  fields move to their own `lesson_content` table with its own policy.
+  fields live in their own `lesson_content` table with its own policy.
+- `has_active_membership()` checks `expires_at > now()`, not just the status
+  column. A row left `active` past its date grants nothing, so the nightly
+  sweep is a tidy-up rather than the enforcement.
 
 Run the policy tests with `npm run test:rls`. They need a reachable Postgres —
 `supabase start`, or any local instance; see `supabase/tests/run.sh`.

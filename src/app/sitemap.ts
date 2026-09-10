@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { listCourses } from '@/lib/content/courses';
+
 import { routing } from '@/i18n/routing';
 import { siteUrl } from '@/lib/env';
 

@@ -1,4 +1,5 @@
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -7,6 +8,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { siteUrl } from '@/lib/env';
 import { logoLockupSrc } from '@/lib/artwork';
+import { clientMessages } from '@/i18n/client-messages';
 import '../globals.css';
 
 export function generateStaticParams() {
@@ -68,11 +70,12 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const typed = locale as Locale;
+  const messages = await getMessages();
 
   return (
     <html lang={typed} dir={directionOf(typed)} suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
-        <NextIntlClientProvider>
+        <NextIntlClientProvider messages={clientMessages(messages)}>
           <SiteHeader logoSrc={logoLockupSrc()} />
           <main id="main" className="flex-1">
             {children}

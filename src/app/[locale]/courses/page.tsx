@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { CourseCard } from '@/components/marketing/CourseCard';
 import { CourseFilters } from '@/components/marketing/CourseFilters';
 import { PageHero } from '@/components/marketing/PageHero';
-import { listCourses } from '@/lib/content/courses';
+import { listCourses } from '@/lib/data/courses';
 import type { CourseCategory, CourseLevel } from '@/lib/content/types';
 
 /**
@@ -53,7 +53,7 @@ export default async function CoursesPage({
   const category = asCategory(rawCategory);
   const level = asLevel(rawLevel);
 
-  const all = listCourses();
+  const all = await listCourses();
   const results = all.filter(
     (c) => (!category || c.category === category) && (!level || c.level === level),
   );

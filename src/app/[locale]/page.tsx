@@ -3,7 +3,7 @@ import { ArrowRight, CalendarClock, Layers, ShieldCheck } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/marketing/CourseCard';
-import { listCourses } from '@/lib/content/courses';
+import { listCourses } from '@/lib/data/courses';
 import { institut } from '@/lib/content/institut';
 import { siteUrl } from '@/lib/env';
 
@@ -14,7 +14,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const t = await getTranslations('home');
   const tMeta = await getTranslations('meta');
   const tPricing = await getTranslations('pricing');
-  const courses = listCourses().slice(0, 6);
+  const courses = (await listCourses()).slice(0, 6);
 
   // JSON-LD for the organisation. Course-level schema lives on the course
   // pages, where the data that fills it actually is.
