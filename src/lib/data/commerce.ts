@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
-import type { OfferPack, PricedProduct } from '@/lib/commerce/quote';
+import type { OfferPack } from '@/lib/commerce/quote';
+import type { PlanningEntry } from '@/components/marketing/PlanningTarifs';
 import type { CursusKind, DeliveryMode } from '@/lib/supabase/database.types';
 
 /**
@@ -110,18 +111,20 @@ export function programmeByYear(entries: ProgrammeEntry[]): Map<number, Programm
  * course renames what the shop calls it. `order_items` snapshots the title at
  * purchase, which is where a stable historical record belongs.
  */
-export async function listProducts(delivery: DeliveryMode): Promise<PricedProduct[]> {
+export async function listProducts(delivery: DeliveryMode): Promise<PlanningEntry[]> {
   if (!supabaseConfigured) return [];
 
   const supabase = await createClient();
   const { data } = await supabase
     .from('products')
     .select(
-      `id, kind, course_id, cursus_id, year_index, delivery, price_cents, duration_days,
+      `id, kind, course_id, cursus_id, year_index, delivery, time_slot, schedule_label,
+       hours_per_year, hours_per_week, language, price_cents, duration_days,
        courses ( title ), cursus ( title )`,
     )
     .eq('status', 'published')
     .eq('delivery', delivery)
+    .order('time_slot', { ascending: true })
     .order('display_order', { ascending: true });
 
   return (data ?? []).map((row) => ({
@@ -134,6 +137,11 @@ export async function listProducts(delivery: DeliveryMode): Promise<PricedProduc
     priceCents: row.price_cents,
     durationDays: row.duration_days,
     title: row.courses?.title ?? row.cursus?.title ?? '',
+    timeSlot: row.time_slot,
+    scheduleLabel: row.schedule_label,
+    hoursPerYear: row.hours_per_year,
+    hoursPerWeek: row.hours_per_week,
+    teachingLanguage: row.language,
   }));
 }
 

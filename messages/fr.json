@@ -185,7 +185,11 @@
     "faq4Q": "Quelle différence entre les deux cursus ?",
     "faq4A": "Le Cursus Module se prend à la carte : vous choisissez les matières qui vous intéressent, pour un an. Le Cursus Approfondi est un programme construit sur plusieurs années, à suivre dans l’ordre, pour une formation de fond.",
     "faq5Q": "Puis-je passer du présentiel à la visioconférence ?",
-    "faq5A": "Les deux modes ont leur propre programme et leur propre tarif, et votre inscription porte sur celui que vous avez choisi. Écrivez-nous : nous regardons au cas par cas."
+    "faq5A": "Les deux modes ont leur propre programme et leur propre tarif, et votre inscription porte sur celui que vous avez choisi. Écrivez-nous : nous regardons au cas par cas.",
+    "planningTitle": "Planning & Tarifs",
+    "planningEmpty": "Aucun créneau publié dans ce mode.",
+    "hoursYear": "{n}h/an",
+    "hoursWeek": "{n}h/semaine"
   },
   "checkout": {
     "title": "Inscription",

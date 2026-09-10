@@ -4,6 +4,7 @@ import { Check, MapPin, ShieldCheck, Store, Video } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/marketing/PageHero';
+import { PlanningTarifs } from '@/components/marketing/PlanningTarifs';
 import { formatPrice } from '@/lib/commerce/quote';
 import { getProgramme, listCursus, listProducts } from '@/lib/data/commerce';
 import type { DeliveryMode } from '@/lib/supabase/database.types';
@@ -142,7 +143,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
             </div>
           )}
 
-          <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
+          <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
             <div>
               <h2 className="font-display text-xl font-semibold text-ink">{t('modeHeading')}</h2>
               <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">{t('modeBody')}</p>
@@ -196,6 +197,8 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           </div>
         </div>
       </section>
+
+      <PlanningTarifs entries={[...onsite, ...online]} locale={locale} />
     </>
   );
 }

@@ -185,7 +185,11 @@
     "faq4Q": "What is the difference between the two cursus?",
     "faq4A": "The Cursus Module is à la carte: you pick the subjects that interest you, for a year. The Cursus Approfondi is a programme built across several years, followed in order, for study in depth.",
     "faq5Q": "Can I move from on site to video conference?",
-    "faq5A": "Each mode has its own programme and its own price, and your enrolment is for the one you chose. Write to us and we will look at it case by case."
+    "faq5A": "Each mode has its own programme and its own price, and your enrolment is for the one you chose. Write to us and we will look at it case by case.",
+    "planningTitle": "Timetable & Prices",
+    "planningEmpty": "No slot published in this mode.",
+    "hoursYear": "{n}h/year",
+    "hoursWeek": "{n}h/week"
   },
   "checkout": {
     "title": "Enrolment",
