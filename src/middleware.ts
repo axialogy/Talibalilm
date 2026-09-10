@@ -11,7 +11,7 @@ const PROTECTED = ['/dashboard', '/admin'];
 /** Paths a signed-in user has no business seeing. */
 const AUTH_ONLY = ['/login', '/register', '/forgot-password'];
 
-/** Strip a leading `/fr` or `/ar` so route matching is locale-agnostic. */
+/** Strip a leading `/fr` or `/en` so route matching is locale-agnostic. */
 function withoutLocale(pathname: string): string {
   for (const locale of routing.locales) {
     if (pathname === `/${locale}`) return '/';
@@ -22,7 +22,7 @@ function withoutLocale(pathname: string): string {
 
 /**
  * The locale prefix the request came in with, so a redirect stays in the
- * visitor's language. Without this an Arabic reader hitting /ar/dashboard is
+ * visitor's language. Without this an English reader hitting /en/dashboard is
  * bounced onto the French login page.
  */
 function localePrefix(pathname: string): string {

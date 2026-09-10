@@ -33,18 +33,18 @@ export async function generateMetadata({
       template: `%s — ${t('siteName')}`,
     },
     description: t('defaultDescription'),
-    // Both locales are declared to search engines, so an Arabic-speaking
+    // Both locales are declared to search engines, so an English-speaking
     // visitor is not served the French page and vice versa.
     alternates: {
       canonical: locale === routing.defaultLocale ? '/' : `/${locale}`,
-      languages: { fr: '/', ar: '/ar' },
+      languages: { fr: '/', en: '/en' },
     },
     openGraph: {
       type: 'website',
       siteName: t('siteName'),
       title: `${t('siteName')} — ${t('tagline')}`,
       description: t('defaultDescription'),
-      locale: locale === 'ar' ? 'ar_MA' : 'fr_FR',
+      locale: locale === 'en' ? 'en_GB' : 'fr_FR',
       images: [{ url: '/branding/og.png', width: 1200, height: 630 }],
     },
     twitter: { card: 'summary_large_image' },

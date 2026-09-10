@@ -5,8 +5,9 @@
 /* Fonts — self-hosted, so no text is render-blocked on a font CDN.     */
 /*                                                                     */
 /* Poppins is the display face, Geist carries body copy, Tajawal covers */
-/* Arabic. Poppins has no Arabic glyphs, so under `dir=rtl` every       */
-/* heading falls back to Tajawal too — see the [dir='rtl'] block below. */
+/* the Arabic discipline names printed on course covers. Both interface  */
+/* locales are LTR, so Tajawal is scoped to `.font-arabic`, not to a     */
+/* page direction.                                                       */
 /* ------------------------------------------------------------------ */
 @font-face {
   font-family: 'Poppins';
@@ -132,6 +133,9 @@
 
   --font-display: 'Poppins', 'Geist', system-ui, sans-serif;
   --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  /* Both interface locales are LTR. Tajawal exists for the Arabic
+     discipline names printed on course covers, which carry their own
+     `dir` on the element. */
   --font-arabic: 'Tajawal', system-ui, sans-serif;
 
   --radius-card: 1rem;
@@ -173,27 +177,6 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.18;
-  }
-
-  /* Arabic: Poppins has no Arabic glyphs, so headings switch face too.
-     Tajawal is not a high-contrast display face, so the tight tracking and
-     leading that suit Poppins are relaxed here rather than carried over. */
-  [dir='rtl'] body,
-  [dir='rtl'] h1,
-  [dir='rtl'] h2,
-  [dir='rtl'] h3,
-  [dir='rtl'] h4,
-  [dir='rtl'] h5,
-  [dir='rtl'] h6 {
-    font-family: var(--font-arabic);
-  }
-
-  [dir='rtl'] h1,
-  [dir='rtl'] h2,
-  [dir='rtl'] h3 {
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 1.35;
   }
 
   /* Never removed, only restyled */

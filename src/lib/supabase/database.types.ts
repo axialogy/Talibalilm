@@ -8,7 +8,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type UserRole = 'student' | 'instructor' | 'admin';
-export type AppLocale = 'fr' | 'ar';
+export type AppLocale = 'fr' | 'en';
 
 export type CourseLevel = 'all' | 'beginner' | 'intermediate' | 'advanced';
 export type CourseFormat = 'presentiel' | 'visio' | 'hybride';

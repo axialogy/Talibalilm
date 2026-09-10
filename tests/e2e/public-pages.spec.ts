@@ -70,7 +70,7 @@ test.describe('SEO', () => {
     const body = await sitemap.text();
     expect(body).toContain('/courses/fiqh-al-ibadat');
     // Both locales are listed, not only the default one.
-    expect(body).toContain('/ar/courses/fiqh-al-ibadat');
+    expect(body).toContain('/en/courses/fiqh-al-ibadat');
 
     const robots = await request.get('/robots.txt');
     expect(robots.ok()).toBeTruthy();

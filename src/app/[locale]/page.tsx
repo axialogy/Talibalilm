@@ -172,7 +172,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 className="group mt-6 inline-flex items-center gap-2 text-[12px] font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:text-brand-200"
               >
                 <ArrowRight
-                  className="size-4 transition-transform duration-300 group-hover:translate-x-0.5 rtl:-scale-x-100"
+                  className="size-4 transition-transform duration-300 group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
                 {t('approach.cta')}

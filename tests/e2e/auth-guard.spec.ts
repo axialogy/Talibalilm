@@ -21,11 +21,11 @@ test.describe('protected routes', () => {
     await expect(page).toHaveURL(/next=%2Fdashboard/);
   });
 
-  test('the guard holds on the Arabic routes too', async ({ page }) => {
+  test('the guard holds on the English routes too', async ({ page }) => {
     // A guard that only matches the default locale is a real and easy bug:
-    // /ar/dashboard is a different pathname.
-    await page.goto('/ar/dashboard');
-    await expect(page).toHaveURL(/\/ar\/login/);
+    // /en/dashboard is a different pathname.
+    await page.goto('/en/dashboard');
+    await expect(page).toHaveURL(/\/en\/login/);
   });
 
   test('an off-origin `next` is not honoured', async ({ page }) => {

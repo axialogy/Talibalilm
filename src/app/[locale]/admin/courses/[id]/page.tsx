@@ -81,7 +81,7 @@ export default async function CourseBuilderPage({
         href="/admin/courses"
         className="inline-flex items-center gap-2 text-xs text-ink-muted transition-colors hover:text-brand-600"
       >
-        <ArrowLeft className="size-3.5 rtl:-scale-x-100" aria-hidden="true" />
+        <ArrowLeft className="size-3.5" aria-hidden="true" />
         {t('backToCourses')}
       </Link>
 

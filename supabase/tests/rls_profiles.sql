@@ -23,7 +23,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-1111-1111-111111111111', 'student@test.fr',
    '{"full_name":"Étudiante Test","locale":"fr"}'::jsonb),
   ('22222222-2222-2222-2222-222222222222', 'other@test.fr',
-   '{"full_name":"Autre Étudiante","locale":"ar"}'::jsonb),
+   '{"full_name":"Autre Étudiante","locale":"en"}'::jsonb),
   ('33333333-3333-3333-3333-333333333333', 'teacher@test.fr',
    '{"full_name":"Sihem","locale":"fr"}'::jsonb),
   -- Hostile metadata: the client controls this blob at signup, so it tries to
@@ -49,7 +49,7 @@ begin
     'full_name is carried across from signup metadata');
 
   perform public.assert(
-    (select locale from public.profiles where id = '22222222-2222-2222-2222-222222222222') = 'ar',
+    (select locale from public.profiles where id = '22222222-2222-2222-2222-222222222222') = 'en',
     'a valid locale in metadata is honoured');
 
   perform public.assert(

@@ -42,7 +42,7 @@ export const registerSchema = z
     email: emailSchema,
     password: passwordSchema,
     passwordConfirm: z.string(),
-    locale: z.enum(['fr', 'ar']).default('fr'),
+    locale: z.enum(['fr', 'en']).default('fr'),
     acceptTerms: z.literal(true, { message: 'validation.termsRequired' }),
   })
   .refine((d) => d.password === d.passwordConfirm, {

@@ -145,7 +145,9 @@ export default async function CoursePage({
               <h1 className="mt-3 font-display text-[clamp(1.75rem,4.2vw,2.5rem)] leading-[1.15] font-semibold tracking-[-0.03em] text-ink">
                 {course.title}
               </h1>
-              <p className="mt-2 font-arabic text-2xl text-gold-600">{course.title_ar}</p>
+              <p lang="ar" dir="rtl" className="mt-2 font-arabic text-2xl text-gold-600">
+                {course.title_ar}
+              </p>
 
               <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink-muted">{course.subtitle}</p>
 

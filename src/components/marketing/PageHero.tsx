@@ -36,7 +36,7 @@ export async function PageHero({
             <Link href="/" className="text-ink-muted transition-colors hover:text-brand-600">
               {t('home')}
             </Link>
-            <ChevronRight className="size-3 text-ink-muted/60 rtl:-scale-x-100" aria-hidden="true" />
+            <ChevronRight className="size-3 text-ink-muted/60" aria-hidden="true" />
             <span className="text-ink">{crumb}</span>
           </nav>
         )}
