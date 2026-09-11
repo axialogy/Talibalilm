@@ -6,7 +6,19 @@ import tseslint from 'typescript-eslint';
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
 
 export default tseslint.config(
-  { ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts', 'playwright-report/**', 'test-results/**'] },
+  {
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'next-env.d.ts',
+      'playwright-report/**',
+      'test-results/**',
+      // Prisma writes this from prisma/schema.prisma on every `generate`.
+      // Linting machine output tells us nothing we can act on, and it is not
+      // in version control either.
+      'src/generated/**',
+    ],
+  },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
     rules: {

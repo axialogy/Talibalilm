@@ -1,0 +1,553 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["auth", "public"]
+}
+
+model users {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String?           @unique
+  raw_user_meta_data Json              @default("{}")
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  enrollments        enrollments[]
+  entitlements       entitlements?
+  lesson_progress    lesson_progress[]
+  orders             orders[]
+  profiles           profiles?
+
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model coupons {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code             String    @unique
+  percent_off      Int?
+  amount_off_cents Int?
+  currency         String    @default("EUR")
+  max_redemptions  Int?
+  redeemed_count   Int       @default(0)
+  expires_at       DateTime? @db.Timestamptz(6)
+  is_office        Boolean   @default(false)
+  batch            String    @default("")
+  note             String    @default("")
+  created_by       String?   @db.Uuid
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  profiles         profiles? @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  orders           orders[]
+
+  @@index([batch], where: raw("(batch <> ''::text)"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model courses {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug           String           @unique
+  title          String
+  subtitle       String           @default("")
+  description    String           @default("")
+  title_ar       String           @default("")
+  cover_url      String?
+  tone           String           @default("emerald")
+  category       String           @default("fiqh")
+  level          course_level     @default(all)
+  format         course_format    @default(hybride)
+  language       String           @default("fr")
+  instructor_id  String?          @db.Uuid
+  status         course_status    @default(draft)
+  published_at   DateTime?        @db.Timestamptz(6)
+  display_order  Int              @default(0)
+  schedule       String           @default("")
+  duration_weeks Int              @default(0)
+  objectives     Json             @default("[]")
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  profiles       profiles?        @relation(fields: [instructor_id], references: [id], onUpdate: NoAction)
+  cursus_courses cursus_courses[]
+  enrollments    enrollments[]
+  entitlements   entitlements[]
+  modules        modules[]
+  order_items    order_items[]
+  products       products[]
+
+  @@index([category], where: raw("(status = 'published'::course_status)"))
+  @@index([display_order, published_at(sort: Desc)], map: "courses_published_idx", where: raw("(status = 'published'::course_status)"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cursus {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug           String           @unique
+  kind           cursus_kind
+  title          String
+  subtitle       String           @default("")
+  description    String           @default("")
+  year_count     Int              @default(1)
+  status         catalog_status   @default(draft)
+  display_order  Int              @default(0)
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  cursus_courses cursus_courses[]
+  entitlements   entitlements[]
+  order_items    order_items[]
+  products       products[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cursus_courses {
+  cursus_id  String        @db.Uuid
+  course_id  String        @db.Uuid
+  delivery   delivery_mode
+  year_index Int           @default(1)
+  position   Int           @default(0)
+  courses    courses       @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cursus     cursus        @relation(fields: [cursus_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([cursus_id, course_id, delivery, year_index])
+  @@index([course_id], map: "cursus_courses_course_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model enrollments {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String   @db.Uuid
+  course_id        String   @db.Uuid
+  enrolled_at      DateTime @default(now()) @db.Timestamptz(6)
+  last_accessed_at DateTime @default(now()) @db.Timestamptz(6)
+  courses          courses  @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, course_id])
+  @@index([user_id, last_accessed_at(sort: Desc)], map: "enrollments_user_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model entitlements {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String            @unique(map: "entitlements_one_active_site", where: raw("((status = 'active'::membership_status) AND (scope = 'site'::entitlement_scope))")) @db.Uuid
+  scope           entitlement_scope
+  course_id       String?           @db.Uuid
+  cursus_id       String?           @db.Uuid
+  year_index      Int               @default(1)
+  delivery        delivery_mode     @default(online)
+  status          membership_status @default(active)
+  starts_at       DateTime          @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime          @db.Timestamptz(6)
+  source_order_id String?           @db.Uuid
+  granted_by      String?           @db.Uuid
+  note            String            @default("")
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  courses         courses?          @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cursus          cursus?           @relation(fields: [cursus_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles        profiles?         @relation(fields: [granted_by], references: [id], onUpdate: NoAction)
+  orders          orders?           @relation(fields: [source_order_id], references: [id], onUpdate: NoAction)
+  users           users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, course_id, delivery], map: "entitlements_one_active_course", where: raw("((status = 'active'::membership_status) AND (scope = 'course'::entitlement_scope))"))
+  @@unique([user_id, cursus_id, year_index, delivery], map: "entitlements_one_active_cursus", where: raw("((status = 'active'::membership_status) AND (scope = 'cursus'::entitlement_scope))"))
+  @@index([expires_at], map: "entitlements_expiry_idx", where: raw("(status = 'active'::membership_status)"))
+  @@index([user_id], map: "entitlements_user_idx", where: raw("(status = 'active'::membership_status)"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lesson_content {
+  lesson_id      String         @id @db.Uuid
+  content        String         @default("")
+  video_provider video_provider @default(none)
+  video_id       String?
+  attachments    Json           @default("[]")
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime       @default(now()) @db.Timestamptz(6)
+  lessons        lessons        @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lesson_progress {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String          @db.Uuid
+  lesson_id       String          @db.Uuid
+  status          progress_status @default(not_started)
+  seconds_watched Int             @default(0)
+  completed_at    DateTime?       @db.Timestamptz(6)
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime        @default(now()) @db.Timestamptz(6)
+  lessons         lessons         @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, lesson_id])
+  @@index([user_id, lesson_id], map: "lesson_progress_user_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lessons {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  module_id        String            @db.Uuid
+  title            String
+  slug             String
+  type             lesson_type       @default(video)
+  position         Int               @default(0)
+  duration_seconds Int               @default(0)
+  is_preview       Boolean           @default(false)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime          @default(now()) @db.Timestamptz(6)
+  lesson_content   lesson_content?
+  lesson_progress  lesson_progress[]
+  modules          modules           @relation(fields: [module_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([module_id, position])
+  @@index([module_id, position], map: "lessons_module_idx")
+  @@schema("public")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model modules {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  course_id  String    @db.Uuid
+  title      String
+  position   Int       @default(0)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @default(now()) @db.Timestamptz(6)
+  lessons    lessons[]
+  courses    courses   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([course_id, position])
+  @@index([course_id, position], map: "modules_course_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model order_items {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id         String        @db.Uuid
+  product_id       String        @db.Uuid
+  kind             product_kind
+  course_id        String?       @db.Uuid
+  cursus_id        String?       @db.Uuid
+  year_index       Int           @default(1)
+  delivery         delivery_mode
+  unit_price_cents Int
+  duration_days    Int
+  is_free          Boolean       @default(false)
+  title            String        @default("")
+  time_slot        String        @default("")
+  schedule_label   String        @default("")
+  courses          courses?      @relation(fields: [course_id], references: [id], onUpdate: NoAction)
+  cursus           cursus?       @relation(fields: [cursus_id], references: [id], onUpdate: NoAction)
+  orders           orders        @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products         products      @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+
+  @@unique([order_id, product_id])
+  @@index([order_id], map: "order_items_order_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model orders {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String         @db.Uuid
+  status              order_status   @default(pending)
+  route               payment_route
+  delivery            delivery_mode
+  subtotal_cents      Int            @default(0)
+  discount_cents      Int            @default(0)
+  total_cents         Int            @default(0)
+  currency            String         @default("EUR")
+  coupon_id           String?        @db.Uuid
+  pack_id             String?        @db.Uuid
+  provider_order_id   String?        @unique(where: raw("(provider_order_id IS NOT NULL)"))
+  provider_capture_id String?
+  paid_at             DateTime?      @db.Timestamptz(6)
+  created_at          DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime       @default(now()) @db.Timestamptz(6)
+  entitlements        entitlements[]
+  order_items         order_items[]
+  coupons             coupons?       @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
+  packs               packs?         @relation(fields: [pack_id], references: [id], onUpdate: NoAction)
+  users               users          @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([user_id, created_at(sort: Desc)], map: "orders_user_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pack_items {
+  pack_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  is_free    Boolean  @default(false)
+  position   Int      @default(0)
+  packs      packs    @relation(fields: [pack_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products   products @relation(fields: [product_id], references: [id], onUpdate: NoAction)
+
+  @@id([pack_id, product_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model packs {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug            String         @unique
+  title           String
+  description     String         @default("")
+  delivery        delivery_mode
+  pricing         pack_pricing   @default(sum)
+  price_cents     Int?
+  percent_off     Int?
+  currency        String         @default("EUR")
+  status          catalog_status @default(draft)
+  starts_at       DateTime?      @db.Timestamptz(6)
+  ends_at         DateTime?      @db.Timestamptz(6)
+  max_redemptions Int?
+  redeemed_count  Int            @default(0)
+  display_order   Int            @default(0)
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime       @default(now()) @db.Timestamptz(6)
+  orders          orders[]
+  pack_items      pack_items[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model payment_settings {
+  id             Boolean            @id @default(true)
+  environment    paypal_environment @default(sandbox)
+  client_id      String             @default("")
+  client_secret  String             @default("")
+  webhook_id     String             @default("")
+  merchant_email String             @default("")
+  currency       String             @default("EUR")
+  enabled        Boolean            @default(false)
+  updated_by     String?            @db.Uuid
+  updated_at     DateTime           @default(now()) @db.Timestamptz(6)
+  profiles       profiles?          @relation(fields: [updated_by], references: [id], onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model products {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind           product_kind
+  course_id      String?        @db.Uuid
+  cursus_id      String?        @db.Uuid
+  year_index     Int            @default(1)
+  delivery       delivery_mode
+  price_cents    Int
+  currency       String         @default("EUR")
+  duration_days  Int            @default(365)
+  status         catalog_status @default(draft)
+  display_order  Int            @default(0)
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime       @default(now()) @db.Timestamptz(6)
+  time_slot      String         @default("")
+  schedule_label String         @default("")
+  hours_per_year Int?
+  hours_per_week Int?
+  language       String         @default("fr")
+  order_items    order_items[]
+  pack_items     pack_items[]
+  courses        courses?       @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  cursus         cursus?        @relation(fields: [cursus_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([cursus_id, year_index, delivery, time_slot, language], map: "products_one_per_cursus_year_slot", where: raw("((kind = 'cursus'::product_kind) AND (status <> 'archived'::catalog_status))"))
+  @@unique([course_id, delivery, time_slot, language], map: "products_one_per_module_slot", where: raw("((kind = 'module'::product_kind) AND (status <> 'archived'::catalog_status))"))
+  @@index([delivery, display_order], map: "products_published_idx", where: raw("(status = 'published'::catalog_status)"))
+  @@index([delivery, time_slot, display_order], map: "products_slot_idx", where: raw("(status = 'published'::catalog_status)"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id               String             @id @db.Uuid
+  full_name        String             @default("")
+  phone            String?
+  locale           app_locale         @default(fr)
+  role             user_role          @default(student)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  coupons          coupons[]
+  courses          courses[]
+  entitlements     entitlements[]
+  payment_settings payment_settings[]
+  users            users              @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([role], where: raw("(role <> 'student'::user_role)"))
+  @@schema("public")
+}
+
+enum app_locale {
+  fr
+  en
+
+  @@schema("public")
+}
+
+enum catalog_status {
+  draft
+  published
+  archived
+
+  @@schema("public")
+}
+
+enum course_format {
+  presentiel
+  visio
+  hybride
+
+  @@schema("public")
+}
+
+enum course_level {
+  all
+  beginner
+  intermediate
+  advanced
+
+  @@schema("public")
+}
+
+enum course_status {
+  draft
+  published
+  archived
+
+  @@schema("public")
+}
+
+enum cursus_kind {
+  module
+  approfondi
+
+  @@schema("public")
+}
+
+enum delivery_mode {
+  presentiel
+  online
+
+  @@schema("public")
+}
+
+enum entitlement_scope {
+  course
+  cursus
+  site
+
+  @@schema("public")
+}
+
+enum lesson_type {
+  video
+  text
+  live
+  quiz
+  assignment
+
+  @@schema("public")
+}
+
+enum membership_status {
+  active
+  expired
+  cancelled
+
+  @@schema("public")
+}
+
+enum order_status {
+  pending
+  paid
+  failed
+  refunded
+  cancelled
+
+  @@schema("public")
+}
+
+enum pack_pricing {
+  sum
+  fixed
+  percent
+
+  @@schema("public")
+}
+
+enum payment_route {
+  paypal
+  office
+  free
+
+  @@schema("public")
+}
+
+enum paypal_environment {
+  sandbox
+  live
+
+  @@schema("public")
+}
+
+enum product_kind {
+  module
+  cursus
+
+  @@schema("public")
+}
+
+enum progress_status {
+  not_started
+  in_progress
+  completed
+
+  @@schema("public")
+}
+
+enum user_role {
+  student
+  instructor
+  admin
+
+  @@schema("public")
+}
+
+enum video_provider {
+  bunny
+  youtube
+  none
+
+  @@schema("public")
+}

@@ -507,6 +507,19 @@
     "backToSite": "Back to the site",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "navOverview": "Overview"
+    "navOverview": "Overview",
+    "gateBrokenTitle": "This account has no profile row",
+    "gateBrokenBody": "The account exists in authentication but has no row in the profiles table. That happens when the account was created before the schema was applied, so the signup trigger never ran for it. Until that row exists, no role can be given to it.",
+    "gateStaffTitle": "Staff only",
+    "gateStaffBody": "Your account is registered, but with the student role. Administration is for teachers and administrators.",
+    "gateAccount": "Account",
+    "gateUserId": "User id",
+    "gateProfileRow": "Profile row",
+    "gateProfileMissing": "Missing",
+    "gateProfilePresent": "Present",
+    "gateRole": "Role",
+    "gateHowTo": "How to fix it",
+    "gateHowToBody": "Open the Supabase SQL editor and run this once:",
+    "gateThenReload": "Sign out, sign back in, then reload this page."
   }
 }

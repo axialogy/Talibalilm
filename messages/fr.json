@@ -507,6 +507,19 @@
     "backToSite": "Retour au site",
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
-    "navOverview": "Vue d’ensemble"
+    "navOverview": "Vue d’ensemble",
+    "gateBrokenTitle": "Votre compte n’a pas de fiche",
+    "gateBrokenBody": "Ce compte existe côté authentification mais n’a pas de ligne dans la table profiles. C’est le cas quand le compte a été créé avant l’application du schéma : le déclencheur d’inscription n’a jamais tourné pour lui. Tant que cette ligne n’existe pas, aucun rôle ne peut lui être attribué.",
+    "gateStaffTitle": "Espace réservé à l’équipe",
+    "gateStaffBody": "Votre compte est bien enregistré, mais avec le rôle étudiant. L’administration est réservée aux enseignants et aux administrateurs.",
+    "gateAccount": "Compte",
+    "gateUserId": "Identifiant",
+    "gateProfileRow": "Fiche profil",
+    "gateProfileMissing": "Absente",
+    "gateProfilePresent": "Présente",
+    "gateRole": "Rôle",
+    "gateHowTo": "Comment y remédier",
+    "gateHowToBody": "Ouvrez l’éditeur SQL de Supabase et exécutez ceci une fois :",
+    "gateThenReload": "Déconnectez-vous, reconnectez-vous, puis rechargez cette page."
   }
 }

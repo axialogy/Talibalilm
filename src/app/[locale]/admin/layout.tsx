@@ -3,8 +3,9 @@ import { NextIntlClientProvider } from 'next-intl';
 import { adminClientMessages } from '@/i18n/client-messages';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { AdminGate } from '@/components/admin/AdminGate';
 import { AdminShell } from '@/components/admin/AdminShell';
-import { requireStaff } from '@/lib/auth/guards';
+import { isStaff, requireViewer } from '@/lib/auth/guards';
 import { supabaseConfigured } from '@/lib/env';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -27,9 +28,20 @@ export default async function AdminLayout({
   setRequestLocale(locale);
 
   if (!supabaseConfigured) redirect('/login');
-  const viewer = await requireStaff();
+
+  // Signed in is required; being staff is not. A visitor who is not staff gets
+  // an explanation instead of a redirect — see AdminGate for why that matters.
+  const viewer = await requireViewer();
   const t = await getTranslations('admin');
   const messages = await getMessages();
+
+  if (!isStaff(viewer)) {
+    return (
+      <NextIntlClientProvider messages={adminClientMessages(messages)}>
+        <AdminGate viewer={viewer} />
+      </NextIntlClientProvider>
+    );
+  }
 
   return (
     <NextIntlClientProvider messages={adminClientMessages(messages)}>
