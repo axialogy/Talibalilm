@@ -19,7 +19,8 @@
     "closeMenu": "Fermer le menu",
     "skipToContent": "Aller au contenu",
     "changeLanguage": "Changer de langue",
-    "enrol": "Inscription"
+    "enrol": "Inscription",
+    "admin": "Administration"
   },
   "common": {
     "loading": "Chargement…",

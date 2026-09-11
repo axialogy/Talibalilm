@@ -19,7 +19,8 @@
     "closeMenu": "Close menu",
     "skipToContent": "Skip to content",
     "changeLanguage": "Change language",
-    "enrol": "Enrol"
+    "enrol": "Enrol",
+    "admin": "Admin"
   },
   "common": {
     "loading": "Loading…",

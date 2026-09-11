@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Menu, X } from 'lucide-react';
+import { LayoutDashboard, Menu, Wrench, X } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/navigation';
 import { Logo } from '@/components/layout/Logo';
 import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
 import { Button } from '@/components/ui/button';
+import { useViewer } from '@/components/layout/useViewer';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
@@ -21,6 +22,7 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { signedIn, isStaff } = useViewer();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -82,15 +84,43 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
 
           <div className="flex items-center gap-1">
             <LocaleSwitcher className="hidden sm:inline-flex" />
-            <Link
-              href="/login"
-              className="hidden rounded-full px-3 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600 sm:inline-flex"
-            >
-              {t('login')}
-            </Link>
-            <Button asChild size="sm" className="hidden sm:inline-flex">
-              <Link href="/checkout">{t('startLearning')}</Link>
-            </Button>
+
+            {/* `signedIn === null` is the first paint, before the browser has
+                read the session. Holding the space rather than guessing keeps
+                the row from jumping under a cursor. */}
+            {signedIn === null ? (
+              <span aria-hidden="true" className="hidden h-9 w-44 sm:inline-flex" />
+            ) : signedIn ? (
+              <>
+                {isStaff && (
+                  <Link
+                    href="/admin/courses"
+                    className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600 sm:inline-flex"
+                  >
+                    <Wrench className="size-3.5" aria-hidden="true" />
+                    {t('admin')}
+                  </Link>
+                )}
+                <Button asChild size="sm" className="hidden sm:inline-flex">
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="size-4" aria-hidden="true" />
+                    {t('dashboard')}
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden rounded-full px-3 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600 sm:inline-flex"
+                >
+                  {t('login')}
+                </Link>
+                <Button asChild size="sm" className="hidden sm:inline-flex">
+                  <Link href="/checkout">{t('startLearning')}</Link>
+                </Button>
+              </>
+            )}
 
             <button
               type="button"
@@ -138,19 +168,36 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
                 {t(link.key)}
               </Link>
             ))}
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 font-display text-lg text-ink transition-colors hover:bg-brand-50"
-            >
-              {t('login')}
-            </Link>
+            {signedIn && isStaff && (
+              <Link
+                href="/admin/courses"
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-3 py-3 font-display text-lg text-ink transition-colors hover:bg-brand-50"
+              >
+                {t('admin')}
+              </Link>
+            )}
+            {!signedIn && (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-3 py-3 font-display text-lg text-ink transition-colors hover:bg-brand-50"
+              >
+                {t('login')}
+              </Link>
+            )}
           </div>
 
           <Button asChild block className="mt-5">
-            <Link href="/checkout" onClick={() => setOpen(false)}>
-              {t('startLearning')}
-            </Link>
+            {signedIn ? (
+              <Link href="/dashboard" onClick={() => setOpen(false)}>
+                {t('dashboard')}
+              </Link>
+            ) : (
+              <Link href="/checkout" onClick={() => setOpen(false)}>
+                {t('startLearning')}
+              </Link>
+            )}
           </Button>
 
           <div className="mt-4 border-t border-line pt-4">

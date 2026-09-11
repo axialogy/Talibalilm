@@ -31,12 +31,28 @@ export function resolveArtwork(...candidates: string[]): string {
   return found;
 }
 
-/** The full lockup: calligraphy over the wordmark. */
+/**
+ * The full lockup: calligraphy over the wordmark.
+ *
+ * Several extensions are tried because the handover is "drop your file in",
+ * and insisting on one format turns that into a support question. The drawn
+ * SVG is last and is only a placeholder — anything the school supplies wins.
+ */
 export function logoLockupSrc(): string {
-  return resolveArtwork('/branding/logo-institut.png', '/branding/logo-institut.svg');
+  return resolveArtwork(
+    '/branding/logo-institut.webp',
+    '/branding/logo-institut.png',
+    '/branding/logo-institut.jpg',
+    '/branding/logo-institut.svg',
+  );
 }
 
 /** The square mark, for favicons and tight slots. */
 export function logoMarkSrc(): string {
-  return resolveArtwork('/branding/logo-mark.png', '/branding/logo-mark.svg');
+  return resolveArtwork(
+    '/branding/logo-mark.webp',
+    '/branding/logo-mark.png',
+    '/branding/logo-mark.jpg',
+    '/branding/logo-mark.svg',
+  );
 }
