@@ -488,6 +488,25 @@
       "saveFailed": "Enregistrement impossible.",
       "invalid": "Formulaire incomplet.",
       "unavailable": "Base de données non configurée."
-    }
+    },
+    "overview": "Vue d’ensemble",
+    "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
+    "statCourses": "Cours publiés",
+    "statPrices": "Tarifs en ligne",
+    "statPacks": "Offres",
+    "statCursus": "Cursus",
+    "statStudents": "Comptes",
+    "checklist": "Avant d’ouvrir les inscriptions",
+    "checkCourses": "Publier au moins un cours",
+    "checkPrices": "Définir au moins un tarif",
+    "checkProgramme": "Créer les cursus et leur programme",
+    "checkPayments": "Configurer le paiement PayPal",
+    "checkDone": "Fait",
+    "checkTodo": "À faire",
+    "checkPaymentsNote": "L’état du paiement n’est pas vérifié automatiquement : le secret PayPal n’est jamais relu, même par vous. Ouvrez l’écran Paiement pour le voir.",
+    "backToSite": "Retour au site",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "navOverview": "Vue d’ensemble"
   }
 }

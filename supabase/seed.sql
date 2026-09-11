@@ -5,9 +5,11 @@
 -- the admin screens the moment it lands — every price here is a placeholder
 -- for the school to change, not a decision baked into the code.
 --
--- Run it once on a fresh project:
---     psql "$DATABASE_URL" -f supabase/seed.sql
--- It is idempotent, so running it twice changes nothing.
+-- Paste it into the Supabase SQL editor, or run it with psql. It is
+-- idempotent, so running it twice changes nothing.
+--
+-- Pure SQL: no psql meta-commands, because the SQL editor rejects them and
+-- rolls back the entire paste when it hits one.
 --
 -- What it sets up, from the school's own planning page:
 --   * Two disciplines — Sciences du Coran and Sciences du Fiqh.
@@ -17,8 +19,6 @@
 --     300 € as a starting price.
 --   * One example offer, to show the shape.
 -- ---------------------------------------------------------------------------
-
-begin;
 
 -- --- the two disciplines ---------------------------------------------------
 
@@ -126,6 +126,8 @@ from public.products p
 where p.kind = 'module' and p.delivery = 'online' and p.time_slot = 'semaine-soir'
 on conflict do nothing;
 
-commit;
-
-\echo 'Seeded: 2 disciplines, 2 cursus, the year-1 programme, 10 products, 1 draft offer.'
+-- Confirm with:
+--   select (select count(*) from public.courses)  as courses,
+--          (select count(*) from public.cursus)   as cursus,
+--          (select count(*) from public.products) as products;
+-- Expect 2, 2, 10.

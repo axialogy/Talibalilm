@@ -1,14 +1,9 @@
-import { NextIntlClientProvider, hasLocale } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { routing, directionOf, type Locale } from '@/i18n/routing';
-import { SiteHeader } from '@/components/layout/SiteHeader';
-import { SiteFooter } from '@/components/layout/SiteFooter';
 import { siteUrl } from '@/lib/env';
-import { logoLockupSrc } from '@/lib/artwork';
-import { clientMessages } from '@/i18n/client-messages';
 import '../globals.css';
 
 export function generateStaticParams() {
@@ -70,19 +65,13 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const typed = locale as Locale;
-  const messages = await getMessages();
 
+  // Deliberately thin: `<html>`, the fonts and the metadata, nothing else.
+  // The marketing header and footer belong to the (site) group, so the admin
+  // panel can be a panel rather than a page wearing a shop's chrome.
   return (
     <html lang={typed} dir={directionOf(typed)} suppressHydrationWarning>
-      <body className="flex min-h-screen flex-col">
-        <NextIntlClientProvider messages={clientMessages(messages)}>
-          <SiteHeader logoSrc={logoLockupSrc()} />
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <SiteFooter />
-        </NextIntlClientProvider>
-      </body>
+      <body className="flex min-h-screen flex-col">{children}</body>
     </html>
   );
 }

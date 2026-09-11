@@ -488,6 +488,25 @@
       "saveFailed": "Could not save.",
       "invalid": "The form is incomplete.",
       "unavailable": "The database is not configured."
-    }
+    },
+    "overview": "Overview",
+    "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
+    "statCourses": "Published courses",
+    "statPrices": "Live prices",
+    "statPacks": "Offers",
+    "statCursus": "Cursus",
+    "statStudents": "Accounts",
+    "checklist": "Before enrolment opens",
+    "checkCourses": "Publish at least one course",
+    "checkPrices": "Set at least one price",
+    "checkProgramme": "Create the cursus and their programme",
+    "checkPayments": "Configure PayPal payment",
+    "checkDone": "Done",
+    "checkTodo": "To do",
+    "checkPaymentsNote": "Payment status is not checked automatically: the PayPal secret is never read back, not even by you. Open the Payment screen to see it.",
+    "backToSite": "Back to the site",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "navOverview": "Overview"
   }
 }
