@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { BackLink } from '@/components/admin/BackLink';
 import { PackEditor, type PackView, type ProductChoice } from '@/components/admin/PackEditor';
 import { formatPrice } from '@/lib/commerce/quote';
 import { createClient } from '@/lib/supabase/server';
@@ -54,6 +55,7 @@ export default async function AdminPacksPage({
 
   return (
     <div>
+      <BackLink href="/admin" label={t('navOverview')} />
       <h1 className="font-display text-2xl font-semibold text-ink">{t('packList')}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-muted">
         {t('packListLead')}

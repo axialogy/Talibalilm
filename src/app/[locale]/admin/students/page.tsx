@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { BackLink } from '@/components/admin/BackLink';
 import { Search } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ export default async function AdminStudentsPage({
 
   return (
     <div>
+      <BackLink href="/admin" label={t('navOverview')} />
       <h1 className="font-display text-2xl font-semibold text-ink">{t('studentsTitle')}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-muted">{t('studentsLead')}</p>
 

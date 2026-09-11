@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { BackLink } from '@/components/admin/BackLink';
 import { BookOpen } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ export default async function AdminCoursesPage({
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div>
+        <BackLink href="/admin" label={t('navOverview')} />
         <h1 className="font-display text-2xl font-semibold text-ink">{t('courses')}</h1>
 
         {rows.length === 0 ? (

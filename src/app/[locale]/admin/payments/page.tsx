@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { BackLink } from '@/components/admin/BackLink';
 import {
   PaymentSettingsForm,
   type PaymentStatus,
@@ -45,6 +46,7 @@ export default async function AdminPaymentsPage({
 
   return (
     <div className="max-w-2xl">
+      <BackLink href="/admin" label={t('navOverview')} />
       <h1 className="font-display text-2xl font-semibold text-ink">{t('paymentsTitle')}</h1>
       <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">{t('paymentsLead')}</p>
 

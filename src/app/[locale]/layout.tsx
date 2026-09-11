@@ -43,10 +43,11 @@ export async function generateMetadata({
       images: [{ url: '/branding/og.png', width: 1200, height: 630 }],
     },
     twitter: { card: 'summary_large_image' },
-    icons: {
-      icon: [{ url: '/branding/logo-mark.svg', type: 'image/svg+xml' }],
-      apple: '/branding/apple-touch-icon.png',
-    },
+    // The favicon and Apple icon come from src/app/icon.png and
+    // src/app/apple-icon.png (Next's file convention), generated from the
+    // school's own mark — so they are not restated here. The manifest carries
+    // the PWA icons.
+    manifest: '/manifest.webmanifest',
   };
 }
 
