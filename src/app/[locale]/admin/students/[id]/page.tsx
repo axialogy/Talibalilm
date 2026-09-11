@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { GrantForm } from '@/components/admin/GrantForm';
 import { RevokeButton } from '@/components/admin/RevokeButton';
+import { AnonymiseButton } from '@/components/admin/AnonymiseButton';
 import { getStudent } from '@/lib/data/admin';
 import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
@@ -64,8 +65,13 @@ export default async function AdminStudentDetailPage({
           {student.fullName || student.email || t('studentDetail')}
         </h1>
         {student.role !== 'student' && <Badge variant="soft">{student.role}</Badge>}
+        {student.anonymisedAt && <Badge variant="muted">{t('anonymised')}</Badge>}
       </div>
-      <p className="mt-1 text-[13px] text-ink-muted">{student.email}</p>
+      <p className="mt-1 text-[13px] text-ink-muted">
+        {student.anonymisedAt
+          ? t('anonymisedOn', { date: dateFmt.format(new Date(student.anonymisedAt)) })
+          : student.email}
+      </p>
 
       <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">{t('entitlementsHeld')}</h2>
       {entitlements.length === 0 ? (
@@ -101,6 +107,16 @@ export default async function AdminStudentDetailPage({
           <p className="mt-1 text-[12px] text-ink-muted">{t('grantLead')}</p>
           <div className="mt-3">
             <GrantForm userId={student.userId} courses={courses} cursus={cursus} />
+          </div>
+        </section>
+      )}
+
+      {isAdmin && student.role === 'student' && !student.anonymisedAt && (
+        <section className="mt-10 rounded-[var(--radius-card)] border border-red-200 bg-red-50/40 p-5">
+          <h2 className="font-display text-[15px] font-semibold text-red-700">{t('dangerZone')}</h2>
+          <p className="mt-1 max-w-prose text-[12px] text-ink-muted">{t('dangerZoneLead')}</p>
+          <div className="mt-3">
+            <AnonymiseButton userId={student.userId} />
           </div>
         </section>
       )}

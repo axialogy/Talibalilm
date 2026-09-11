@@ -19,6 +19,7 @@ const MESSAGE: Record<
   | 'codePartial'
   | 'packExhausted'
   | 'mixedCurrency'
+  | 'rateLimited'
 > = {
   unavailable: 'payUnavailable',
   paypalRefused: 'payRefused',
@@ -27,6 +28,7 @@ const MESSAGE: Record<
   codePartial: 'codePartial',
   packExhausted: 'packExhausted',
   mixedCurrency: 'mixedCurrency',
+  rateLimited: 'rateLimited',
 };
 
 /**

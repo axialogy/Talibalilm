@@ -262,7 +262,8 @@
     "confirmRef": "Commande n° {ref}",
     "confirmItems": "Ce qui est ouvert",
     "packExhausted": "Cette offre vient d’atteindre sa limite. Retirez-la pour continuer.",
-    "mixedCurrency": "Votre sélection mélange plusieurs devises. Contactez l’institut."
+    "mixedCurrency": "Votre sélection mélange plusieurs devises. Contactez l’institut.",
+    "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes."
   },
   "auth": {
     "loginTitle": "Connexion",
@@ -487,6 +488,7 @@
       "credentialsMissing": "Renseignez le Client ID et le Client Secret avant d’activer le paiement.",
       "targetRequired": "Choisissez la matière ou le cursus.",
       "currencyShape": "Trois lettres majuscules, ex. EUR.",
+      "partialErasure": "Le compte n’a été qu’en partie effacé. Relancez pour terminer.",
       "saveFailed": "Enregistrement impossible.",
       "invalid": "Formulaire incomplet.",
       "unavailable": "Base de données non configurée.",
@@ -594,6 +596,13 @@
     "grantReason": "Motif",
     "grantSubmit": "Ouvrir l’accès",
     "revokeReasonPrompt": "Motif du retrait ?",
+    "dangerZone": "Effacement",
+    "dangerZoneLead": "Sur demande d’effacement des données, retirez la personne du compte. Les enregistrements de vente sont conservés, rattachés à un utilisateur anonymisé ; l’accès cesse immédiatement. Cette action est irréversible.",
+    "anonymise": "Effacer ce compte",
+    "anonymiseReasonPrompt": "Motif de l’effacement (conservé dans le journal) ?",
+    "anonymiseConfirm": "Ceci supprime définitivement le nom, l’e-mail et l’identifiant de l’étudiant et met fin à tous ses accès. Les commandes sont conservées. Continuer ?",
+    "anonymised": "Effacé",
+    "anonymisedOn": "Compte effacé le {date}",
     "couponsTitle": "Codes promo",
     "couponsLead": "Générez une série pour l’accueil, exportez-la, suivez ce qui a été utilisé.",
     "couponsEmpty": "Aucun code.",

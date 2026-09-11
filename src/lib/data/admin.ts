@@ -161,6 +161,7 @@ export interface StudentSummary {
   fullName: string;
   role: string;
   createdAt: string;
+  anonymisedAt: string | null;
   activeEntitlements: number;
 }
 
@@ -170,7 +171,7 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
 
   let query = supabase
     .from('profiles')
-    .select('id, full_name, role, created_at')
+    .select('id, full_name, role, created_at, anonymised_at')
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -184,6 +185,7 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
     fullName: p.full_name,
     role: p.role,
     createdAt: p.created_at,
+    anonymisedAt: p.anonymised_at,
   }));
 
   const withEmail = await attachEmails(supabase, rows);
@@ -226,7 +228,7 @@ export async function getStudent(userId: string): Promise<{
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, role, created_at')
+    .select('id, full_name, role, created_at, anonymised_at')
     .eq('id', userId)
     .maybeSingle();
   if (!profile) return null;
@@ -250,6 +252,7 @@ export async function getStudent(userId: string): Promise<{
       fullName: profile.full_name,
       role: profile.role,
       createdAt: profile.created_at,
+      anonymisedAt: profile.anonymised_at,
       activeEntitlements: (ents ?? []).filter(
         (e) => e.status === 'active' && new Date(e.expires_at).getTime() > now,
       ).length,

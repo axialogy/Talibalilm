@@ -262,7 +262,8 @@
     "confirmRef": "Order no. {ref}",
     "confirmItems": "What is now open",
     "packExhausted": "That offer has just reached its limit. Remove it to continue.",
-    "mixedCurrency": "Your selection mixes currencies. Please contact the institute."
+    "mixedCurrency": "Your selection mixes currencies. Please contact the institute.",
+    "rateLimited": "Too many attempts. Try again in a few minutes."
   },
   "auth": {
     "loginTitle": "Log in",
@@ -487,6 +488,7 @@
       "credentialsMissing": "Fill in the Client ID and Client Secret before turning payment on.",
       "targetRequired": "Choose the subject or cursus.",
       "currencyShape": "Three capital letters, e.g. EUR.",
+      "partialErasure": "The account was partly erased. Run it again to finish.",
       "saveFailed": "Could not save.",
       "invalid": "The form is incomplete.",
       "unavailable": "The database is not configured.",
@@ -594,6 +596,13 @@
     "grantReason": "Reason",
     "grantSubmit": "Open access",
     "revokeReasonPrompt": "Reason for revoking?",
+    "dangerZone": "Erasure",
+    "dangerZoneLead": "On a data-erasure request, remove the person from the account. The sales records stay, pointing at an anonymised user; access ends immediately. This cannot be undone.",
+    "anonymise": "Erase this account",
+    "anonymiseReasonPrompt": "Reason for erasure (kept in the audit trail)?",
+    "anonymiseConfirm": "This permanently removes the student’s name, email and login and ends all their access. The orders are kept. Continue?",
+    "anonymised": "Erased",
+    "anonymisedOn": "Account erased on {date}",
     "couponsTitle": "Coupons",
     "couponsLead": "Generate a batch for the front desk, export it, track what has been used.",
     "couponsEmpty": "No codes.",

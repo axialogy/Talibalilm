@@ -79,7 +79,7 @@ async function authErrorMessage(raw: string): Promise<string> {
 
 async function guard(scope: string, limit: number): Promise<ActionState | null> {
   const key = clientKey(await headers(), scope);
-  const { ok } = rateLimit(key, { limit, windowMs: 15 * 60 * 1000 });
+  const { ok } = await rateLimit(key, { limit, windowMs: 15 * 60 * 1000 });
   if (ok) return null;
   const t = await getTranslations('authErrors');
   return { ok: false, message: t('rateLimited') };

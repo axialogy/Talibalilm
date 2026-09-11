@@ -1,10 +1,12 @@
 'use server';
 
 import { z } from 'zod';
+import { headers } from 'next/headers';
 import { redirect as nextRedirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { loadBasket } from '@/lib/commerce/basket';
 import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
 import { clearSelection } from '@/lib/commerce/selection';
@@ -28,6 +30,18 @@ import { siteUrl } from '@/lib/env';
  */
 
 export type PayState = { error?: string };
+
+/**
+ * Throttle a checkout entry point by caller. Office codes are single-use and
+ * worth a year of access, so guessing one must not be free; keying on both the
+ * request address and, once known, the signed-in user closes the obvious ways
+ * to spread the attempts out.
+ */
+async function throttle(scope: string, limit: number, userId?: string): Promise<boolean> {
+  const key = userId ? `${clientKey(await headers(), scope)}:${userId}` : clientKey(await headers(), scope);
+  const { ok } = await rateLimit(key, { limit, windowMs: 15 * 60 * 1000 });
+  return ok;
+}
 
 async function requireUser(): Promise<{ id: string }> {
   const supabase = await createClient();
@@ -104,6 +118,11 @@ export async function startPayPalCheckout(
 ): Promise<PayState> {
   const locale = await getLocale();
   const user = await requireUser();
+
+  // Opening a PayPal order claims a coupon and a pack seat; cap how fast one
+  // caller can churn through those holds.
+  if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+
   const { selection, quote } = await loadBasket();
 
   if (!quote || !selection.delivery) redirect({ href: '/checkout/modules', locale });
@@ -191,6 +210,11 @@ export async function redeemOfficeCode(
 ): Promise<PayState> {
   const locale = await getLocale();
   const user = await requireUser();
+
+  // The one path where guessing pays: a valid office code is a year of access
+  // for free. A shared, durable counter is what makes brute force uneconomical.
+  if (!(await throttle('office-code', 10, user.id))) return { error: 'rateLimited' };
+
   const parsed = codeSchema.safeParse(formData.get('code') ?? '');
   if (!parsed.success) return { error: 'codeInvalid' };
 

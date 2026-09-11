@@ -93,7 +93,12 @@ or crash the page.
 
 ## Known gaps (audit, not yet built)
 
-Phase 3 of `docs/` audit is deferred pending decisions from the school and its
-accountant: shared rate limiting (the in-process limiter in `rate-limit.ts` is a
-no-op across serverless instances), GDPR erasure vs. invoice retention, VAT
-position, invoices, real legal text.
+Shared rate limiting is now built (B8): `rate-limit.ts` calls the
+`rate_limit_hit` Postgres RPC, so the counter is durable and shared across
+serverless instances instead of living in one instance's memory. The limiter
+fails open — a throttle-check outage must not take down login.
+
+Still deferred, pending decisions from the school and its accountant: GDPR
+erasure vs. record retention (B9, in progress) and real legal text. VAT and
+invoices are intentionally **out of scope** — the school collects payment
+through PayPal and treats tax there; no VAT is computed or invoiced in-app.

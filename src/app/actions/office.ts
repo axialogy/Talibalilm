@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
+import { reportError } from '@/lib/observability/report';
 import type { AdminState } from '@/app/actions/admin';
 
 /**
@@ -103,6 +104,63 @@ export async function voidCoupon(_prev: AdminState, formData: FormData): Promise
   if (error) return { ok: false, error: 'saveFailed' };
 
   revalidatePath('/[locale]/admin/coupons', 'page');
+  return OK;
+}
+
+/**
+ * Erase a student on request (GDPR B9).
+ *
+ * Two halves make one erasure. The RPC scrubs everything in `public` that names
+ * the person — profile and live access — as the admin's own session, so the
+ * audit records who ran it. Then the service-role Admin API scrubs the parts
+ * only the auth admin may touch: the email becomes an unroutable token, the
+ * metadata is emptied, and the login is banned so a dangling session cannot be
+ * used. The order matters — the RPC is the authorisation gate, so nothing is
+ * scrubbed in `auth` until it has said yes.
+ *
+ * The orders stay. `orders.user_id` is `on delete restrict` for exactly this
+ * reason: the sale is the school's record, and it now points at a user who is
+ * no longer identifiable.
+ */
+export async function anonymiseStudent(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z
+    .object({ userId: z.string().uuid(), reason: z.string().trim().min(3).max(200) })
+    .safeParse({ userId: formData.get('userId'), reason: formData.get('reason') });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'invalid' };
+
+  const { userId, reason } = parsed.data;
+
+  const supabase = await admin();
+  const { data, error } = await supabase.rpc('admin_anonymise_user', {
+    target_user: userId,
+    reason,
+  });
+  if (error || data !== true) return { ok: false, error: 'saveFailed' };
+
+  // The email and login live in auth.users, which only the auth admin may
+  // write. `.invalid` is a reserved, unroutable TLD, so the token can never be
+  // mistaken for a real address or receive mail.
+  try {
+    const service = createAdminClient();
+    const { error: authError } = await service.auth.admin.updateUserById(userId, {
+      email: `anonymised+${userId}@deleted.invalid`,
+      phone: '',
+      user_metadata: {},
+      // A very long ban, standing in for "permanent": the person is gone, so no
+      // future sign-in should succeed on this account.
+      ban_duration: '876000h',
+    });
+    if (authError) throw authError;
+  } catch (cause) {
+    // The public-schema scrub already committed. Surface the failure so the
+    // office retries — the whole operation is idempotent, so a second run
+    // simply finishes the auth half.
+    reportError('gdpr.anonymise.auth', cause, { userId });
+    return { ok: false, error: 'partialErasure' };
+  }
+
+  revalidatePath('/[locale]/admin/students/[id]', 'page');
+  revalidatePath('/[locale]/admin/students', 'page');
   return OK;
 }
 

@@ -39,6 +39,7 @@ export interface Database {
           phone: string | null;
           locale: AppLocale;
           role: UserRole;
+          anonymised_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -48,6 +49,7 @@ export interface Database {
           phone?: string | null;
           locale?: AppLocale;
           role?: UserRole;
+          anonymised_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -809,6 +811,18 @@ export interface Database {
       };
       claim_confirmation_email: {
         Args: { oid: string };
+        Returns: boolean;
+      };
+      rate_limit_hit: {
+        Args: { bucket: string; max_hits: number; window_seconds: number };
+        Returns: Json;
+      };
+      prune_rate_limits: {
+        Args: Record<never, never>;
+        Returns: number;
+      };
+      admin_anonymise_user: {
+        Args: { target_user: string; reason: string };
         Returns: boolean;
       };
     };

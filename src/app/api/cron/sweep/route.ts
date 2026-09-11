@@ -61,8 +61,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'sweep_failed' }, { status: 500 });
   }
 
-  const result = { ordersCancelled: swept ?? 0, entitlementsExpired: expired ?? 0 };
-  if (result.ordersCancelled > 0 || result.entitlementsExpired > 0) {
+  // Rolled-over rate-limit windows are dead weight once past. Pruning them is
+  // pure housekeeping — a failure here must not fail the sweep that matters.
+  const { data: pruned, error: pruneError } = await supabase.rpc('prune_rate_limits');
+  if (pruneError) console.error('[cron] rate-limit prune failed:', pruneError.message);
+
+  const result = {
+    ordersCancelled: swept ?? 0,
+    entitlementsExpired: expired ?? 0,
+    rateWindowsPruned: pruned ?? 0,
+  };
+  if (result.ordersCancelled > 0 || result.entitlementsExpired > 0 || result.rateWindowsPruned > 0) {
     console.info('[cron] sweep:', result);
   }
   return NextResponse.json(result);
