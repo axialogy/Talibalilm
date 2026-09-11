@@ -2,6 +2,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Quote } from '@/lib/commerce/quote';
 import { sendOrderConfirmation } from '@/lib/commerce/notify';
+import { reportError } from '@/lib/observability/report';
 import type { DeliveryMode, PaymentRoute } from '@/lib/supabase/database.types';
 
 /**
@@ -155,6 +156,15 @@ export async function settleOrder(options: {
   }
 
   if (capturedCents !== order.total_cents || (currency !== null && currency !== order.currency)) {
+    // The gravest case: a payment cleared for an amount that does not match the
+    // order. Never grant, and page someone — this should not be possible.
+    reportError('paypal.settle.mismatch', new Error('captured amount mismatch'), {
+      orderId,
+      capturedCents,
+      expected: order.total_cents,
+      currency,
+      expectedCurrency: order.currency,
+    });
     await markFailed(
       orderId,
       `captured ${capturedCents ?? '?'} ${currency ?? '?'}, expected ${order.total_cents} ${order.currency}`,

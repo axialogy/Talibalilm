@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
+import { reportError } from '@/lib/observability/report';
 import {
   courses as fixtureCourses,
   getCourse as getFixtureCourse,
@@ -103,12 +104,14 @@ export async function listCourses(): Promise<Course[]> {
     .eq('status', 'published')
     .order('display_order', { ascending: true });
 
-  // A query error here means the catalogue is unavailable, not that it is
-  // empty. Falling back keeps the page up; swallowing it silently would hide a
-  // misconfiguration, so it is surfaced in the server log.
+  // A query error against a configured database is an OUTAGE, not an empty
+  // catalogue — and it must never fabricate courses. Serving the demo fixtures
+  // here once real prices exist would let a customer open and try to buy a
+  // course that does not exist. Report it and return nothing; the fixtures are
+  // only for the pre-database state, which is `!supabaseConfigured` above.
   if (error) {
-    console.error('[courses] list failed, serving fixtures:', error.message);
-    return listFixtureCourses();
+    reportError('catalogue.list', error);
+    return [];
   }
   return (data as unknown as NestedCourse[]).map(toCourse);
 }
@@ -124,8 +127,8 @@ export async function getCourse(slug: string): Promise<Course | undefined> {
     .maybeSingle();
 
   if (error) {
-    console.error('[courses] fetch failed, serving fixtures:', error.message);
-    return getFixtureCourse(slug);
+    reportError('catalogue.get', error, { slug });
+    return undefined;
   }
   return data ? toCourse(data as unknown as NestedCourse) : undefined;
 }
@@ -141,7 +144,7 @@ export async function getInstructor(id: string): Promise<Instructor | undefined>
     .eq('id', id)
     .maybeSingle();
 
-  if (!data) return getFixtureInstructor(id);
+  if (!data) return undefined;
   return {
     id: data.id,
     full_name: data.full_name,

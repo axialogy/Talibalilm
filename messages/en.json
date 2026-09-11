@@ -490,7 +490,11 @@
       "saveFailed": "Could not save.",
       "invalid": "The form is incomplete.",
       "unavailable": "The database is not configured.",
-      "amountRequired": "Give the discount amount."
+      "amountRequired": "Give the discount amount.",
+      "noFile": "No file selected.",
+      "tooLarge": "The image is over 5 MB.",
+      "notAnImage": "That file is not a valid image (PNG, JPEG or WebP).",
+      "uploadFailed": "The upload failed. Try again."
     },
     "overview": "Overview",
     "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
@@ -618,6 +622,12 @@
     "genPrefix": "Prefix (optional)",
     "genSubmit": "Generate",
     "genResult": "{count} codes generated. Copy them now — they will not be shown again.",
-    "copyAll": "Copy all"
+    "copyAll": "Copy all",
+    "coverImage": "Cover image",
+    "coverUpload": "Choose an image",
+    "coverReplace": "Replace",
+    "coverRemove": "Remove image",
+    "coverHint": "PNG, JPEG or WebP, up to 5 MB. Otherwise a cover is drawn automatically.",
+    "coverUploading": "Uploading…"
   }
 }

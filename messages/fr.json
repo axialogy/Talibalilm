@@ -490,7 +490,11 @@
       "saveFailed": "Enregistrement impossible.",
       "invalid": "Formulaire incomplet.",
       "unavailable": "Base de données non configurée.",
-      "amountRequired": "Indiquez le montant de la remise."
+      "amountRequired": "Indiquez le montant de la remise.",
+      "noFile": "Aucun fichier sélectionné.",
+      "tooLarge": "L’image dépasse 5 Mo.",
+      "notAnImage": "Ce fichier n’est pas une image valide (PNG, JPEG ou WebP).",
+      "uploadFailed": "L’envoi a échoué. Réessayez."
     },
     "overview": "Vue d’ensemble",
     "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
@@ -618,6 +622,12 @@
     "genPrefix": "Préfixe (optionnel)",
     "genSubmit": "Générer",
     "genResult": "{count} codes générés. Copiez-les maintenant : ils ne seront plus affichés.",
-    "copyAll": "Tout copier"
+    "copyAll": "Tout copier",
+    "coverImage": "Image de couverture",
+    "coverUpload": "Choisir une image",
+    "coverReplace": "Remplacer",
+    "coverRemove": "Retirer l’image",
+    "coverHint": "PNG, JPEG ou WebP, jusqu’à 5 Mo. Sinon, une couverture est dessinée automatiquement.",
+    "coverUploading": "Envoi…"
   }
 }

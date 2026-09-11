@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { CourseSettingsForm } from '@/components/admin/CourseSettingsForm';
+import { CoverUpload } from '@/components/admin/CoverUpload';
 import { CourseOutline } from '@/components/admin/CourseOutline';
 import { PublishControls } from '@/components/admin/PublishControls';
 import { createClient } from '@/lib/supabase/server';
@@ -29,7 +30,7 @@ export default async function CourseBuilderPage({
     .from('courses')
     .select(
       `id, slug, title, subtitle, description, title_ar, category, level, format, tone,
-       schedule, duration_weeks, status, published_at,
+       schedule, duration_weeks, status, published_at, cover_url,
        modules ( id, title, position,
          lessons ( id, title, slug, type, position, duration_seconds, is_preview ) )`,
     )
@@ -92,7 +93,8 @@ export default async function CourseBuilderPage({
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
         <CourseOutline courseId={course.id} modules={modules} />
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          <CoverUpload courseId={course.id} coverUrl={course.cover_url} />
           <CourseSettingsForm
             course={{
               id: course.id,

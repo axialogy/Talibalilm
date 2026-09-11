@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { fromPayPalAmount, getPayPalConfig, verifyWebhookSignature } from '@/lib/paypal/client';
 import { revokeOrder, settleOrder } from '@/lib/commerce/orders';
+import { reportError } from '@/lib/observability/report';
 
 /**
  * PayPal's own account of what happened.
@@ -39,6 +40,9 @@ export async function POST(request: NextRequest) {
 
   const verified = await verifyWebhookSignature({ config, headers: request.headers, rawBody: raw });
   if (!verified) {
+    // A forged or misconfigured webhook is worth an alert: it is either an
+    // attack or the webhook id is wrong and no notification will ever verify.
+    reportError('paypal.webhook.signature', new Error('signature verification failed'));
     return NextResponse.json({ error: 'signature' }, { status: 401 });
   }
 
