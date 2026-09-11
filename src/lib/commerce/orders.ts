@@ -1,6 +1,7 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Quote } from '@/lib/commerce/quote';
+import { sendOrderConfirmation } from '@/lib/commerce/notify';
 import type { DeliveryMode, PaymentRoute } from '@/lib/supabase/database.types';
 
 /**
@@ -176,6 +177,9 @@ export async function settleOrder(options: {
   if (error) throw new Error(`Could not mark the order paid: ${error.message}`);
 
   await supabase.rpc('grant_order_entitlements', { oid: orderId });
+  // The receipt is best-effort and idempotent; a failure here has already been
+  // preceded by the access being granted, so it never blocks the sale.
+  await sendOrderConfirmation(orderId);
   return { ok: true, alreadyPaid: false, orderId };
 }
 
@@ -190,6 +194,7 @@ export async function settleFreeOrder(orderId: string): Promise<void> {
 
   if (error) throw new Error(`Could not mark the order paid: ${error.message}`);
   await supabase.rpc('grant_order_entitlements', { oid: orderId });
+  await sendOrderConfirmation(orderId);
 }
 
 /**

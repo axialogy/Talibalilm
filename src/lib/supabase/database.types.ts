@@ -580,6 +580,7 @@ export interface Database {
           coupon_released_at: string | null;
           pack_released_at: string | null;
           status_reason: string;
+          confirmation_sent_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -605,6 +606,7 @@ export interface Database {
           provider_order_id: string | null;
           provider_capture_id: string | null;
           paid_at: string | null;
+          confirmation_sent_at: string | null;
         }>;
         Relationships: [];
       };
@@ -657,6 +659,22 @@ export interface Database {
             referencedColumns: ['id'];
           },
         ];
+      };
+      admin_audit: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          action: string;
+          target_type: string;
+          target_id: string;
+          reason: string;
+          detail: Json;
+          created_at: string;
+        };
+        // Written only by the definer functions; no client insert exists.
+        Insert: never;
+        Update: never;
+        Relationships: [];
       };
       payment_settings: {
         Row: {
@@ -751,6 +769,48 @@ export interface Database {
         Args: Record<never, never>;
         Returns: Json;
       };
+      emails_for: {
+        Args: { ids: string[] };
+        Returns: { id: string; email: string }[];
+      };
+      admin_grant_entitlement: {
+        Args: {
+          target_user: string;
+          target_scope: EntitlementScope;
+          course_id: string | null;
+          cursus_id: string | null;
+          year_index: number;
+          delivery: DeliveryMode;
+          days: number;
+          reason: string;
+        };
+        Returns: string;
+      };
+      admin_revoke_entitlement: {
+        Args: { entitlement_id: string; reason: string };
+        Returns: boolean;
+      };
+      admin_generate_coupons: {
+        Args: {
+          quantity: number;
+          percent_off: number | null;
+          amount_off_cents: number | null;
+          max_redemptions: number | null;
+          is_office: boolean;
+          batch: string;
+          code_prefix: string;
+          expires_at: string | null;
+        };
+        Returns: string[];
+      };
+      admin_void_coupon: {
+        Args: { coupon_id: string; reason: string };
+        Returns: boolean;
+      };
+      claim_confirmation_email: {
+        Args: { oid: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -784,4 +844,5 @@ export type CouponRow = Database['public']['Tables']['coupons']['Row'];
 export type OrderRow = Database['public']['Tables']['orders']['Row'];
 export type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
 export type PaymentSettingsRow = Database['public']['Tables']['payment_settings']['Row'];
+export type AdminAuditRow = Database['public']['Tables']['admin_audit']['Row'];
 export type ProgressRow = Database['public']['Tables']['lesson_progress']['Row'];

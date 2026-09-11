@@ -12,6 +12,11 @@ const badgeVariants = cva(
         gold: 'bg-gold-100 text-gold-700',
         muted: 'bg-surface text-ink-muted',
         outline: 'border border-line text-ink-muted',
+        // Semantic states for the office screens — kept apart from the brand
+        // accent so status reads at a glance, not by hue alone.
+        success: 'bg-emerald-100 text-emerald-800',
+        warn: 'bg-amber-100 text-amber-800',
+        danger: 'bg-red-100 text-red-700',
       },
     },
     defaultVariants: { variant: 'brand' },

@@ -8,7 +8,10 @@ import {
   GraduationCap,
   LayoutDashboard,
   Menu,
+  Receipt,
   Tag,
+  Ticket,
+  Users,
   Wallet,
   X,
 } from 'lucide-react';
@@ -29,6 +32,9 @@ import { cn } from '@/lib/utils';
  */
 const NAV = [
   { href: '/admin', icon: LayoutDashboard, key: 'navOverview', admin: false },
+  { href: '/admin/orders', icon: Receipt, key: 'navOrders', admin: false },
+  { href: '/admin/students', icon: Users, key: 'navStudents', admin: false },
+  { href: '/admin/coupons', icon: Ticket, key: 'navCoupons', admin: true },
   { href: '/admin/courses', icon: BookOpen, key: 'courses', admin: false },
   { href: '/admin/cursus', icon: GraduationCap, key: 'cursusNav', admin: false },
   { href: '/admin/pricing', icon: Tag, key: 'pricing', admin: false },
