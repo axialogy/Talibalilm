@@ -1,22 +1,28 @@
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 /**
- * Prisma 7 reads the connection URL from here rather than from the schema.
+ * Prisma 7 reads CLI configuration from here rather than from the schema.
  *
- * `DATABASE_URL` is the pooled connection the app uses at runtime — on Vercel
- * that must be Supabase's TRANSACTION pooler, because a serverless function
- * cannot hold a Postgres connection open between invocations and would
- * otherwise exhaust the database's connection slots under any real traffic.
+ * The datasource is attached only when `DATABASE_URL` is actually set, and
+ * that is load-bearing: `prisma generate` runs in `postinstall` and needs no
+ * database at all — it reads the schema and writes a client. Declaring the URL
+ * with Prisma's `env()` helper made it mandatory, so every deployment failed
+ * during `npm install`, before the app had a chance to run.
  *
- * Migrations and `prisma db pull` need the DIRECT connection instead: the
- * transaction pooler holds no session state, so DDL and advisory locks fail
- * through it in ways that are hard to read. Point `DATABASE_URL` at the direct
- * URL for those commands (see prisma/README.md) rather than configuring a
- * second datasource, which this version no longer accepts.
+ * The application never reads the URL from here anyway. It hands an explicit
+ * connection string to the driver adapter in `src/lib/db/prisma.ts`. This
+ * exists for the CLI — `db pull`, `studio` — which you run with the variable
+ * present.
+ *
+ * For `db pull` use the DIRECT connection, not the transaction pooler: the
+ * pooler holds no session state, so introspection and DDL fail through it in
+ * ways that are hard to read.
+ *
+ *     DATABASE_URL="$DIRECT_URL" npm run db:pull
  */
+const url = process.env.DATABASE_URL;
+
 export default defineConfig({
   schema: 'prisma/schema.prisma',
-  datasource: {
-    url: env('DATABASE_URL'),
-  },
+  ...(url ? { datasource: { url } } : {}),
 });

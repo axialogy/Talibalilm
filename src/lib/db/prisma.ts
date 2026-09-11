@@ -31,7 +31,7 @@ import { PrismaClient } from '@/generated/prisma';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-function client(): PrismaClient {
+function build(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
@@ -51,14 +51,37 @@ function client(): PrismaClient {
   });
 }
 
-/**
- * One client per process. Next's dev server re-evaluates modules on every
- * edit, and a fresh PrismaClient each time exhausts the database's connection
- * slots within a few saves.
- */
-export const db: PrismaClient = globalForPrisma.prisma ?? client();
+function client(): PrismaClient {
+  const existing = globalForPrisma.prisma;
+  if (existing) return existing;
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+  const created = build();
+  // One client per process. Next's dev server re-evaluates modules on every
+  // edit, and a fresh PrismaClient each time exhausts the database's
+  // connection slots within a few saves.
+  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = created;
+  return created;
+}
+
+/**
+ * The unscoped client. Bypasses RLS — see the note above.
+ *
+ * A lazy proxy rather than a constructed client, and that is not a flourish:
+ * `next build` imports every module it can reach, and Vercel builds without
+ * `DATABASE_URL` present. Constructing at module load would mean the first
+ * page that imports this file fails the build, with an error pointing at a
+ * connection string rather than at the import that caused it.
+ *
+ * Nothing is opened until a query is actually made.
+ */
+export const db: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, property, receiver) {
+    return Reflect.get(client(), property, receiver);
+  },
+  has(_target, property) {
+    return property in client();
+  },
+});
 
 /** The subset of the client available inside an RLS-scoped transaction. */
 export type ScopedDb = Omit<
