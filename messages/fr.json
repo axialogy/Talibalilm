@@ -260,7 +260,9 @@
     "codeRefused": "Ce code est inconnu, expiré ou déjà utilisé.",
     "codePartial": "Ce code ne couvre pas la totalité. Le reste est à régler par PayPal.",
     "confirmRef": "Commande n° {ref}",
-    "confirmItems": "Ce qui est ouvert"
+    "confirmItems": "Ce qui est ouvert",
+    "packExhausted": "Cette offre vient d’atteindre sa limite. Retirez-la pour continuer.",
+    "mixedCurrency": "Votre sélection mélange plusieurs devises. Contactez l’institut."
   },
   "auth": {
     "loginTitle": "Connexion",

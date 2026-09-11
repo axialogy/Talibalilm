@@ -577,6 +577,9 @@ export interface Database {
           provider_order_id: string | null;
           provider_capture_id: string | null;
           paid_at: string | null;
+          coupon_released_at: string | null;
+          pack_released_at: string | null;
+          status_reason: string;
           created_at: string;
           updated_at: string;
         };
@@ -590,6 +593,7 @@ export interface Database {
           subtotal_cents: number;
           discount_cents?: number;
           total_cents: number;
+          currency?: string;
           status?: OrderStatus;
           coupon_id?: string | null;
           pack_id?: string | null;
@@ -597,6 +601,7 @@ export interface Database {
         };
         Update: Partial<{
           status: OrderStatus;
+          status_reason: string;
           provider_order_id: string | null;
           provider_capture_id: string | null;
           paid_at: string | null;
@@ -725,6 +730,22 @@ export interface Database {
       release_coupon: {
         Args: { coupon_id: string };
         Returns: boolean;
+      };
+      claim_pack: {
+        Args: { pack_id: string | null };
+        Returns: boolean;
+      };
+      release_order_holds: {
+        Args: { oid: string };
+        Returns: boolean;
+      };
+      expire_pending_orders: {
+        Args: { older_than?: string };
+        Returns: number;
+      };
+      revoke_order_entitlements: {
+        Args: { oid: string; reason?: string };
+        Returns: number;
       };
       payment_settings_status: {
         Args: Record<never, never>;

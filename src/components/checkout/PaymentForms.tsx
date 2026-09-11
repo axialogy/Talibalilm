@@ -10,12 +10,23 @@ import { redeemOfficeCode, startPayPalCheckout, type PayState } from '@/app/acti
 const EMPTY: PayState = {};
 
 /** Action errors are keys, resolved here so a stray string cannot reach a reader. */
-const MESSAGE: Record<string, 'payUnavailable' | 'payRefused' | 'codeInvalid' | 'codeRefused' | 'codePartial'> = {
+const MESSAGE: Record<
+  string,
+  | 'payUnavailable'
+  | 'payRefused'
+  | 'codeInvalid'
+  | 'codeRefused'
+  | 'codePartial'
+  | 'packExhausted'
+  | 'mixedCurrency'
+> = {
   unavailable: 'payUnavailable',
   paypalRefused: 'payRefused',
   codeInvalid: 'codeInvalid',
   codeRefused: 'codeRefused',
   codePartial: 'codePartial',
+  packExhausted: 'packExhausted',
+  mixedCurrency: 'mixedCurrency',
 };
 
 /**

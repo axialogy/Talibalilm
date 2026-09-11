@@ -22,6 +22,7 @@ export interface PricedProduct {
   yearIndex: number;
   delivery: DeliveryMode;
   priceCents: number;
+  currency: string;
   durationDays: number;
   title: string;
 }
@@ -77,7 +78,38 @@ export interface Quote {
   coupon: AppliedCoupon | null;
 }
 
-const CURRENCY = 'EUR';
+/** Only used when there is nothing to read a currency from — an empty basket. */
+const FALLBACK_CURRENCY = 'EUR';
+
+/**
+ * Raised when a basket mixes currencies.
+ *
+ * There is no correct total for such a basket, and picking one silently is how
+ * a student gets charged 300 of the wrong unit. The checkout refuses instead —
+ * which is also a signal that the price list has been set up wrongly, since
+ * nothing in the interface lets a student assemble one on purpose.
+ */
+export class MixedCurrencyError extends Error {
+  constructor(readonly currencies: string[]) {
+    super(`A basket cannot mix currencies: ${currencies.join(', ')}`);
+    this.name = 'MixedCurrencyError';
+  }
+}
+
+/**
+ * The one currency this basket is priced in.
+ *
+ * Every amount downstream — the order row, what PayPal is asked to capture,
+ * and the check that the capture matched — depends on this being the products'
+ * own currency rather than a constant. It was `'EUR'` hardcoded, which made the
+ * verification at settlement compare EUR against EUR and pass whatever the
+ * products actually said.
+ */
+export function currencyOf(products: readonly PricedProduct[]): string {
+  const seen = [...new Set(products.map((p) => p.currency))];
+  if (seen.length > 1) throw new MixedCurrencyError(seen);
+  return seen[0] ?? FALLBACK_CURRENCY;
+}
 
 /**
  * Does this offer apply to what the student has chosen?
@@ -163,6 +195,9 @@ export function priceSelection(options: {
 }): Quote {
   const { products, packs = [], delivery, coupon = null } = options;
 
+  // Throws on a mixed basket, before any amount is computed.
+  const currency = currencyOf(products);
+
   const pack = bestPack(packs, products, delivery);
   const freeIds = new Set(pack?.pricing === 'sum' ? pack.freeProductIds : []);
 
@@ -203,14 +238,14 @@ export function priceSelection(options: {
     couponDiscountCents: couponCents,
     discountCents: wholeBasketDiscount + couponCents,
     totalCents: afterPack - couponCents,
-    currency: CURRENCY,
+    currency,
     pack,
     coupon,
   };
 }
 
 /** Cents to a display string, in the reader's locale. */
-export function formatPrice(cents: number, locale: string, currency = CURRENCY): string {
+export function formatPrice(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,

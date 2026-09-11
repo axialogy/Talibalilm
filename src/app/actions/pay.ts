@@ -6,9 +6,15 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { loadBasket } from '@/lib/commerce/basket';
-import { couponDiscount } from '@/lib/commerce/quote';
+import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
 import { clearSelection } from '@/lib/commerce/selection';
-import { createPendingOrder, attachProviderOrder, settleFreeOrder } from '@/lib/commerce/orders';
+import {
+  createPendingOrder,
+  attachProviderOrder,
+  settleFreeOrder,
+  releaseHolds,
+  PackExhaustedError,
+} from '@/lib/commerce/orders';
 import { createPayPalOrder, getPayPalConfig } from '@/lib/paypal/client';
 import { siteUrl } from '@/lib/env';
 
@@ -43,6 +49,17 @@ async function requireUser(): Promise<{ id: string }> {
  * It is claimed HERE, at order creation — discovering a code was spent after
  * the student's money has moved is far worse than discovering it at the basket.
  */
+/** Hand a coupon back when the order that claimed it never opened. */
+async function releaseCoupon(couponId: string): Promise<void> {
+  const supabase = createAdminClient();
+  await supabase.rpc('release_coupon', { coupon_id: couponId });
+}
+
+async function markOrderFailed(orderId: string, reason: string): Promise<void> {
+  const supabase = createAdminClient();
+  await supabase.from('orders').update({ status: 'failed', status_reason: reason }).eq('id', orderId);
+}
+
 async function claimCoupon(
   code: string | null,
   subtotalCents: number,
@@ -97,14 +114,24 @@ export async function startPayPalCheckout(
   const afterOffers = quote.subtotalCents - quote.discountCents;
   const coupon = await claimCoupon(selection.couponCode, afterOffers);
 
-  const order = await createPendingOrder({
-    userId: user.id,
-    delivery: selection.delivery,
-    route: 'paypal',
-    quote,
-    couponId: coupon?.id ?? null,
-    couponDiscountCents: coupon?.discountCents ?? 0,
-  });
+  let order;
+  try {
+    order = await createPendingOrder({
+      userId: user.id,
+      delivery: selection.delivery,
+      route: 'paypal',
+      quote,
+      couponId: coupon?.id ?? null,
+      couponDiscountCents: coupon?.discountCents ?? 0,
+    });
+  } catch (cause) {
+    // The order never opened, so nothing will ever release the coupon this
+    // request claimed a moment ago. Hand it straight back.
+    if (coupon) await releaseCoupon(coupon.id);
+    if (cause instanceof PackExhaustedError) return { error: 'packExhausted' };
+    if (cause instanceof MixedCurrencyError) return { error: 'mixedCurrency' };
+    throw cause;
+  }
 
   // A coupon that brought the total to zero never reaches PayPal: there is
   // nothing to capture, and the grant path is the same either way.
@@ -129,6 +156,11 @@ export async function startPayPalCheckout(
     await attachProviderOrder(order.id, created.id);
     approveUrl = created.approveUrl;
   } catch {
+    // The order exists and is holding a coupon and a pack redemption. Nothing
+    // downstream will ever release them, because the student is never going to
+    // reach PayPal's cancel route — they are about to see an error instead.
+    await releaseHolds(order.id);
+    await markOrderFailed(order.id, 'PayPal would not open the order');
     // Deliberately vague to the student, because the detail here is about our
     // credentials rather than anything they can act on.
     return { error: 'paypalRefused' };
@@ -169,14 +201,22 @@ export async function redeemOfficeCode(
   const coupon = await claimCoupon(parsed.data, afterOffers);
   if (!coupon) return { error: 'codeRefused' };
 
-  const order = await createPendingOrder({
-    userId: user.id,
-    delivery: selection.delivery,
-    route: 'office',
-    quote,
-    couponId: coupon.id,
-    couponDiscountCents: coupon.discountCents,
-  });
+  let order;
+  try {
+    order = await createPendingOrder({
+      userId: user.id,
+      delivery: selection.delivery,
+      route: 'office',
+      quote,
+      couponId: coupon.id,
+      couponDiscountCents: coupon.discountCents,
+    });
+  } catch (cause) {
+    await releaseCoupon(coupon.id);
+    if (cause instanceof PackExhaustedError) return { error: 'packExhausted' };
+    if (cause instanceof MixedCurrencyError) return { error: 'mixedCurrency' };
+    throw cause;
+  }
 
   // A code worth less than the basket leaves something to pay. Rather than
   // half-granting, the order stands and the student is sent to PayPal for the

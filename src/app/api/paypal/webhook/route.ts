@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { fromPayPalAmount, getPayPalConfig, verifyWebhookSignature } from '@/lib/paypal/client';
-import { settleOrder } from '@/lib/commerce/orders';
+import { revokeOrder, settleOrder } from '@/lib/commerce/orders';
 
 /**
  * PayPal's own account of what happened.
@@ -16,6 +16,19 @@ import { settleOrder } from '@/lib/commerce/orders';
  * on every delivery — an unverified body is just a stranger claiming a payment
  * completed.
  */
+/**
+ * Events that mean the money is gone and the access must go with it.
+ *
+ * The value is the reason written onto the order, in the words the office will
+ * read when a student asks why their access stopped.
+ */
+const REVOKING_EVENTS = new Map<string, string>([
+  ['PAYMENT.CAPTURE.REFUNDED', 'refunded through PayPal'],
+  ['PAYMENT.CAPTURE.REVERSED', 'payment reversed by PayPal'],
+  ['PAYMENT.CAPTURE.DENIED', 'capture denied'],
+  ['CUSTOMER.DISPUTE.CREATED', 'payment disputed by the buyer'],
+]);
+
 export async function POST(request: NextRequest) {
   const raw = await request.text();
 
@@ -41,15 +54,26 @@ export async function POST(request: NextRequest) {
     };
   };
 
-  if (event.event_type !== 'PAYMENT.CAPTURE.COMPLETED') {
-    return NextResponse.json({ ignored: event.event_type ?? 'unknown' });
-  }
+  const kind = event.event_type ?? 'unknown';
 
   // `custom_id` is our own order id, put there when the order was opened. It
   // is the only field here we trust to identify the order, and even then the
   // amount is checked against the row before anything is granted.
   const orderId = event.resource?.custom_id;
   if (!orderId) return NextResponse.json({ ignored: 'no_reference' });
+
+  // The money went back, or never arrived. Access has to follow it. Before
+  // these were handled, a refunded student kept their year and a chargeback
+  // went unnoticed — `refunded` existed in the enum and was unreachable.
+  if (REVOKING_EVENTS.has(kind)) {
+    await revokeOrder(orderId, REVOKING_EVENTS.get(kind) ?? kind);
+    console.warn('[paypal] revoked access for order', orderId, 'after', kind);
+    return NextResponse.json({ revoked: orderId, reason: kind });
+  }
+
+  if (kind !== 'PAYMENT.CAPTURE.COMPLETED') {
+    return NextResponse.json({ ignored: kind });
+  }
 
   const value = event.resource?.amount?.value;
   const settled = await settleOrder({

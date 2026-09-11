@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   bestPack,
   couponDiscount,
+  currencyOf,
   formatPrice,
+  MixedCurrencyError,
   packApplies,
   priceSelection,
   type OfferPack,
@@ -23,6 +25,7 @@ const module_ = (id: string, priceCents: number, courseId = `course-${id}`): Pri
   yearIndex: 1,
   delivery: 'online',
   priceCents,
+  currency: 'EUR',
   durationDays: 365,
   title: `Module ${id}`,
 });
@@ -228,5 +231,42 @@ describe('formatting', () => {
 
   it('keeps them when there are cents to show', () => {
     expect(formatPrice(22050, 'fr-FR').replace(/ | /g, ' ')).toBe('220,50 €');
+  });
+});
+
+describe('currency (audit B2)', () => {
+  it('takes the currency from the products, not a constant', () => {
+    const chf = { ...ARABIC, currency: 'CHF' };
+    expect(priceSelection({ products: [chf], delivery: 'online' }).currency).toBe('CHF');
+  });
+
+  it('refuses a basket that mixes currencies rather than picking one', () => {
+    // There is no correct total for such a basket. Silently choosing was how a
+    // student could be charged 300 of the wrong unit, with the check at
+    // settlement comparing EUR against EUR and passing.
+    expect(() =>
+      priceSelection({ products: [ARABIC, { ...FRENCH, currency: 'CHF' }], delivery: 'online' }),
+    ).toThrow(MixedCurrencyError);
+  });
+
+  it('names both currencies in the error, so the price list can be fixed', () => {
+    try {
+      currencyOf([ARABIC, { ...FRENCH, currency: 'GBP' }]);
+      expect.unreachable();
+    } catch (error) {
+      expect((error as MixedCurrencyError).currencies.sort()).toEqual(['EUR', 'GBP']);
+    }
+  });
+
+  it('falls back only when there is nothing to read a currency from', () => {
+    expect(priceSelection({ products: [], delivery: 'online' }).currency).toBe('EUR');
+  });
+
+  it('formats in the basket’s own currency', () => {
+    const quote = priceSelection({
+      products: [{ ...ARABIC, currency: 'CHF' }],
+      delivery: 'online',
+    });
+    expect(formatPrice(quote.totalCents, 'fr-FR', quote.currency)).toMatch(/CHF/);
   });
 });

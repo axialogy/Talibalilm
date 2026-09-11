@@ -32,6 +32,14 @@ export interface CreatedOrder {
   currency: string;
 }
 
+/** The offer ran out between the student seeing it and pressing pay. */
+export class PackExhaustedError extends Error {
+  constructor(readonly packId: string) {
+    super(`Pack ${packId} has no redemptions left`);
+    this.name = 'PackExhaustedError';
+  }
+}
+
 export async function createPendingOrder(input: CreateOrderInput): Promise<CreatedOrder> {
   const { userId, delivery, route, quote, couponId = null, couponDiscountCents = 0 } = input;
   const supabase = createAdminClient();
@@ -42,6 +50,15 @@ export async function createPendingOrder(input: CreateOrderInput): Promise<Creat
   const discountCents = Math.min(quote.discountCents + couponDiscountCents, quote.subtotalCents);
   const totalCents = quote.subtotalCents - discountCents;
 
+  // A limited offer is only limited if something takes a redemption. The
+  // counter and its CHECK have existed since the table was created and nothing
+  // ever incremented them, so "first 20 students" was unlimited.
+  const packId = quote.pack?.id ?? null;
+  if (packId) {
+    const { data: claimed } = await supabase.rpc('claim_pack', { pack_id: packId });
+    if (claimed !== true) throw new PackExhaustedError(packId);
+  }
+
   const { data: order, error } = await supabase
     .from('orders')
     .insert({
@@ -51,8 +68,10 @@ export async function createPendingOrder(input: CreateOrderInput): Promise<Creat
       subtotal_cents: quote.subtotalCents,
       discount_cents: discountCents,
       total_cents: totalCents,
+      // From the products, not a constant. See `currencyOf`.
+      currency: quote.currency,
       coupon_id: couponId,
-      pack_id: quote.pack?.id ?? null,
+      pack_id: packId,
       status: 'pending',
     })
     .select('id, total_cents, currency')
@@ -122,7 +141,7 @@ export async function settleOrder(options: {
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, status, total_cents, currency, coupon_id')
+    .select('id, status, total_cents, currency')
     .eq('id', orderId)
     .maybeSingle();
 
@@ -130,12 +149,15 @@ export async function settleOrder(options: {
   if (order.status === 'paid') return { ok: true, alreadyPaid: true, orderId };
 
   if (status !== 'COMPLETED') {
-    await markFailed(orderId, order.coupon_id);
+    await markFailed(orderId, `capture ${status}`);
     return { ok: false, reason: 'not_completed' };
   }
 
   if (capturedCents !== order.total_cents || (currency !== null && currency !== order.currency)) {
-    await markFailed(orderId, order.coupon_id);
+    await markFailed(
+      orderId,
+      `captured ${capturedCents ?? '?'} ${currency ?? '?'}, expected ${order.total_cents} ${order.currency}`,
+    );
     return { ok: false, reason: 'amount_mismatch' };
   }
 
@@ -170,19 +192,29 @@ export async function settleFreeOrder(orderId: string): Promise<void> {
   await supabase.rpc('grant_order_entitlements', { oid: orderId });
 }
 
-async function markFailed(orderId: string, couponId: string | null): Promise<void> {
+/**
+ * Give back the coupon and the pack redemption this order is holding.
+ *
+ * Idempotent in the database, by a stamp on the order rather than by hoping
+ * this runs once — the cancel route, the failure path and the sweep all reach
+ * it, and they race by design.
+ */
+export async function releaseHolds(orderId: string): Promise<void> {
   const supabase = createAdminClient();
-  await supabase.from('orders').update({ status: 'failed' }).eq('id', orderId);
-  // Hand the code back. It was claimed when the order opened, and an order
-  // that never completed should not have cost the school a coupon.
-  if (couponId) await supabase.rpc('release_coupon', { coupon_id: couponId });
+  await supabase.rpc('release_order_holds', { oid: orderId });
+}
+
+async function markFailed(orderId: string, reason: string): Promise<void> {
+  const supabase = createAdminClient();
+  await supabase.from('orders').update({ status: 'failed', status_reason: reason }).eq('id', orderId);
+  await releaseHolds(orderId);
 }
 
 export async function cancelOrder(orderId: string, userId: string): Promise<void> {
   const supabase = createAdminClient();
   const { data: order } = await supabase
     .from('orders')
-    .select('id, coupon_id, user_id, status')
+    .select('id, user_id, status')
     .eq('id', orderId)
     .maybeSingle();
 
@@ -190,6 +222,25 @@ export async function cancelOrder(orderId: string, userId: string): Promise<void
   // and the order id travels in the URL.
   if (!order || order.user_id !== userId || order.status !== 'pending') return;
 
-  await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
-  if (order.coupon_id) await supabase.rpc('release_coupon', { coupon_id: order.coupon_id });
+  await releaseHolds(orderId);
+  await supabase
+    .from('orders')
+    .update({ status: 'cancelled', status_reason: 'cancelled at PayPal' })
+    .eq('id', orderId);
+}
+
+/**
+ * Take back what a refunded, denied or reversed payment paid for.
+ *
+ * The entitlement is wound back by exactly the days this order bought rather
+ * than deleted, which is the only right answer once renewals stack: a student
+ * who paid twice and was refunded once keeps the other year.
+ */
+export async function revokeOrder(orderId: string, reason: string): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc('revoke_order_entitlements', {
+    oid: orderId,
+    reason: reason.slice(0, 200),
+  });
+  if (error) throw new Error(`Could not revoke order ${orderId}: ${error.message}`);
 }

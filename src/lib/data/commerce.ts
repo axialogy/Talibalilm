@@ -119,7 +119,7 @@ export async function listProducts(delivery: DeliveryMode): Promise<PlanningEntr
     .from('products')
     .select(
       `id, kind, course_id, cursus_id, year_index, delivery, time_slot, schedule_label,
-       hours_per_year, hours_per_week, language, price_cents, duration_days,
+       hours_per_year, hours_per_week, language, price_cents, currency, duration_days,
        courses ( title ), cursus ( title )`,
     )
     .eq('status', 'published')
@@ -135,6 +135,7 @@ export async function listProducts(delivery: DeliveryMode): Promise<PlanningEntr
     yearIndex: row.year_index,
     delivery: row.delivery,
     priceCents: row.price_cents,
+    currency: row.currency,
     durationDays: row.duration_days,
     title: row.courses?.title ?? row.cursus?.title ?? '',
     timeSlot: row.time_slot,

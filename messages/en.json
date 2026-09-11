@@ -260,7 +260,9 @@
     "codeRefused": "That code is unknown, expired or already used.",
     "codePartial": "That code does not cover the whole total. The rest is payable by PayPal.",
     "confirmRef": "Order no. {ref}",
-    "confirmItems": "What is now open"
+    "confirmItems": "What is now open",
+    "packExhausted": "That offer has just reached its limit. Remove it to continue.",
+    "mixedCurrency": "Your selection mixes currencies. Please contact the institute."
   },
   "auth": {
     "loginTitle": "Log in",
