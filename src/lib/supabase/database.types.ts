@@ -731,6 +731,10 @@ export interface Database {
           ended_at: string | null;
           max_participants: number;
           recording_note: string;
+          require_approval: boolean;
+          chat_enabled: boolean;
+          student_camera: boolean;
+          student_screen: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -755,6 +759,10 @@ export interface Database {
           ended_at?: string | null;
           max_participants?: number;
           recording_note?: string;
+          require_approval?: boolean;
+          chat_enabled?: boolean;
+          student_camera?: boolean;
+          student_screen?: boolean;
         };
         Relationships: [
           {
@@ -774,6 +782,10 @@ export interface Database {
           role: LiveRole;
           joined_at: string;
           left_at: string | null;
+          muted: boolean;
+          camera_allowed: boolean;
+          screen_allowed: boolean;
+          banned_at: string | null;
         };
         Insert: { session_id: string; user_id: string; role?: LiveRole };
         Update: { left_at?: string | null };
@@ -791,6 +803,24 @@ export interface Database {
         };
         Insert: { session_id: string; user_id: string; display_name?: string };
         Update: { status?: JoinState; decided_at?: string | null };
+        Relationships: [];
+      };
+      live_messages: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: { session_id: string; user_id: string; body: string };
+        Update: never;
+        Relationships: [];
+      };
+      live_board_ops: {
+        Row: { id: number; session_id: string; op: Json; created_at: string };
+        Insert: { session_id: string; op: Json };
+        Update: never;
         Relationships: [];
       };
       live_slides: {
@@ -958,6 +988,22 @@ export interface Database {
         Args: { key: string; uid?: string };
         Returns: boolean;
       };
+      live_room_state: {
+        Args: { session_id: string };
+        /** null when the door is shut; otherwise what this caller may do in the room. */
+        Returns: LiveRoomState | null;
+      };
+      live_set_participant: {
+        Args: {
+          target_session: string;
+          target_user: string;
+          set_muted?: boolean | null;
+          set_camera?: boolean | null;
+          set_screen?: boolean | null;
+          set_banned?: boolean | null;
+        };
+        Returns: boolean;
+      };
       admin_anonymise_user: {
         Args: { target_user: string; reason: string };
         Returns: boolean;
@@ -997,6 +1043,18 @@ export type PackItemRow = Database['public']['Tables']['pack_items']['Row'];
 export type CouponRow = Database['public']['Tables']['coupons']['Row'];
 export type OrderRow = Database['public']['Tables']['orders']['Row'];
 export type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
+/** What one person may do in one classroom, as `live_room_state` reports it. */
+export interface LiveRoomState {
+  is_host: boolean;
+  chat_enabled: boolean;
+  require_approval: boolean;
+  student_camera: boolean;
+  student_screen: boolean;
+  muted: boolean;
+  camera_allowed: boolean;
+  screen_allowed: boolean;
+}
+
 export type PaymentSettingsRow = Database['public']['Tables']['payment_settings']['Row'];
 export type AdminAuditRow = Database['public']['Tables']['admin_audit']['Row'];
 export type ProgressRow = Database['public']['Tables']['lesson_progress']['Row'];

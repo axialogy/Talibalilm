@@ -44,6 +44,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
+    "ably": "^2.28.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",
