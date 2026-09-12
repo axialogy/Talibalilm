@@ -66,3 +66,50 @@ describe('client message allow-list', () => {
     expect(unused).toEqual([]);
   });
 });
+
+/**
+ * Every route subtree must mount the provider itself.
+ *
+ * The root `[locale]/layout.tsx` deliberately does not: `(site)` and `admin`
+ * need different slices of the catalogue, so each mounts its own. That works
+ * until someone adds a route beside them — the live classroom did exactly this
+ * — at which point the page renders correctly on the server and then throws a
+ * client-side exception the instant a Client Component calls useTranslations.
+ *
+ * The allow-list test above cannot see this: the namespace was listed, there
+ * was simply no context to read it from.
+ */
+describe('intl provider coverage', () => {
+  const ROOT = join('src', 'app', '[locale]');
+
+  /** A segment holds pages if it or anything under it has a page.tsx. */
+  function hasPage(dir: string): boolean {
+    return readdirSync(dir).some((entry) => {
+      const path = join(dir, entry);
+      return statSync(path).isDirectory() ? hasPage(path) : entry === 'page.tsx';
+    });
+  }
+
+  function mountsProvider(dir: string): boolean {
+    const layout = join(dir, 'layout.tsx');
+    try {
+      return readFileSync(layout, 'utf8').includes('NextIntlClientProvider');
+    } catch {
+      return false;
+    }
+  }
+
+  it('mounts NextIntlClientProvider in every top-level route subtree', () => {
+    const segments = readdirSync(ROOT)
+      .map((entry) => join(ROOT, entry))
+      .filter((path) => statSync(path).isDirectory())
+      .filter(hasPage);
+
+    expect(segments.length).toBeGreaterThan(0);
+
+    const missing = segments.filter((dir) => !mountsProvider(dir));
+    expect(missing, 'these route subtrees render Client Components with no intl context').toEqual(
+      [],
+    );
+  });
+});
