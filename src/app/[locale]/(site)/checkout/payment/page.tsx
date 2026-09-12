@@ -58,6 +58,9 @@ export default async function PaymentPage({
   // Resolved server-side and reduced to a boolean before it crosses into the
   // client component: the config carries the PayPal secret.
   const paypalAvailable = (await getPayPalConfig()) !== null;
+
+  // Recomputed from the catalogue on this render, like every other total here.
+  const free = quote.totalCents === 0;
   const returnError = error ? RETURN_ERRORS[error] : undefined;
 
   return (
@@ -104,7 +107,7 @@ export default async function PaymentPage({
 
       <div className="mt-6">
         {signedIn ? (
-          <PaymentForms paypalAvailable={paypalAvailable} />
+          <PaymentForms paypalAvailable={paypalAvailable} free={free} />
         ) : (
           <div className="rounded-[var(--radius-card)] border border-line bg-white p-6">
             <p className="text-[13px] text-ink-muted">{t('loginRequired')}</p>

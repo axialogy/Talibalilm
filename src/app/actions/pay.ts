@@ -127,8 +127,11 @@ export async function startPayPalCheckout(
 
   if (!quote || !selection.delivery) redirect({ href: '/checkout/modules', locale });
 
+  // Checked after the basket is priced, not before: a basket that costs nothing
+  // has no business being turned away because PayPal is unconfigured. The
+  // zero-total branch below settles it without ever calling PayPal.
   const config = await getPayPalConfig();
-  if (!config) return { error: 'unavailable' };
+  if (!config && quote.totalCents !== 0) return { error: 'unavailable' };
 
   const afterOffers = quote.subtotalCents - quote.discountCents;
   const coupon = await claimCoupon(selection.couponCode, afterOffers);
@@ -160,6 +163,8 @@ export async function startPayPalCheckout(
     redirect({ href: `/checkout/confirmation?order=${order.id}`, locale });
   }
 
+  if (!config) return { error: 'unavailable' };
+
   const base = siteUrl();
   let approveUrl: string;
   try {
@@ -188,6 +193,65 @@ export async function startPayPalCheckout(
   // PayPal's own domain, so this leaves the app and cannot use the
   // locale-aware redirect.
   nextRedirect(approveUrl);
+}
+
+/**
+ * Take a course the school is giving away.
+ *
+ * A free course is not a discount and not a coupon — the catalogue simply
+ * prices it at zero. It still produces a real order and real entitlements
+ * through `settleFreeOrder`, the same rows a paid enrolment leaves, because
+ * `has_course_access()` is what opens the lessons and it knows nothing about
+ * how the sale was funded.
+ *
+ * It exists as its own route because `startPayPalCheckout` refuses before it
+ * ever reaches the zero-total branch when PayPal is not configured — so a
+ * school that had not linked PayPal could not give anything away.
+ *
+ * The zero is never taken from the request. `loadBasket` reprices the selection
+ * from the catalogue and `createPendingOrder` computes the total again; if that
+ * total is not zero, the order is rolled back and the caller is sent to pay.
+ */
+export async function claimFreeCourse(_previous: PayState, _formData: FormData): Promise<PayState> {
+  const locale = await getLocale();
+  const user = await requireUser();
+
+  if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+
+  const { selection, quote } = await loadBasket();
+  if (!quote || !selection.delivery) redirect({ href: '/checkout/modules', locale });
+
+  const afterOffers = quote.subtotalCents - quote.discountCents;
+  const coupon = await claimCoupon(selection.couponCode, afterOffers);
+
+  let order;
+  try {
+    order = await createPendingOrder({
+      userId: user.id,
+      delivery: selection.delivery,
+      route: 'free',
+      quote,
+      couponId: coupon?.id ?? null,
+      couponDiscountCents: coupon?.discountCents ?? 0,
+    });
+  } catch (cause) {
+    if (coupon) await releaseCoupon(coupon.id);
+    if (cause instanceof PackExhaustedError) return { error: 'packExhausted' };
+    if (cause instanceof MixedCurrencyError) return { error: 'mixedCurrency' };
+    throw cause;
+  }
+
+  // The catalogue disagreed with the page: something in the basket costs money.
+  // Give back what the order was holding and send them to pay properly.
+  if (order.totalCents !== 0) {
+    await releaseHolds(order.id);
+    await markOrderFailed(order.id, 'not a free basket');
+    return { error: 'notFree' };
+  }
+
+  await settleFreeOrder(order.id);
+  await clearSelection();
+  redirect({ href: `/checkout/confirmation?order=${order.id}`, locale });
 }
 
 const codeSchema = z

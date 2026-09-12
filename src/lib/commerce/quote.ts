@@ -245,7 +245,16 @@ export function priceSelection(options: {
 }
 
 /** Cents to a display string, in the reader's locale. */
+/**
+ * Money for a reader.
+ *
+ * Zero is rendered as the word, not as "€0.00". A course the school is giving
+ * away should say so — a price of nought reads like a bug, or like a form that
+ * failed to load, and neither invites anyone to enrol.
+ */
 export function formatPrice(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
+  if (cents === 0) return locale.startsWith('en') ? 'Free' : 'Gratuit';
+
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,

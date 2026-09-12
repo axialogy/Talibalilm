@@ -263,7 +263,10 @@
     "confirmItems": "What is now open",
     "packExhausted": "That offer has just reached its limit. Remove it to continue.",
     "mixedCurrency": "Your selection mixes currencies. Please contact the institute.",
-    "rateLimited": "Too many attempts. Try again in a few minutes."
+    "rateLimited": "Too many attempts. Try again in a few minutes.",
+    "claimFree": "Get this course free",
+    "claimFreeNote": "Nothing to pay. Access opens straight away and lasts the usual period.",
+    "notFree": "This basket is not free. Please continue to payment."
   },
   "auth": {
     "loginTitle": "Log in",

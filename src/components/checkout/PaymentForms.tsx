@@ -2,10 +2,15 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Lock, Store } from 'lucide-react';
+import { Gift, Lock, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/auth/SubmitButton';
-import { redeemOfficeCode, startPayPalCheckout, type PayState } from '@/app/actions/pay';
+import {
+  claimFreeCourse,
+  redeemOfficeCode,
+  startPayPalCheckout,
+  type PayState,
+} from '@/app/actions/pay';
 
 const EMPTY: PayState = {};
 
@@ -20,6 +25,7 @@ const MESSAGE: Record<
   | 'packExhausted'
   | 'mixedCurrency'
   | 'rateLimited'
+  | 'notFree'
 > = {
   unavailable: 'payUnavailable',
   paypalRefused: 'payRefused',
@@ -29,6 +35,7 @@ const MESSAGE: Record<
   packExhausted: 'packExhausted',
   mixedCurrency: 'mixedCurrency',
   rateLimited: 'rateLimited',
+  notFree: 'notFree',
 };
 
 /**
@@ -38,13 +45,41 @@ const MESSAGE: Record<
  * server reprices the basket, opens the order and redirects to PayPal. The
  * office form posts only a code, which the database spends atomically.
  */
-export function PaymentForms({ paypalAvailable }: { paypalAvailable: boolean }) {
+export function PaymentForms({
+  paypalAvailable,
+  free = false,
+}: {
+  paypalAvailable: boolean;
+  /** The basket totals zero once repriced from the catalogue. */
+  free?: boolean;
+}) {
   const t = useTranslations('checkout');
   const [payState, payAction] = useActionState(startPayPalCheckout, EMPTY);
   const [codeState, codeAction] = useActionState(redeemOfficeCode, EMPTY);
+  const [freeState, freeAction] = useActionState(claimFreeCourse, EMPTY);
 
   const payError = payState.error ? MESSAGE[payState.error] : undefined;
   const codeError = codeState.error ? MESSAGE[codeState.error] : undefined;
+  const freeError = freeState.error ? MESSAGE[freeState.error] : undefined;
+
+  // Nothing to pay: showing a PayPal button and a cash-code box here would be
+  // asking the student to settle a bill of zero. One button, and it is done.
+  if (free) {
+    return (
+      <form action={freeAction}>
+        <SubmitButton>
+          <Gift className="size-4" aria-hidden="true" />
+          {t('claimFree')}
+        </SubmitButton>
+        <p className="mt-3 text-[12px] leading-relaxed text-ink-muted">{t('claimFreeNote')}</p>
+        {freeError && (
+          <p role="alert" className="mt-3 text-[12px] text-red-600">
+            {t(freeError)}
+          </p>
+        )}
+      </form>
+    );
+  }
 
   return (
     <div className="space-y-6">

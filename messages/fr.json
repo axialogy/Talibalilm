@@ -263,7 +263,10 @@
     "confirmItems": "Ce qui est ouvert",
     "packExhausted": "Cette offre vient d’atteindre sa limite. Retirez-la pour continuer.",
     "mixedCurrency": "Votre sélection mélange plusieurs devises. Contactez l’institut.",
-    "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes."
+    "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+    "claimFree": "Obtenir ce cours gratuitement",
+    "claimFreeNote": "Rien à régler. L’accès s’ouvre immédiatement, pour la durée habituelle.",
+    "notFree": "Ce panier n’est pas gratuit. Veuillez poursuivre vers le paiement."
   },
   "auth": {
     "loginTitle": "Connexion",

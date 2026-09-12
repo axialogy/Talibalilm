@@ -270,3 +270,17 @@ describe('currency (audit B2)', () => {
     expect(formatPrice(quote.totalCents, 'fr-FR', quote.currency)).toMatch(/CHF/);
   });
 });
+
+describe('a course the school gives away', () => {
+  it('says "Free" rather than a price of nought', () => {
+    // "€0.00" reads like a form that failed to load, not like an invitation.
+    expect(formatPrice(0, 'en')).toBe('Free');
+    expect(formatPrice(0, 'fr')).toBe('Gratuit');
+    expect(formatPrice(0, 'en-GB', 'GBP')).toBe('Free');
+  });
+
+  it('still prices everything above zero as money', () => {
+    expect(formatPrice(1, 'en')).not.toBe('Free');
+    expect(formatPrice(30000, 'en')).not.toBe('Free');
+  });
+});
