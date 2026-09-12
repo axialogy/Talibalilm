@@ -1,0 +1,51 @@
+# The sweep, on the cadence the shop actually needs.
+#
+# Vercel's Hobby plan refuses any cron more frequent than once a day — a
+# `*/15` expression does not merely get throttled, it FAILS THE DEPLOYMENT.
+# So vercel.json keeps a daily run (which is what makes the project deploy at
+# all), and this workflow drives the real cadence for free.
+#
+# It matters because the sweep is what hands back a coupon and a pack seat that
+# an abandoned checkout is holding. Once a day would mean a single-use office
+# code stays spent for up to 24 hours after a student closes the PayPal tab.
+#
+# Needs two repository secrets; without them the job exits cleanly rather than
+# failing the run, so a fork or a fresh clone is never red for missing config:
+#   SWEEP_URL     https://<your-domain>/api/cron/sweep
+#   CRON_SECRET   the same value set in the Vercel project
+name: Sweep
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub queues scheduled runs, so treat this as
+    # "about every 15 minutes" rather than a guarantee.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the sweep endpoint
+        env:
+          SWEEP_URL: ${{ secrets.SWEEP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SWEEP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "SWEEP_URL or CRON_SECRET is not set — skipping."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/sweep.out -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" "$SWEEP_URL")
+          echo "HTTP $code"
+          cat /tmp/sweep.out
+          echo
+          # The endpoint answers 401 without the secret and 503 before the
+          # database is wired up; neither is worth waking anyone at 3am.
+          if [ "$code" != "200" ]; then
+            echo "::warning::sweep returned HTTP $code"
+          fi

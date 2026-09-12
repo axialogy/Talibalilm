@@ -77,6 +77,22 @@ harness does not have).
 A change to the schema or the money paths without a failing-then-passing test
 has not been demonstrated.
 
+## Deployment traps (learned the hard way)
+
+**Vercel Hobby refuses a cron more frequent than daily — and it fails the whole
+deployment, not just the cron.** `vercel.json` carried `*/15 * * * *` for eight
+commits; every deploy died at the platform stage while `next build`, `npm ci`
+and the full CI suite stayed green, because this rule is invisible to the build.
+The site silently served a week-old commit. So `vercel.json` keeps a daily
+schedule, and `.github/workflows/sweep.yml` drives the real ~15-minute cadence
+by calling the endpoint (secrets `SWEEP_URL` + `CRON_SECRET`). If the project
+ever moves to Pro, the Vercel cron can go back to `*/15 * * * *` and the
+workflow can be deleted.
+
+Pin the Node version. `engines.node` is `22.x` because `prisma generate` runs in
+`postinstall` and Prisma 7 requires `^20.19 || ^22.12 || >=24`; unpinned, the
+host picks its own default and the install can die before the build starts.
+
 ## Errors
 
 Report through `reportError(context, error)` (`@/lib/observability/report`), not
