@@ -89,6 +89,15 @@ by calling the endpoint (secrets `SWEEP_URL` + `CRON_SECRET`). If the project
 ever moves to Pro, the Vercel cron can go back to `*/15 * * * *` and the
 workflow can be deleted.
 
+**R2 refuses a browser upload from an origin the bucket has not been told
+about.** Slides are PUT straight from the browser to Cloudflare — deliberately,
+so no slide is streamed through a Vercel function — which makes every upload a
+cross-origin request. Without a CORS policy on the bucket the browser reports
+only "failed to fetch", naming nothing, and the four `R2_*` variables all look
+correctly set. The policy is in `.env.example` beside them; `PUT` and
+`content-type` are all it needs, because slides are displayed with a plain
+`<img>` and those are not CORS-checked.
+
 Pin the Node version. `engines.node` is `22.x` because `prisma generate` runs in
 `postinstall` and Prisma 7 requires `^20.19 || ^22.12 || >=24`; unpinned, the
 host picks its own default and the install can die before the build starts.
