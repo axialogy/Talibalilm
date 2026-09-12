@@ -52,6 +52,28 @@ export default async function AdminOrderDetailPage({
         </dd>
         <dt className="text-ink-muted">{t('colRoute')}</dt>
         <dd className="text-ink">{t(`route${cap(order.route)}` as 'routePaypal')}</dd>
+        <dt className="text-ink-muted">{t('feeMode')}</dt>
+        <dd className="text-ink">
+          {order.delivery === 'online' ? t('deliveryOnline') : t('deliveryPresentiel')}
+        </dd>
+        {order.paidAt && (
+          <>
+            <dt className="text-ink-muted">{t('orderPaidAt')}</dt>
+            <dd className="text-ink">{dateFmt.format(new Date(order.paidAt))}</dd>
+          </>
+        )}
+        {order.couponCode && (
+          <>
+            <dt className="text-ink-muted">{t('orderCoupon')}</dt>
+            <dd className="font-mono text-ink">{order.couponCode}</dd>
+          </>
+        )}
+        {order.packTitle && (
+          <>
+            <dt className="text-ink-muted">{t('orderPack')}</dt>
+            <dd className="text-ink">{order.packTitle}</dd>
+          </>
+        )}
         {order.statusReason && (
           <>
             <dt className="text-ink-muted">{t('orderReason')}</dt>
@@ -66,7 +88,16 @@ export default async function AdminOrderDetailPage({
           <li key={i.productId} className="flex flex-wrap items-center gap-3 p-4">
             <div className="min-w-0 flex-1">
               <p className="font-medium text-ink">{i.title}</p>
-              {i.scheduleLabel && <p className="text-[11px] text-ink-muted">{i.scheduleLabel}</p>}
+              <p className="text-[11px] text-ink-muted">
+                {[
+                  i.scheduleLabel || null,
+                  i.delivery === 'online' ? t('deliveryOnline') : t('deliveryPresentiel'),
+                  t('orderItemDays', { n: i.durationDays }),
+                  i.isFree ? t('orderItemFree') : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
             </div>
             <span className="text-[13px] font-medium text-ink tabular-nums">
               {i.isFree ? '—' : money(i.unitPriceCents)}
@@ -109,6 +140,34 @@ export default async function AdminOrderDetailPage({
             )}
           </dl>
         </>
+      )}
+
+      {/* What the money actually bought. Read back from the entitlements rather
+          than inferred from the lines, so a grant later revoked or wound back by
+          a refund shows as it really stands. */}
+      <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">{t('orderGranted')}</h2>
+      {order.granted.length === 0 ? (
+        <p className="mt-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-5 text-center text-[13px] text-ink-muted">
+          {t('orderGrantedNone')}
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
+          {order.granted.map((g, index) => {
+            const live = g.status === 'active' && new Date(g.expiresAt).getTime() > Date.now();
+            return (
+              <li key={`${g.label}-${index}`} className="flex flex-wrap items-center gap-3 p-4">
+                <span className="min-w-0 flex-1 text-[13px] text-ink">{g.label}</span>
+                <span className="text-[11px] text-ink-muted">
+                  {t('entUntil')} {dateFmt.format(new Date(g.expiresAt))}
+                </span>
+                <StatusBadge
+                  status={live ? 'paid' : 'cancelled'}
+                  label={live ? t('entActive') : t('entCancelled')}
+                />
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       <Button asChild variant="outline" size="md" className="mt-8">

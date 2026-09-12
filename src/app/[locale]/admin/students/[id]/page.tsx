@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { GrantForm } from '@/components/admin/GrantForm';
 import { RevokeButton } from '@/components/admin/RevokeButton';
 import { AnonymiseButton } from '@/components/admin/AnonymiseButton';
+import { StudentAccount } from '@/components/admin/StudentAccount';
 import { getStudent } from '@/lib/data/admin';
 import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
@@ -28,7 +29,7 @@ export default async function AdminStudentDetailPage({
   if (!data) notFound();
 
   const isAdmin = viewer?.role === 'admin';
-  const { student, entitlements } = data;
+  const { student, account, entitlements } = data;
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
   // Options for the grant form, read through the same staff-scoped client.
@@ -72,6 +73,21 @@ export default async function AdminStudentDetailPage({
           ? t('anonymisedOn', { date: dateFmt.format(new Date(student.anonymisedAt)) })
           : student.email}
       </p>
+
+      {isAdmin && (
+        <section className="mt-8">
+          <h2 className="font-display text-[15px] font-semibold text-ink">{t('studentAccount')}</h2>
+          <div className="mt-3">
+            <StudentAccount
+              userId={student.userId}
+              fullName={student.fullName}
+              phone={account.phone}
+              locale={account.locale}
+              hasOrders={account.hasOrders}
+            />
+          </div>
+        </section>
+      )}
 
       <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">{t('entitlementsHeld')}</h2>
       {entitlements.length === 0 ? (

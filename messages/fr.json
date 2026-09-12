@@ -502,7 +502,9 @@
       "uploadFailed": "L’envoi a échoué. Réessayez.",
       "liveStillOpen": "Terminez ou annulez la séance avant de la supprimer.",
       "bonusSameProduct": "Le cours offert doit être différent de celui qui est acheté.",
-      "bonusDeliveryMismatch": "Les deux cours doivent être dans le même mode — tous deux en ligne, ou tous deux en présentiel."
+      "bonusDeliveryMismatch": "Les deux cours doivent être dans le même mode — tous deux en ligne, ou tous deux en présentiel.",
+      "studentHasOrders": "Cet étudiant a des commandes. Utilisez plutôt l’effacement, qui retire la personne et conserve la vente.",
+      "studentIsStaff": "Il s’agit d’un compte du personnel, pas d’un étudiant."
     },
     "overview": "Vue d’ensemble",
     "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
@@ -717,7 +719,22 @@
     "feeScheduleLabel": "Horaire",
     "feeTimeSlot": "Code du créneau",
     "feeHoursYear": "Heures / an",
-    "feeHoursWeek": "Heures / semaine"
+    "feeHoursWeek": "Heures / semaine",
+    "orderPaidAt": "Payé le",
+    "orderCoupon": "Code utilisé",
+    "orderPack": "Offre",
+    "orderGranted": "Ce que cette commande a ouvert",
+    "orderGrantedNone": "Cette commande n’a ouvert aucun accès — elle n’a pas été payée, ou elle a été remboursée.",
+    "orderItemDays": "{n} jours d’accès",
+    "orderItemFree": "offert",
+    "studentAccount": "Compte",
+    "studentName": "Nom",
+    "studentPhone": "Téléphone",
+    "studentLocale": "Langue",
+    "studentEmailNote": "L’e-mail est l’identifiant et ne se modifie pas ici — l’étudiant peut le changer lui-même, ou réinitialiser son mot de passe depuis la page de connexion.",
+    "studentDelete": "Supprimer ce compte",
+    "studentDeleteConfirm": "Supprimer définitivement ce compte ? Action irréversible.",
+    "studentHasOrdersNote": "Cet étudiant a des commandes : le compte ne peut pas être supprimé, les ventes seraient orphelines. Utilisez l’effacement ci-dessous pour retirer la personne en conservant les enregistrements."
   },
   "live": {
     "startRecording": "Enregistrer",

@@ -109,6 +109,102 @@ export async function voidCoupon(_prev: AdminState, formData: FormData): Promise
 }
 
 /**
+ * Correct a student's details.
+ *
+ * Through the ordinary client, so `profiles_update_admin` is the control — and
+ * the column grants are the reason this cannot quietly become something worse:
+ * `authenticated` may write full_name, phone and locale and nothing else, so
+ * even a mistake here could not promote anyone to staff.
+ *
+ * The email is not editable from this screen. It is the login, it lives in
+ * auth.users, and changing it silently would lock a student out of an account
+ * they can still see the password for.
+ */
+export async function updateStudent(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z
+    .object({
+      userId: z.string().uuid(),
+      fullName: z.string().trim().max(120).default(''),
+      phone: z.string().trim().max(32).default(''),
+      locale: z.enum(['fr', 'en']).default('fr'),
+    })
+    .safeParse({
+      userId: formData.get('userId'),
+      fullName: formData.get('fullName') ?? '',
+      phone: formData.get('phone') ?? '',
+      locale: formData.get('locale') ?? 'fr',
+    });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await admin();
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: parsed.data.fullName,
+      // The constraint wants null rather than an empty string.
+      phone: parsed.data.phone || null,
+      locale: parsed.data.locale,
+    })
+    .eq('id', parsed.data.userId);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/students/[id]', 'page');
+  revalidatePath('/[locale]/admin/students', 'page');
+  return OK;
+}
+
+/**
+ * Delete a student account outright.
+ *
+ * Only for an account that never bought anything — a test signup, a duplicate,
+ * a mistyped address. `orders.user_id` is `on delete restrict`, so the database
+ * refuses to remove anyone whose purchases would be orphaned, and this checks
+ * first so the office gets a sentence explaining why rather than a failed save.
+ * For a student who did buy, erasure is the right tool: it scrubs the person and
+ * keeps the sale.
+ *
+ * Deleting the auth user is what removes them; the profile, entitlements and
+ * progress follow by cascade.
+ */
+export async function deleteStudent(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z.object({ userId: z.string().uuid() }).safeParse({
+    userId: formData.get('userId'),
+  });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const { userId } = parsed.data;
+
+  const supabase = await admin();
+
+  // Never a colleague. Staff accounts are removed deliberately, not from the
+  // student list.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!profile) return { ok: false, error: 'saveFailed' };
+  if (profile.role !== 'student') return { ok: false, error: 'studentIsStaff' };
+
+  const { count } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if ((count ?? 0) > 0) return { ok: false, error: 'studentHasOrders' };
+
+  try {
+    const service = createAdminClient();
+    const { error } = await service.auth.admin.deleteUser(userId);
+    if (error) throw error;
+  } catch (cause) {
+    reportError('students.delete', cause, { userId });
+    return { ok: false, error: 'saveFailed' };
+  }
+
+  revalidatePath('/[locale]/admin/students', 'page');
+  return OK;
+}
+
+/**
  * Erase a student on request (GDPR B9).
  *
  * Two halves make one erasure. The RPC scrubs everything in `public` that names

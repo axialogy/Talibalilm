@@ -502,7 +502,9 @@
       "uploadFailed": "The upload failed. Try again.",
       "liveStillOpen": "End or cancel the class before deleting it.",
       "bonusSameProduct": "The free course must be different from the one they buy.",
-      "bonusDeliveryMismatch": "Both courses must be the same mode — both online, or both on site."
+      "bonusDeliveryMismatch": "Both courses must be the same mode — both online, or both on site.",
+      "studentHasOrders": "This student has orders. Use Erasure instead, which removes the person and keeps the sale.",
+      "studentIsStaff": "That is a staff account, not a student."
     },
     "overview": "Overview",
     "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
@@ -717,7 +719,22 @@
     "feeScheduleLabel": "Schedule",
     "feeTimeSlot": "Time-slot code",
     "feeHoursYear": "Hours / year",
-    "feeHoursWeek": "Hours / week"
+    "feeHoursWeek": "Hours / week",
+    "orderPaidAt": "Paid on",
+    "orderCoupon": "Code used",
+    "orderPack": "Offer",
+    "orderGranted": "What this opened",
+    "orderGrantedNone": "This order has not granted access — it was never paid, or it was refunded.",
+    "orderItemDays": "{n} days of access",
+    "orderItemFree": "free",
+    "studentAccount": "Account",
+    "studentName": "Name",
+    "studentPhone": "Phone",
+    "studentLocale": "Language",
+    "studentEmailNote": "The email is the login and cannot be changed here — the student can change it themselves, or reset their password from the sign-in page.",
+    "studentDelete": "Delete this account",
+    "studentDeleteConfirm": "Delete this account permanently? This cannot be undone.",
+    "studentHasOrdersNote": "This student has orders, so the account cannot be deleted — the sales would be orphaned. Use Erasure below to remove the person while keeping the records."
   },
   "live": {
     "startRecording": "Record",

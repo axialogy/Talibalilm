@@ -85,9 +85,14 @@ export interface OrderDetail extends OrderSummary {
   providerOrderId: string | null;
   providerCaptureId: string | null;
   couponId: string | null;
+  /** The code as typed at the desk, not the id — the id means nothing to a person. */
+  couponCode: string | null;
   packId: string | null;
+  packTitle: string | null;
   subtotalCents: number;
   discountCents: number;
+  /** What this order actually opened, which is the question an office asks. */
+  granted: { label: string; expiresAt: string; status: string }[];
   items: {
     productId: string;
     title: string;
@@ -118,7 +123,25 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
 
   if (!o) return null;
 
-  const [withEmail] = await attachEmails(supabase, [{ userId: o.user_id, id: o.id }]);
+  // Fetched beside the order rather than joined: the coupon and pack links are
+  // nullable and the embedded form would need a declared relationship for a
+  // reference that is usually absent.
+  const [[withEmail], { data: entitlements }, { data: coupon }, { data: pack }] = await Promise.all([
+    attachEmails(supabase, [{ userId: o.user_id, id: o.id }]),
+    // What the order opened. Reading it back rather than inferring it from the
+    // line items means the screen shows what the student actually holds, even
+    // if a grant was later revoked or wound back by a refund.
+    supabase
+      .from('entitlements')
+      .select('scope, year_index, status, expires_at, courses ( title ), cursus ( title )')
+      .eq('source_order_id', orderId),
+    o.coupon_id
+      ? supabase.from('coupons').select('code').eq('id', o.coupon_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    o.pack_id
+      ? supabase.from('packs').select('title').eq('id', o.pack_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   return {
     id: o.id,
@@ -135,9 +158,18 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     providerOrderId: o.provider_order_id,
     providerCaptureId: o.provider_capture_id,
     couponId: o.coupon_id,
+    couponCode: coupon?.code ?? null,
     packId: o.pack_id,
+    packTitle: pack?.title ?? null,
     subtotalCents: o.subtotal_cents,
     discountCents: o.discount_cents,
+    granted: (entitlements ?? []).map((e) => ({
+      label:
+        e.courses?.title ??
+        (e.cursus?.title ? `${e.cursus.title} — ${e.year_index}` : 'Institut'),
+      expiresAt: e.expires_at,
+      status: e.status,
+    })),
     items: (o.order_items ?? []).map((i) => ({
       productId: i.product_id,
       title: i.title,
@@ -163,6 +195,13 @@ export interface StudentSummary {
   createdAt: string;
   anonymisedAt: string | null;
   activeEntitlements: number;
+}
+
+/** The extra detail the account panel needs, on the detail screen only. */
+export interface StudentAccountDetail {
+  phone: string;
+  locale: string;
+  hasOrders: boolean;
 }
 
 export async function listStudents(search?: string): Promise<StudentSummary[]> {
@@ -225,6 +264,7 @@ export interface StudentEntitlement {
 
 export async function getStudent(userId: string): Promise<{
   student: StudentSummary;
+  account: StudentAccountDetail;
   entitlements: StudentEntitlement[];
 } | null> {
   if (!supabaseConfigured) return null;
@@ -232,10 +272,16 @@ export async function getStudent(userId: string): Promise<{
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, role, created_at, anonymised_at')
+    .select('id, full_name, role, created_at, anonymised_at, phone, locale')
     .eq('id', userId)
     .maybeSingle();
   if (!profile) return null;
+
+  // Whether they ever bought decides if the account can be deleted at all.
+  const { count: orderCount } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
 
   const [withEmail] = await attachEmails(supabase, [{ userId: profile.id, id: profile.id }]);
 
@@ -250,6 +296,11 @@ export async function getStudent(userId: string): Promise<{
 
   const now = Date.now();
   return {
+    account: {
+      phone: profile.phone ?? '',
+      locale: profile.locale,
+      hasOrders: (orderCount ?? 0) > 0,
+    },
     student: {
       userId: profile.id,
       email: withEmail?.email ?? null,
