@@ -16,6 +16,7 @@ import {
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { courseLessons } from '@/lib/content/types';
+import { embedUrl, type VideoProvider } from '@/lib/content/video';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -99,13 +100,41 @@ export default async function LessonPage({
 
         {content ? (
           <>
-            {content.videoProvider !== 'none' && (
-              <div className="mt-6 flex aspect-video items-center justify-center rounded-[var(--radius-card)] border border-line bg-surface text-center">
-                {/* Phase 5 swaps this for a player fed by a short-lived signed
-                    URL. The id is deliberately not rendered into the DOM. */}
-                <p className="max-w-sm px-6 text-[13px] text-ink-muted">{t('playerPending')}</p>
-              </div>
-            )}
+            {content.videoProvider !== 'none' &&
+              (() => {
+                // Reaching this branch already means the paywall let the row
+                // through: `getLessonContent` is an RLS-gated read, so a
+                // non-member got null and is looking at the paywall instead.
+                const src = embedUrl({
+                  provider: content.videoProvider as VideoProvider,
+                  id: content.videoId ?? '',
+                });
+
+                if (!src) {
+                  return (
+                    <div className="mt-6 flex aspect-video items-center justify-center rounded-[var(--radius-card)] border border-line bg-surface text-center">
+                      <p className="max-w-sm px-6 text-[13px] text-ink-muted">{t('playerPending')}</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-line bg-black">
+                    <iframe
+                      src={src}
+                      title={lesson.title}
+                      className="aspect-video w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allowFullScreen
+                      // The embed is a third party. Denying it our referrer and
+                      // sandboxing it keeps a lesson page from handing YouTube
+                      // or Drive anything about the student beyond the play.
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      loading="lazy"
+                    />
+                  </div>
+                );
+              })()}
 
             <div className="mt-6 text-[15px] leading-relaxed whitespace-pre-line text-ink-soft">
               {content.content || t('noBody')}

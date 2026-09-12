@@ -399,8 +399,8 @@
     "duration": "Length (minutes)",
     "isPreview": "Trial lesson (visible without a membership)",
     "content": "Lesson content",
-    "videoId": "Video identifier",
-    "videoIdHint": "An opaque identifier, never a URL. It is exchanged server-side for a signed URL.",
+    "videoId": "Recording link (YouTube or Google Drive)",
+    "videoIdHint": "Paste the full link to the recorded class. Students see the player inside the lesson; only people who bought the course can open the page.",
     "moveUp": "Move up",
     "moveDown": "Move down",
     "empty": "No courses yet.",
@@ -651,6 +651,7 @@
     "coverReplace": "Replace",
     "coverRemove": "Remove image",
     "coverHint": "PNG, JPEG or WebP, up to 5 MB. Otherwise a cover is drawn automatically.",
-    "coverUploading": "Uploading…"
+    "coverUploading": "Uploading…",
+    "videoUnrecognised": "Link not recognised. Paste a YouTube or Google Drive link."
   }
 }

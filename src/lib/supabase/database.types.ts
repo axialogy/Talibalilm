@@ -14,7 +14,7 @@ export type CourseLevel = 'all' | 'beginner' | 'intermediate' | 'advanced';
 export type CourseFormat = 'presentiel' | 'visio' | 'hybride';
 export type CourseStatus = 'draft' | 'published' | 'archived';
 export type LessonType = 'video' | 'text' | 'live' | 'quiz' | 'assignment';
-export type VideoProvider = 'bunny' | 'youtube' | 'none';
+export type VideoProvider = 'bunny' | 'youtube' | 'drive' | 'none';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled';
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 

@@ -399,8 +399,8 @@
     "duration": "Durée (minutes)",
     "isPreview": "Leçon d’essai (visible sans abonnement)",
     "content": "Contenu de la leçon",
-    "videoId": "Identifiant vidéo",
-    "videoIdHint": "Un identifiant opaque, jamais une URL. Il est échangé côté serveur contre une URL signée.",
+    "videoId": "Lien de l’enregistrement (YouTube ou Google Drive)",
+    "videoIdHint": "Collez le lien complet du cours enregistré. Les étudiants voient le lecteur dans la leçon ; seuls les acheteurs du cours peuvent ouvrir la page.",
     "moveUp": "Monter",
     "moveDown": "Descendre",
     "empty": "Aucun cours pour l’instant.",
@@ -651,6 +651,7 @@
     "coverReplace": "Remplacer",
     "coverRemove": "Retirer l’image",
     "coverHint": "PNG, JPEG ou WebP, jusqu’à 5 Mo. Sinon, une couverture est dessinée automatiquement.",
-    "coverUploading": "Envoi…"
+    "coverUploading": "Envoi…",
+    "videoUnrecognised": "Lien non reconnu. Collez un lien YouTube ou Google Drive."
   }
 }

@@ -236,7 +236,11 @@ function LessonRow({
               name="video_id"
               defaultValue={lesson.videoId}
               hint={t('videoIdHint')}
-              error={state.error === 'video_id_is_url' ? t('videoIdHint') : undefined}
+              error={
+                state.error === 'video_unrecognised' || state.error === 'video_id_is_url'
+                  ? t('videoUnrecognised')
+                  : undefined
+              }
             />
           </div>
 

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { parseVideoRef } from '@/lib/content/video';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
@@ -313,12 +314,21 @@ export async function updateLesson(_prev: AdminState, formData: FormData): Promi
 
   if (lessonError) return { ok: false, error: 'refused' };
 
+  // The office pastes a YouTube or Drive link; the column stores only the id.
+  // Deciding the provider here — rather than assuming Bunny, which is what this
+  // did before and which left every lesson pointing at a service the school does
+  // not use — is what makes the player actually appear.
+  const video = parseVideoRef(parsed.data.video_id);
+  if (parsed.data.video_id.trim() && video.provider === 'none') {
+    return { ok: false, error: 'video_unrecognised' };
+  }
+
   const { error: contentError } = await supabase.from('lesson_content').upsert(
     {
       lesson_id: parsed.data.id,
       content: parsed.data.content,
-      video_id: parsed.data.video_id || null,
-      video_provider: parsed.data.video_id ? 'bunny' : 'none',
+      video_id: video.id || null,
+      video_provider: video.provider,
     },
     { onConflict: 'lesson_id' },
   );
