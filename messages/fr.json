@@ -499,7 +499,8 @@
       "noFile": "Aucun fichier sélectionné.",
       "tooLarge": "L’image dépasse 5 Mo.",
       "notAnImage": "Ce fichier n’est pas une image valide (PNG, JPEG ou WebP).",
-      "uploadFailed": "L’envoi a échoué. Réessayez."
+      "uploadFailed": "L’envoi a échoué. Réessayez.",
+      "liveStillOpen": "Terminez ou annulez la séance avant de la supprimer."
     },
     "overview": "Vue d’ensemble",
     "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
@@ -679,7 +680,9 @@
     "liveRecordingNote": "Enregistrement",
     "liveRecordingHint": "Où vous avez déposé l’enregistrement — collez le lien YouTube ou Drive sur la leçon pour que les étudiants puissent le revoir.",
     "genBatchHint": "Un nom pour repérer cette série plus tard. Les espaces deviennent des tirets — « octobre 2026 » convient.",
-    "genPrefixHint": "Apparaît au début de chaque code de la série. Lettres et chiffres."
+    "genPrefixHint": "Apparaît au début de chaque code de la série. Lettres et chiffres.",
+    "liveDelete": "Supprimer",
+    "liveDeleteConfirm": "Supprimer cette séance et sa feuille de présence ? Action irréversible."
   },
   "live": {
     "startRecording": "Enregistrer",

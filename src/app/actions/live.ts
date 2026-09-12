@@ -126,6 +126,39 @@ export async function cancelLiveSession(_prev: AdminState, formData: FormData): 
   return OK;
 }
 
+/**
+ * Remove a class that is over and done with.
+ *
+ * Only a finished or cancelled one: deleting a room while people are in it
+ * would drop their attendance rows under them, and a scheduled class that
+ * disappears is a class the students were told about and can no longer find.
+ * Cancel first, then delete — which is also the order that leaves the students
+ * a visible explanation rather than a hole.
+ */
+export async function deleteLiveSession(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = idSchema.safeParse({ id: formData.get('id') });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await staffClient();
+  const { data: session } = await supabase
+    .from('live_sessions')
+    .select('status')
+    .eq('id', parsed.data.id)
+    .maybeSingle();
+
+  if (!session) return { ok: false, error: 'saveFailed' };
+  if (session.status !== 'ended' && session.status !== 'cancelled') {
+    return { ok: false, error: 'liveStillOpen' };
+  }
+
+  // Attendance and join requests cascade with the session.
+  const { error } = await supabase.from('live_sessions').delete().eq('id', parsed.data.id);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/live', 'page');
+  return OK;
+}
+
 /** Note where the recording ended up, so "was this class recorded?" stays answerable. */
 export async function noteRecording(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const parsed = z

@@ -499,7 +499,8 @@
       "noFile": "No file selected.",
       "tooLarge": "The image is over 5 MB.",
       "notAnImage": "That file is not a valid image (PNG, JPEG or WebP).",
-      "uploadFailed": "The upload failed. Try again."
+      "uploadFailed": "The upload failed. Try again.",
+      "liveStillOpen": "End or cancel the class before deleting it."
     },
     "overview": "Overview",
     "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
@@ -679,7 +680,9 @@
     "liveRecordingNote": "Recording",
     "liveRecordingHint": "Where you put the recording — paste the YouTube or Drive link on the lesson itself to let students watch it.",
     "genBatchHint": "A name for this batch, so you can find it later. Spaces become hyphens — \"October 2026\" is fine.",
-    "genPrefixHint": "Appears at the start of every code in the batch. Letters and digits."
+    "genPrefixHint": "Appears at the start of every code in the batch. Letters and digits.",
+    "liveDelete": "Delete",
+    "liveDeleteConfirm": "Delete this class and its attendance record? This cannot be undone."
   },
   "live": {
     "startRecording": "Record",

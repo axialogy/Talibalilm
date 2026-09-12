@@ -169,9 +169,13 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
   if (!supabaseConfigured) return [];
   const supabase = await createClient();
 
+  // Students only. The teacher and any instructor are staff, not customers, and
+  // listing them here made the school's own accounts look like enrolments —
+  // wrong in the count, and one careless click away from the erase button.
   let query = supabase
     .from('profiles')
     .select('id, full_name, role, created_at, anonymised_at')
+    .eq('role', 'student')
     .order('created_at', { ascending: false })
     .limit(200);
 

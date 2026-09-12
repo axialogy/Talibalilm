@@ -4,7 +4,12 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
-import { cancelLiveSession, endLiveSession, startLiveSession } from '@/app/actions/live';
+import {
+  cancelLiveSession,
+  deleteLiveSession,
+  endLiveSession,
+  startLiveSession,
+} from '@/app/actions/live';
 import type { AdminState } from '@/app/actions/admin';
 import type { LiveStatus } from '@/lib/supabase/database.types';
 
@@ -29,6 +34,7 @@ export function LiveSessionControls({
   const [, start] = useActionState(startLiveSession, EMPTY);
   const [, end] = useActionState(endLiveSession, EMPTY);
   const [, cancel] = useActionState(cancelLiveSession, EMPTY);
+  const [removeState, remove] = useActionState(deleteLiveSession, EMPTY);
 
   const finished = status === 'ended' || status === 'cancelled';
 
@@ -68,6 +74,27 @@ export function LiveSessionControls({
             {t('liveCancel')}
           </Button>
         </form>
+      )}
+
+      {/* Only once it is over: a room cannot be pulled out from under a class. */}
+      {finished && (
+        <form
+          action={remove}
+          onSubmit={(event) => {
+            if (!window.confirm(t('liveDeleteConfirm'))) event.preventDefault();
+          }}
+        >
+          <input type="hidden" name="id" value={id} />
+          <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+            {t('liveDelete')}
+          </Button>
+        </form>
+      )}
+
+      {removeState.error && (
+        <span role="alert" className="text-[12px] text-red-600">
+          {t(`errors.${removeState.error}` as 'errors.saveFailed')}
+        </span>
       )}
     </div>
   );
