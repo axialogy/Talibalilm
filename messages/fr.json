@@ -682,7 +682,22 @@
     "genBatchHint": "Un nom pour repérer cette série plus tard. Les espaces deviennent des tirets — « octobre 2026 » convient.",
     "genPrefixHint": "Apparaît au début de chaque code de la série. Lettres et chiffres.",
     "liveDelete": "Supprimer",
-    "liveDeleteConfirm": "Supprimer cette séance et sa feuille de présence ? Action irréversible."
+    "liveDeleteConfirm": "Supprimer cette séance et sa feuille de présence ? Action irréversible.",
+    "tabContent": "Contenu",
+    "tabFees": "Tarif",
+    "tabFeesLead": "Le prix de ce cours. Un tarif par mode. Laissez 0 pour l’offrir — les étudiants l’obtiennent gratuitement, sans étape de paiement.",
+    "tabCursus": "Cursus",
+    "tabCursusLead": "Les cursus qui incluent ce cours. Cocher une case l’ouvre immédiatement à tous les inscrits de cette année.",
+    "tabLive": "Cours en direct",
+    "tabLiveLead": "Les séances de ce cours. Seuls les étudiants qui l’ont acheté peuvent entrer.",
+    "feeMode": "Mode",
+    "feePrice": "Prix (€)",
+    "feeDuration": "Accès (jours)",
+    "feeStatus": "État",
+    "feeAdd": "Ajouter le tarif",
+    "feeRemove": "Supprimer ce tarif",
+    "feeHint": "L’accès dure 365 jours et le tarif est publié immédiatement. Les deux restent modifiables.",
+    "cursusNoneYet": "Aucun cursus créé pour l’instant. Créez-en un dans Cursus d’abord."
   },
   "live": {
     "startRecording": "Enregistrer",

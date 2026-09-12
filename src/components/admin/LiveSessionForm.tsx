@@ -8,8 +8,20 @@ import type { AdminState } from '@/app/actions/admin';
 
 const EMPTY: AdminState = { ok: true };
 
-/** Schedule a class against a course. The course is what decides who may attend. */
-export function LiveSessionForm({ courses }: { courses: { id: string; title: string }[] }) {
+/**
+ * Schedule a class against a course. The course is what decides who may attend.
+ *
+ * On a course's own page the course is already settled, so the picker is
+ * replaced by a hidden field — one less question, and one less way to schedule
+ * a class against the wrong subject.
+ */
+export function LiveSessionForm({
+  courses,
+  fixedCourseId,
+}: {
+  courses: { id: string; title: string }[];
+  fixedCourseId?: string;
+}) {
   const t = useTranslations('admin');
   const [state, action] = useActionState(createLiveSession, EMPTY);
 
@@ -19,16 +31,20 @@ export function LiveSessionForm({ courses }: { courses: { id: string; title: str
   return (
     <form action={action} className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('liveCourse')}</span>
-          <select name="courseId" required className={field} defaultValue={courses[0]?.id ?? ''}>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        {fixedCourseId ? (
+          <input type="hidden" name="courseId" value={fixedCourseId} />
+        ) : (
+          <label className="block">
+            <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('liveCourse')}</span>
+            <select name="courseId" required className={field} defaultValue={courses[0]?.id ?? ''}>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('liveClassTitle')}</span>

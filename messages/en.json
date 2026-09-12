@@ -682,7 +682,22 @@
     "genBatchHint": "A name for this batch, so you can find it later. Spaces become hyphens — \"October 2026\" is fine.",
     "genPrefixHint": "Appears at the start of every code in the batch. Letters and digits.",
     "liveDelete": "Delete",
-    "liveDeleteConfirm": "Delete this class and its attendance record? This cannot be undone."
+    "liveDeleteConfirm": "Delete this class and its attendance record? This cannot be undone.",
+    "tabContent": "Content",
+    "tabFees": "Price",
+    "tabFeesLead": "What this course costs. One price per mode. Leave it at 0 to give the course away — students get it free, with no payment step.",
+    "tabCursus": "Programmes",
+    "tabCursusLead": "Which programmes include this course. Ticking a box opens the course to everyone enrolled in that year straight away.",
+    "tabLive": "Live classes",
+    "tabLiveLead": "Classes for this course. Only students who bought it can enter.",
+    "feeMode": "Mode",
+    "feePrice": "Price (€)",
+    "feeDuration": "Access (days)",
+    "feeStatus": "Status",
+    "feeAdd": "Add the price",
+    "feeRemove": "Remove this price",
+    "feeHint": "Access lasts 365 days and the price goes live immediately. Both can be changed afterwards.",
+    "cursusNoneYet": "No programme created yet. Create one under Cursus first."
   },
   "live": {
     "startRecording": "Record",
