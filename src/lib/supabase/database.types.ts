@@ -27,6 +27,9 @@ export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelle
 export type PaymentRoute = 'paypal' | 'office' | 'free';
 export type PackPricing = 'sum' | 'fixed' | 'percent';
 export type PaypalEnvironment = 'sandbox' | 'live';
+export type LiveStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
+export type LiveRole = 'host' | 'participant';
+export type JoinState = 'pending' | 'approved' | 'rejected';
 
 
 export interface Database {
@@ -708,6 +711,82 @@ export interface Database {
         }>;
         Relationships: [];
       };
+      live_sessions: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          description: string;
+          host_id: string | null;
+          room_token: string;
+          status: LiveStatus;
+          scheduled_at: string | null;
+          started_at: string | null;
+          ended_at: string | null;
+          max_participants: number;
+          recording_note: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          description?: string;
+          host_id?: string | null;
+          status?: LiveStatus;
+          scheduled_at?: string | null;
+          max_participants?: number;
+          recording_note?: string;
+        };
+        Update: {
+          title?: string;
+          description?: string;
+          host_id?: string | null;
+          status?: LiveStatus;
+          scheduled_at?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          max_participants?: number;
+          recording_note?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'live_sessions_course_id_fkey';
+            columns: ['course_id'];
+            isOneToOne: false;
+            referencedRelation: 'courses';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      live_participants: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          role: LiveRole;
+          joined_at: string;
+          left_at: string | null;
+        };
+        Insert: { session_id: string; user_id: string; role?: LiveRole };
+        Update: { left_at?: string | null };
+        Relationships: [];
+      };
+      live_join_requests: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          display_name: string;
+          status: JoinState;
+          requested_at: string;
+          decided_at: string | null;
+        };
+        Insert: { session_id: string; user_id: string; display_name?: string };
+        Update: { status?: JoinState; decided_at?: string | null };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: {
@@ -821,6 +900,22 @@ export interface Database {
         Args: Record<never, never>;
         Returns: number;
       };
+      can_join_live: {
+        Args: { session_id: string; uid?: string };
+        Returns: boolean;
+      };
+      live_join: {
+        Args: { session_id: string };
+        Returns: string;
+      };
+      live_leave: {
+        Args: { session_id: string };
+        Returns: boolean;
+      };
+      live_decide_join: {
+        Args: { request_id: string; admit: boolean };
+        Returns: boolean;
+      };
       admin_anonymise_user: {
         Args: { target_user: string; reason: string };
         Returns: boolean;
@@ -838,6 +933,9 @@ export interface Database {
       payment_route: PaymentRoute;
       pack_pricing: PackPricing;
       paypal_environment: PaypalEnvironment;
+      live_status: LiveStatus;
+      live_role: LiveRole;
+      join_state: JoinState;
     };
     CompositeTypes: Record<never, never>;
   };
