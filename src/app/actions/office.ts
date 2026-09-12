@@ -314,7 +314,28 @@ export async function generateCoupons(
     code_prefix: '',
     expires_at: null,
   });
-  if (error || !data) return { ok: false, error: 'saveFailed' };
+  if (error || !data) {
+    // "Enregistrement impossible" told the admin nothing and cost two rounds of
+    // guessing, so the real cause is both logged and — where the code is
+    // unambiguous — said out loud. These three are the ones that actually
+    // happen; anything else stays generic rather than inventing a diagnosis.
+    reportError('coupons.generate', error, { quantity: c.quantity, kind: c.kind });
+
+    const code = error?.code ?? '';
+    if (code === 'PGRST202' || code === '42883') {
+      // PostgREST cannot find the function: the migration was never applied to
+      // this project, or was applied to a different one.
+      return { ok: false, error: 'couponFunctionMissing' };
+    }
+    if (code === '23502') {
+      // A NOT NULL violation inside the generator means the first version of
+      // `admin_generate_coupons` is still installed — the one whose empty
+      // prefix produced a NULL code. The fix migration has not been run here.
+      return { ok: false, error: 'couponFunctionOutdated' };
+    }
+    if (code === '42501') return { ok: false, error: 'notAdmin' };
+    return { ok: false, error: 'saveFailed' };
+  }
 
   revalidatePath('/[locale]/admin/coupons', 'page');
   return { ok: true, codes: data };
