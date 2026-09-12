@@ -499,7 +499,7 @@
       "invalid": "The form is incomplete.",
       "liveStillOpen": "End or cancel the class before deleting it.",
       "noFile": "No file selected.",
-      "notAdmin": "The database does not recognise you as an administrator. Check your account's role in the profiles table.",
+      "notAdmin": "The database does not recognise you as an administrator. Check your account’s role in the profiles table.",
       "notAnImage": "That file is not a valid image (PNG, JPEG or WebP).",
       "partialErasure": "The account was partly erased. Run it again to finish.",
       "percentRequired": "Give the percentage to take off.",
