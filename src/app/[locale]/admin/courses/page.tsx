@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
+import { CourseRowActions } from '@/components/admin/CourseRowActions';
 import { BookOpen } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +44,7 @@ export default async function AdminCoursesPage({
                 course.modules?.reduce((n, m) => n + (m.lessons?.length ?? 0), 0) ?? 0;
 
               return (
-                <li key={course.id} className="flex items-center gap-4 p-4">
+                <li key={course.id} className="flex flex-wrap items-center gap-4 p-4">
                   <span
                     className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
                     aria-hidden="true"
@@ -64,6 +65,7 @@ export default async function AdminCoursesPage({
                   <Badge variant={course.status === 'published' ? 'brand' : 'muted'}>
                     {t(course.status)}
                   </Badge>
+                  <CourseRowActions courseId={course.id} status={course.status} />
                 </li>
               );
             })}

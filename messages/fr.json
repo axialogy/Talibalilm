@@ -504,7 +504,10 @@
       "bonusSameProduct": "Le cours offert doit être différent de celui qui est acheté.",
       "bonusDeliveryMismatch": "Les deux cours doivent être dans le même mode — tous deux en ligne, ou tous deux en présentiel.",
       "studentHasOrders": "Cet étudiant a des commandes. Utilisez plutôt l’effacement, qui retire la personne et conserve la vente.",
-      "studentIsStaff": "Il s’agit d’un compte du personnel, pas d’un étudiant."
+      "studentIsStaff": "Il s’agit d’un compte du personnel, pas d’un étudiant.",
+      "courseSold": "Ce cours a déjà été vendu : il ne peut pas être supprimé. Archivez-le pour le retirer du catalogue tout en conservant les ventes.",
+      "courseInBonus": "Ce cours fait partie d’un bonus. Retirez-le d’abord du bonus, ou archivez le cours.",
+      "courseGranted": "Des étudiants ont accès à ce cours. Archivez-le plutôt — le supprimer effacerait leurs droits."
     },
     "overview": "Vue d’ensemble",
     "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
@@ -734,7 +737,12 @@
     "studentEmailNote": "L’e-mail est l’identifiant et ne se modifie pas ici — l’étudiant peut le changer lui-même, ou réinitialiser son mot de passe depuis la page de connexion.",
     "studentDelete": "Supprimer ce compte",
     "studentDeleteConfirm": "Supprimer définitivement ce compte ? Action irréversible.",
-    "studentHasOrdersNote": "Cet étudiant a des commandes : le compte ne peut pas être supprimé, les ventes seraient orphelines. Utilisez l’effacement ci-dessous pour retirer la personne en conservant les enregistrements."
+    "studentHasOrdersNote": "Cet étudiant a des commandes : le compte ne peut pas être supprimé, les ventes seraient orphelines. Utilisez l’effacement ci-dessous pour retirer la personne en conservant les enregistrements.",
+    "courseEdit": "Modifier ce cours",
+    "courseArchive": "Archiver",
+    "courseUnarchive": "Restaurer",
+    "courseDelete": "Supprimer",
+    "courseDeleteConfirm": "Supprimer ce cours ainsi que tous ses modules et leçons ? Action irréversible. S’il a déjà été vendu, archivez-le plutôt."
   },
   "live": {
     "startRecording": "Enregistrer",

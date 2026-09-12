@@ -504,7 +504,10 @@
       "bonusSameProduct": "The free course must be different from the one they buy.",
       "bonusDeliveryMismatch": "Both courses must be the same mode — both online, or both on site.",
       "studentHasOrders": "This student has orders. Use Erasure instead, which removes the person and keeps the sale.",
-      "studentIsStaff": "That is a staff account, not a student."
+      "studentIsStaff": "That is a staff account, not a student.",
+      "courseSold": "This course has been sold, so it cannot be deleted — archive it instead to take it off the catalogue while keeping the sales.",
+      "courseInBonus": "This course is part of a bonus offer. Remove it from the offer first, or archive the course.",
+      "courseGranted": "Students hold access to this course. Archive it instead — deleting would erase what they are entitled to."
     },
     "overview": "Overview",
     "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
@@ -734,7 +737,12 @@
     "studentEmailNote": "The email is the login and cannot be changed here — the student can change it themselves, or reset their password from the sign-in page.",
     "studentDelete": "Delete this account",
     "studentDeleteConfirm": "Delete this account permanently? This cannot be undone.",
-    "studentHasOrdersNote": "This student has orders, so the account cannot be deleted — the sales would be orphaned. Use Erasure below to remove the person while keeping the records."
+    "studentHasOrdersNote": "This student has orders, so the account cannot be deleted — the sales would be orphaned. Use Erasure below to remove the person while keeping the records.",
+    "courseEdit": "Edit this course",
+    "courseArchive": "Archive",
+    "courseUnarchive": "Bring back",
+    "courseDelete": "Delete",
+    "courseDeleteConfirm": "Delete this course and all its modules and lessons? This cannot be undone. If it has ever been sold, archive it instead."
   },
   "live": {
     "startRecording": "Record",

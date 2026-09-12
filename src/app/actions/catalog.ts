@@ -33,6 +33,80 @@ function refresh() {
 }
 
 // ---------------------------------------------------------------------------
+/**
+ * Remove a course, or refuse and say why.
+ *
+ * Deleting a course is far more destructive than it looks. `products.course_id`
+ * cascades, so its prices go with it; `order_items.product_id` is `on delete
+ * restrict`, so the database would block that the moment anything was ever
+ * sold; and `entitlements.course_id` cascades too, which means a delete that
+ * DID succeed would erase the record of what students are entitled to.
+ *
+ * So this refuses in every case where something would be lost, and names the
+ * reason. Archiving is the answer for a course with history: it leaves the
+ * catalogue without touching a single sale.
+ */
+export async function deleteCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  if (!id.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await client();
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id')
+    .eq('course_id', id.data);
+  const productIds = (products ?? []).map((p) => p.id);
+
+  if (productIds.length > 0) {
+    const [{ count: sold }, { count: inPacks }] = await Promise.all([
+      supabase
+        .from('order_items')
+        .select('id', { count: 'exact', head: true })
+        .in('product_id', productIds),
+      supabase
+        .from('pack_items')
+        .select('product_id', { count: 'exact', head: true })
+        .in('product_id', productIds),
+    ]);
+    if ((sold ?? 0) > 0) return { ok: false, error: 'courseSold' };
+    if ((inPacks ?? 0) > 0) return { ok: false, error: 'courseInBonus' };
+  }
+
+  // Even without a sale, someone may hold a manual grant for it.
+  const { count: granted } = await supabase
+    .from('entitlements')
+    .select('id', { count: 'exact', head: true })
+    .eq('course_id', id.data);
+  if ((granted ?? 0) > 0) return { ok: false, error: 'courseGranted' };
+
+  const { error } = await supabase.from('courses').delete().eq('id', id.data);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/courses', 'page');
+  refresh();
+  return OK;
+}
+
+/** Take a course out of the catalogue while leaving every sale intact. */
+export async function archiveCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z
+    .object({ id: z.string().uuid(), status: z.enum(['archived', 'draft']) })
+    .safeParse({ id: formData.get('id'), status: formData.get('status') ?? 'archived' });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await client();
+  const { error } = await supabase
+    .from('courses')
+    .update({ status: parsed.data.status })
+    .eq('id', parsed.data.id);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/courses', 'page');
+  refresh();
+  return OK;
+}
+
 // Products — the only place a price lives
 // ---------------------------------------------------------------------------
 
