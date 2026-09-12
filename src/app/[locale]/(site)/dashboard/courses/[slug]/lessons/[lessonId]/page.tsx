@@ -123,7 +123,9 @@ export default async function LessonPage({
                     <iframe
                       src={src}
                       title={lesson.title}
-                      className="aspect-video w-full"
+                      // `block` because an iframe is inline by default, which leaves a
+                      // few pixels of descender gap inside the rounded frame on mobile.
+                      className="block aspect-video w-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                       allowFullScreen
                       // The embed is a third party. Denying it our referrer and
