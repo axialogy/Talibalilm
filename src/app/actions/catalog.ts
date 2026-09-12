@@ -212,6 +212,98 @@ export async function deletePack(_prev: AdminState, formData: FormData): Promise
   return OK;
 }
 
+/**
+ * A bonus, from two dropdowns.
+ *
+ * "Buy this, get that free" was already expressible — a pack priced by the sum
+ * of its items, with `pack_items.is_free` on the giveaway — but saying it meant
+ * inventing a slug, a title, a delivery mode and a pricing rule, then adding two
+ * items by hand on a second screen. Four chances to get it wrong for an offer
+ * the teacher thinks of as one sentence.
+ *
+ * So this takes the sentence: the product they pay for, and the one they
+ * receive. Everything else is derived. The slug is random rather than built
+ * from the titles, because renaming a course must not orphan a live offer.
+ */
+export async function saveBonus(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z
+    .object({
+      id: z.string().uuid().optional(),
+      buy_product_id: z.string().uuid(),
+      free_product_id: z.string().uuid(),
+      status: z.enum(['draft', 'published', 'archived']).default('published'),
+      max_redemptions: z.coerce.number().int().min(1).max(100_000).nullable().default(null),
+    })
+    .safeParse({
+      id: (formData.get('id') as string) || undefined,
+      buy_product_id: formData.get('buy_product_id'),
+      free_product_id: formData.get('free_product_id'),
+      status: formData.get('status') ?? 'published',
+      max_redemptions: String(formData.get('max_redemptions') ?? '').trim() || null,
+    });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const { id, buy_product_id, free_product_id, status, max_redemptions } = parsed.data;
+  if (buy_product_id === free_product_id) return { ok: false, error: 'bonusSameProduct' };
+
+  const supabase = await client();
+
+  // Both halves must be the same mode. An on-site purchase that hands back an
+  // online course is almost certainly a mis-click, and the basket could not
+  // price it anyway — a pack carries one delivery.
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, delivery, course_id, cursus_id, courses ( title ), cursus ( title )')
+    .in('id', [buy_product_id, free_product_id]);
+
+  const buy = products?.find((p) => p.id === buy_product_id);
+  const gift = products?.find((p) => p.id === free_product_id);
+  if (!buy || !gift) return { ok: false, error: 'invalid' };
+  if (buy.delivery !== gift.delivery) return { ok: false, error: 'bonusDeliveryMismatch' };
+
+  const name = (p: typeof buy) => p.courses?.title ?? p.cursus?.title ?? '';
+  const title = `${name(buy)} + ${name(gift)}`.slice(0, 200);
+
+  const row = {
+    title,
+    delivery: buy.delivery,
+    // The student pays for what they bought and nothing for the gift, so the
+    // total is the sum of the items — the free one contributing zero.
+    pricing: 'sum' as const,
+    price_cents: null,
+    percent_off: null,
+    status,
+    max_redemptions,
+  };
+
+  let packId = id;
+  if (packId) {
+    const { error } = await supabase.from('packs').update(row).eq('id', packId);
+    if (error) return { ok: false, error: 'saveFailed' };
+    // Replace the items rather than diffing: a bonus is exactly two.
+    await supabase.from('pack_items').delete().eq('pack_id', packId);
+  } else {
+    const slug = `bonus-${Math.random().toString(36).slice(2, 10)}`;
+    const { data: created, error } = await supabase
+      .from('packs')
+      .insert({ ...row, slug })
+      .select('id')
+      .single();
+    if (error || !created) return { ok: false, error: 'saveFailed' };
+    packId = created.id;
+  }
+
+  const { error: itemsError } = await supabase.from('pack_items').insert([
+    { pack_id: packId, product_id: buy_product_id, is_free: false, position: 0 },
+    { pack_id: packId, product_id: free_product_id, is_free: true, position: 1 },
+  ]);
+  if (itemsError) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/coupons', 'page');
+  refresh();
+  return OK;
+}
+
 export async function togglePackItem(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const parsed = z
     .object({

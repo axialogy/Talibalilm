@@ -500,7 +500,9 @@
       "tooLarge": "The image is over 5 MB.",
       "notAnImage": "That file is not a valid image (PNG, JPEG or WebP).",
       "uploadFailed": "The upload failed. Try again.",
-      "liveStillOpen": "End or cancel the class before deleting it."
+      "liveStillOpen": "End or cancel the class before deleting it.",
+      "bonusSameProduct": "The free course must be different from the one they buy.",
+      "bonusDeliveryMismatch": "Both courses must be the same mode — both online, or both on site."
     },
     "overview": "Overview",
     "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
@@ -550,7 +552,7 @@
     "gateThenReload": "Sign out, sign back in, then reload this page.",
     "navOrders": "Orders",
     "navStudents": "Students",
-    "navCoupons": "Coupons",
+    "navCoupons": "Promo codes & bonuses",
     "ordersTitle": "Orders",
     "ordersLead": "Every payment, online or at the desk. Click an order for its detail.",
     "ordersEmpty": "No orders yet.",
@@ -697,7 +699,17 @@
     "feeAdd": "Add the price",
     "feeRemove": "Remove this price",
     "feeHint": "Access lasts 365 days and the price goes live immediately. Both can be changed afterwards.",
-    "cursusNoneYet": "No programme created yet. Create one under Cursus first."
+    "cursusNoneYet": "No programme created yet. Create one under Cursus first.",
+    "promoTitle": "Promo codes & bonuses",
+    "promoLead": "Percentage codes for a campaign, cash codes for the front desk, and \"buy one get one\" bonuses.",
+    "bonusTitle": "Bonuses",
+    "bonusLead": "Pick what they pay for and what they receive with it. Everything else is worked out for you.",
+    "bonusIfBuys": "If a student buys",
+    "bonusThenGets": "they also get, free:",
+    "bonusAdd": "Add the bonus",
+    "bonusDelete": "Delete this bonus",
+    "bonusDeleteConfirm": "Delete this bonus? Students who already claimed it keep what they received.",
+    "bonusNeedsProducts": "Publish a price on at least two courses first — a bonus needs something to buy and something to give."
   },
   "live": {
     "startRecording": "Record",

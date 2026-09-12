@@ -2,10 +2,12 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
 import { Badge } from '@/components/ui/badge';
 import { CouponGenerator } from '@/components/admin/CouponGenerator';
+import { BonusEditor, type BonusRow, type ProductChoice } from '@/components/admin/BonusEditor';
 import { ExportCsvButton, VoidCouponButton, type CsvRow } from '@/components/admin/CouponActions';
 import { formatPrice } from '@/lib/commerce/quote';
 import { couponBatches, listCoupons } from '@/lib/data/admin';
 import { requireAdmin } from '@/lib/auth/guards';
+import { createClient } from '@/lib/supabase/server';
 
 /** Cash codes for the front desk: generate, track, export, void. Admin only. */
 export default async function AdminCouponsPage({
@@ -22,7 +24,42 @@ export default async function AdminCouponsPage({
   await requireAdmin();
   const t = await getTranslations('admin');
 
-  const [coupons, batches] = await Promise.all([listCoupons(batch), couponBatches()]);
+  const supabase = await createClient();
+  const [coupons, batches, { data: productRows }, { data: packRows }] = await Promise.all([
+    listCoupons(batch),
+    couponBatches(),
+    supabase
+      .from('products')
+      .select('id, delivery, price_cents, courses ( title ), cursus ( title )')
+      .eq('status', 'published')
+      .order('display_order'),
+    supabase
+      .from('packs')
+      .select('id, title, status, max_redemptions, redeemed_count, pack_items ( product_id, is_free )')
+      .order('display_order'),
+  ]);
+
+  const products: ProductChoice[] = (productRows ?? []).map((p) => ({
+    id: p.id,
+    delivery: p.delivery,
+    label: `${p.courses?.title ?? p.cursus?.title ?? ''} — ${
+      p.delivery === 'online' ? t('deliveryOnline') : t('deliveryPresentiel')
+    }`,
+  }));
+
+  // A bonus is a pack carrying exactly one free item; anything else on this
+  // table is a bundle built on the Offers screen and is left alone here.
+  const bonuses: BonusRow[] = (packRows ?? [])
+    .filter((p) => (p.pack_items ?? []).some((i) => i.is_free))
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      buyProductId: (p.pack_items ?? []).find((i) => !i.is_free)?.product_id ?? null,
+      freeProductId: (p.pack_items ?? []).find((i) => i.is_free)?.product_id ?? null,
+      maxRedemptions: p.max_redemptions,
+      redeemedCount: p.redeemed_count,
+    }));
 
   const discount = (c: (typeof coupons)[number]) =>
     c.percentOff !== null ? `${c.percentOff}%` : formatPrice(c.amountOffCents ?? 0, locale);
@@ -39,10 +76,18 @@ export default async function AdminCouponsPage({
   return (
     <div>
       <BackLink href="/admin" label={t('navOverview')} />
-      <h1 className="font-display text-2xl font-semibold text-ink">{t('couponsTitle')}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-muted">{t('couponsLead')}</p>
+      <h1 className="font-display text-2xl font-semibold text-ink">{t('promoTitle')}</h1>
+      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-muted">{t('promoLead')}</p>
 
       <section className="mt-8">
+        <h2 className="font-display text-[15px] font-semibold text-ink">{t('bonusTitle')}</h2>
+        <p className="mt-1 mb-3 max-w-2xl text-[12px] leading-relaxed text-ink-muted">
+          {t('bonusLead')}
+        </p>
+        <BonusEditor products={products} bonuses={bonuses} />
+      </section>
+
+      <section className="mt-10">
         <h2 className="font-display text-[15px] font-semibold text-ink">{t('generateTitle')}</h2>
         <div className="mt-3">
           <CouponGenerator />

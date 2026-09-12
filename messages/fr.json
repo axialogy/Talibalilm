@@ -500,7 +500,9 @@
       "tooLarge": "L’image dépasse 5 Mo.",
       "notAnImage": "Ce fichier n’est pas une image valide (PNG, JPEG ou WebP).",
       "uploadFailed": "L’envoi a échoué. Réessayez.",
-      "liveStillOpen": "Terminez ou annulez la séance avant de la supprimer."
+      "liveStillOpen": "Terminez ou annulez la séance avant de la supprimer.",
+      "bonusSameProduct": "Le cours offert doit être différent de celui qui est acheté.",
+      "bonusDeliveryMismatch": "Les deux cours doivent être dans le même mode — tous deux en ligne, ou tous deux en présentiel."
     },
     "overview": "Vue d’ensemble",
     "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
@@ -550,7 +552,7 @@
     "gateThenReload": "Déconnectez-vous, reconnectez-vous, puis rechargez cette page.",
     "navOrders": "Commandes",
     "navStudents": "Étudiants",
-    "navCoupons": "Codes promo",
+    "navCoupons": "Codes promo & bonus",
     "ordersTitle": "Commandes",
     "ordersLead": "Chaque paiement, en ligne ou à l’accueil. Cliquez une commande pour son détail.",
     "ordersEmpty": "Aucune commande pour l’instant.",
@@ -697,7 +699,17 @@
     "feeAdd": "Ajouter le tarif",
     "feeRemove": "Supprimer ce tarif",
     "feeHint": "L’accès dure 365 jours et le tarif est publié immédiatement. Les deux restent modifiables.",
-    "cursusNoneYet": "Aucun cursus créé pour l’instant. Créez-en un dans Cursus d’abord."
+    "cursusNoneYet": "Aucun cursus créé pour l’instant. Créez-en un dans Cursus d’abord.",
+    "promoTitle": "Codes promo & bonus",
+    "promoLead": "Codes en pourcentage pour une campagne, codes de caisse pour le bureau, et bonus « un acheté, un offert ».",
+    "bonusTitle": "Bonus",
+    "bonusLead": "Choisissez ce qu’il paie et ce qu’il reçoit avec. Le reste est déduit automatiquement.",
+    "bonusIfBuys": "Si un étudiant achète",
+    "bonusThenGets": "il reçoit aussi, gratuitement :",
+    "bonusAdd": "Ajouter le bonus",
+    "bonusDelete": "Supprimer ce bonus",
+    "bonusDeleteConfirm": "Supprimer ce bonus ? Les étudiants qui en ont déjà profité gardent ce qu’ils ont reçu.",
+    "bonusNeedsProducts": "Publiez d’abord un tarif sur au moins deux cours — un bonus a besoin de quelque chose à acheter et de quelque chose à offrir."
   },
   "live": {
     "startRecording": "Enregistrer",
