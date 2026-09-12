@@ -26,23 +26,14 @@ export function CursusForm({ cursus }: { cursus?: CursusView }) {
   const [state, action] = useActionState(saveCursus, EMPTY);
 
   return (
-    <form action={action} className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5">
+    <form
+      action={action}
+      className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
+    >
       {cursus && <input type="hidden" name="id" value={cursus.id} />}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={t('courseTitle')} name="title" defaultValue={cursus?.title ?? ''} required />
-        <Field
-          label={t('slug')}
-          name="slug"
-          defaultValue={cursus?.slug ?? ''}
-          required
-          error={
-            state.error === 'slugTaken' || state.error === 'slugShape'
-              ? t(`errors.${state.error}` as 'errors.slugTaken')
-              : undefined
-          }
-        />
-
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('cursusKind')}</span>
           <select

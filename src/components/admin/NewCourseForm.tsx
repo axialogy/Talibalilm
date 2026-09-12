@@ -14,12 +14,11 @@ export function NewCourseForm() {
 
   return (
     <form action={action} className="mt-4 space-y-3">
+      {/* The title is the only decision: the URL is derived from it server-side. */}
       <Field label={t('courseTitle')} name="title" required />
-      {/* Left blank, the slug is derived from the title server-side. */}
-      <Field label={t('slug')} name="slug" placeholder="fiqh-al-ibadat" />
       {state.error && (
         <p role="alert" className="text-[11px] text-red-600">
-          {state.error === 'duplicate' ? `${t('slug')} — déjà utilisé` : t('save')}
+          {t(`errors.${state.error}` as 'errors.saveFailed')}
         </p>
       )}
       <SubmitButton size="md">{t('newCourse')}</SubmitButton>

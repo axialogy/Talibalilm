@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import { BackLink } from '@/components/admin/BackLink';
 import { setProgrammeEntry } from '@/app/actions/catalog';
 import { CursusForm } from '@/components/admin/CursusForm';
+import { CursusDeleteButton } from '@/components/admin/CursusDeleteButton';
 import { CursusTariff, type CursusPrice } from '@/components/admin/CursusTariff';
 import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/tabs';
@@ -24,11 +25,7 @@ const MODES: DeliveryMode[] = ['presentiel', 'online'];
  * away from the thing it belonged to, and the same figures readable in two
  * places that could disagree.
  */
-export default async function AdminCursusPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default async function AdminCursusPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
@@ -41,10 +38,7 @@ export default async function AdminCursusPage({
         .from('cursus')
         .select('id, slug, kind, title, subtitle, description, year_count, status, display_order')
         .order('display_order'),
-      supabase
-        .from('courses')
-        .select('id, title')
-        .order('display_order'),
+      supabase.from('courses').select('id, title').order('display_order'),
       supabase.from('cursus_courses').select('cursus_id, course_id, delivery, year_index'),
       supabase
         .from('products')
@@ -180,10 +174,13 @@ export default async function AdminCursusPage({
           )}
 
           <section>
-            <h3 className="font-display text-[15px] font-semibold text-ink">{t('cursusDetails')}</h3>
+            <h3 className="font-display text-[15px] font-semibold text-ink">
+              {t('cursusDetails')}
+            </h3>
             <div className="mt-3">
               <CursusForm cursus={option} />
             </div>
+            <CursusDeleteButton cursusId={option.id} />
           </section>
         </div>
       ),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalisePrefix, slugifyBatch } from '@/lib/commerce/batch';
+import { slugifyBatch } from '@/lib/commerce/batch';
 
 describe('slugifyBatch', () => {
   it('accepts what the office actually types', () => {
@@ -27,22 +27,5 @@ describe('slugifyBatch', () => {
     const long = slugifyBatch('a'.repeat(80));
     expect(long.length).toBeLessThanOrEqual(60);
     expect(long.endsWith('-')).toBe(false);
-  });
-});
-
-describe('normalisePrefix', () => {
-  it('upper-cases what the desk types', () => {
-    expect(normalisePrefix('pay')).toBe('PAY');
-    expect(normalisePrefix('caisse')).toBe('CAISSE');
-  });
-
-  it('drops anything the coupon code shape would refuse', () => {
-    expect(normalisePrefix('pay-2026!')).toBe('PAY2026');
-    expect(normalisePrefix('Été')).toBe('ETE');
-    expect(normalisePrefix('  ')).toBe('');
-  });
-
-  it('caps the length so the generated code still fits', () => {
-    expect(normalisePrefix('A'.repeat(40)).length).toBe(12);
   });
 });

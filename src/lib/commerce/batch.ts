@@ -1,5 +1,5 @@
 /**
- * Tidy what the office types into a batch name and a code prefix.
+ * Tidy what the office types into a batch name.
  *
  * These used to be validated with a regex and rejected. Someone naming a batch
  * "October 2026" — the obvious thing to type — got a red sentence next to the
@@ -29,16 +29,4 @@ export function slugifyBatch(input: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
     .replace(/-+$/, '');
-}
-
-/**
- * A code prefix. Upper-case and alphanumeric, because it is glued to the front
- * of a coupon code that the `coupons_code_shape` constraint requires to be
- * `[A-Z0-9-]{6,32}` — and because the front desk reads these aloud.
- */
-export function normalisePrefix(input: string): string {
-  return deaccent(input)
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '')
-    .slice(0, 12);
 }

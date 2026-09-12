@@ -6,6 +6,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin, requireStaff } from '@/lib/auth/guards';
 import type { AdminState } from '@/app/actions/admin';
+import { pickFreeSlug, slugify } from '@/lib/content/slug';
 
 /**
  * Price list, offers and programme.
@@ -52,10 +53,7 @@ export async function deleteCourse(_prev: AdminState, formData: FormData): Promi
 
   const supabase = await client();
 
-  const { data: products } = await supabase
-    .from('products')
-    .select('id')
-    .eq('course_id', id.data);
+  const { data: products } = await supabase.from('products').select('id').eq('course_id', id.data);
   const productIds = (products ?? []).map((p) => p.id);
 
   if (productIds.length > 0) {
@@ -84,6 +82,54 @@ export async function deleteCourse(_prev: AdminState, formData: FormData): Promi
   if (error) return { ok: false, error: 'saveFailed' };
 
   revalidatePath('/[locale]/admin/courses', 'page');
+  refresh();
+  return OK;
+}
+
+/**
+ * Remove a cursus.
+ *
+ * Every foreign key pointing at a cursus cascades — its programme rows, its
+ * products, and, crucially, the entitlements students hold for it. A plain
+ * DELETE would therefore take paid access away without a word, so the same
+ * pre-checks as a course apply: anything sold, offered as a bonus, or granted
+ * by hand blocks the delete and the admin is told which, in words. Archiving
+ * from the form is the way to retire one that has history.
+ */
+export async function deleteCursus(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  if (!id.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await client();
+
+  const { data: products } = await supabase.from('products').select('id').eq('cursus_id', id.data);
+  const productIds = (products ?? []).map((p) => p.id);
+
+  if (productIds.length > 0) {
+    const [{ count: sold }, { count: inPacks }] = await Promise.all([
+      supabase
+        .from('order_items')
+        .select('id', { count: 'exact', head: true })
+        .in('product_id', productIds),
+      supabase
+        .from('pack_items')
+        .select('product_id', { count: 'exact', head: true })
+        .in('product_id', productIds),
+    ]);
+    if ((sold ?? 0) > 0) return { ok: false, error: 'cursusSold' };
+    if ((inPacks ?? 0) > 0) return { ok: false, error: 'cursusInBonus' };
+  }
+
+  const { count: granted } = await supabase
+    .from('entitlements')
+    .select('id', { count: 'exact', head: true })
+    .eq('cursus_id', id.data);
+  if ((granted ?? 0) > 0) return { ok: false, error: 'cursusGranted' };
+
+  const { error } = await supabase.from('cursus').delete().eq('id', id.data);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/cursus', 'page');
   refresh();
   return OK;
 }
@@ -166,7 +212,8 @@ function readProduct(formData: FormData) {
       schedule_label: formData.get('schedule_label') ?? '',
       hours_per_year: hoursYear === '' ? null : hoursYear,
       // Tenths of an hour.
-      hours_per_week: hoursWeek === '' ? null : Math.round(Number(hoursWeek.replace(',', '.')) * 10),
+      hours_per_week:
+        hoursWeek === '' ? null : Math.round(Number(hoursWeek.replace(',', '.')) * 10),
       language: formData.get('language') ?? 'fr',
       price_cents: priceCents ?? -1,
       duration_days: formData.get('duration_days') || 365,
@@ -217,64 +264,13 @@ export async function deleteProduct(_prev: AdminState, formData: FormData): Prom
 }
 
 // ---------------------------------------------------------------------------
-// Packs — the school's offers
+// Bonuses
+//
+// A bonus is a `packs` row carrying exactly one paid item and one free one.
+// The general-purpose Offers screen that used to write arbitrary packs is gone
+// — the school only ever sells "buy this, get that" — so the only writer left
+// is `saveBonus`, which builds that shape and nothing else.
 // ---------------------------------------------------------------------------
-
-const packSchema = z.object({
-  id: z.string().uuid().optional(),
-  slug: z
-    .string()
-    .min(2)
-    .max(60)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'slugShape'),
-  title: z.string().min(2).max(200),
-  description: z.string().max(2000).default(''),
-  delivery: z.enum(['presentiel', 'online']),
-  pricing: z.enum(['sum', 'fixed', 'percent']).default('sum'),
-  percent_off: z.coerce.number().int().min(1).max(100).nullable().default(null),
-  status: z.enum(['draft', 'published', 'archived']).default('draft'),
-  max_redemptions: z.coerce.number().int().min(1).max(100_000).nullable().default(null),
-  display_order: z.coerce.number().int().min(0).max(9999).default(0),
-});
-
-export async function savePack(_prev: AdminState, formData: FormData): Promise<AdminState> {
-  const pricing = String(formData.get('pricing') ?? 'sum');
-  const rawPrice = String(formData.get('price') ?? '').trim();
-  const priceCents = rawPrice === '' ? null : toCents(rawPrice);
-  if (pricing === 'fixed' && priceCents === null) return { ok: false, error: 'priceInvalid' };
-
-  const percent = String(formData.get('percent_off') ?? '').trim();
-  const parsed = packSchema.safeParse({
-    id: (formData.get('id') as string) || undefined,
-    slug: formData.get('slug'),
-    title: formData.get('title'),
-    description: formData.get('description') ?? '',
-    delivery: formData.get('delivery'),
-    pricing,
-    percent_off: percent === '' ? null : percent,
-    status: formData.get('status') ?? 'draft',
-    max_redemptions: String(formData.get('max_redemptions') ?? '').trim() || null,
-    display_order: formData.get('display_order') || 0,
-  });
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'invalid' };
-  if (parsed.data.pricing === 'percent' && parsed.data.percent_off === null) {
-    return { ok: false, error: 'percentRequired' };
-  }
-
-  const supabase = await client();
-  const { id, ...row } = parsed.data;
-  const payload = { ...row, price_cents: pricing === 'fixed' ? priceCents : null };
-
-  const { error } = id
-    ? await supabase.from('packs').update(payload).eq('id', id)
-    : await supabase.from('packs').insert(payload);
-
-  if (error) return { ok: false, error: error.code === '23505' ? 'slugTaken' : 'saveFailed' };
-
-  revalidatePath('/[locale]/admin/packs', 'page');
-  refresh();
-  return OK;
-}
 
 export async function deletePack(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const id = z.string().uuid().safeParse(formData.get('id'));
@@ -282,7 +278,7 @@ export async function deletePack(_prev: AdminState, formData: FormData): Promise
 
   const supabase = await client();
   await supabase.from('packs').delete().eq('id', id.data);
-  revalidatePath('/[locale]/admin/packs', 'page');
+  revalidatePath('/[locale]/admin/coupons', 'page');
   refresh();
   return OK;
 }
@@ -379,40 +375,6 @@ export async function saveBonus(_prev: AdminState, formData: FormData): Promise<
   return OK;
 }
 
-export async function togglePackItem(_prev: AdminState, formData: FormData): Promise<AdminState> {
-  const parsed = z
-    .object({
-      pack_id: z.string().uuid(),
-      product_id: z.string().uuid(),
-      // 'remove' takes the product out; 'paid' and 'free' put it in.
-      mode: z.enum(['remove', 'paid', 'free']),
-    })
-    .safeParse({
-      pack_id: formData.get('pack_id'),
-      product_id: formData.get('product_id'),
-      mode: formData.get('mode'),
-    });
-  if (!parsed.success) return { ok: false, error: 'invalid' };
-
-  const supabase = await client();
-  const { pack_id, product_id, mode } = parsed.data;
-
-  if (mode === 'remove') {
-    await supabase.from('pack_items').delete().eq('pack_id', pack_id).eq('product_id', product_id);
-  } else {
-    await supabase
-      .from('pack_items')
-      .upsert(
-        { pack_id, product_id, is_free: mode === 'free' },
-        { onConflict: 'pack_id,product_id' },
-      );
-  }
-
-  revalidatePath('/[locale]/admin/packs', 'page');
-  refresh();
-  return OK;
-}
-
 // ---------------------------------------------------------------------------
 // The programme — which modules a cursus covers, in which year and mode
 // ---------------------------------------------------------------------------
@@ -471,11 +433,6 @@ export async function setProgrammeEntry(formData: FormData): Promise<void> {
 
 const cursusSchema = z.object({
   id: z.string().uuid().optional(),
-  slug: z
-    .string()
-    .min(2)
-    .max(60)
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'slugShape'),
   kind: z.enum(['module', 'approfondi']),
   title: z.string().min(2).max(200),
   subtitle: z.string().max(300).default(''),
@@ -488,7 +445,6 @@ const cursusSchema = z.object({
 export async function saveCursus(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const parsed = cursusSchema.safeParse({
     id: (formData.get('id') as string) || undefined,
-    slug: formData.get('slug'),
     kind: formData.get('kind'),
     title: formData.get('title'),
     subtitle: formData.get('subtitle') ?? '',
@@ -501,9 +457,25 @@ export async function saveCursus(_prev: AdminState, formData: FormData): Promise
 
   const supabase = await client();
   const { id, ...row } = parsed.data;
-  const { error } = id
-    ? await supabase.from('cursus').update(row).eq('id', id)
-    : await supabase.from('cursus').insert(row);
+
+  let error;
+  if (id) {
+    // The address is settled when the cursus is created and kept afterwards,
+    // so renaming it does not break the links students already hold.
+    ({ error } = await supabase.from('cursus').update(row).eq('id', id));
+  } else {
+    const base = slugify(row.title, 52);
+    const { data: siblings } = await supabase
+      .from('cursus')
+      .select('slug')
+      .like('slug', `${base || 'cursus'}%`);
+    const slug = pickFreeSlug(
+      base,
+      (siblings ?? []).map((r) => r.slug),
+      'cursus',
+    );
+    ({ error } = await supabase.from('cursus').insert({ ...row, slug }));
+  }
 
   if (error) return { ok: false, error: error.code === '23505' ? 'slugTaken' : 'saveFailed' };
 

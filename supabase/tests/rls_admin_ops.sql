@@ -176,6 +176,43 @@ begin
   reset role;
 end $$;
 
+-- --- the prefix is genuinely optional --------------------------------------
+--
+-- The first version built the code with `nullif(prefix, '') || ...`, so with
+-- no prefix the whole concatenation was NULL, the `length(new_code) < 6` guard
+-- evaluated to NULL instead of true, and a NULL code reached the INSERT. The
+-- resulting not_null_violation is not a unique_violation, so it escaped the
+-- retry handler and surfaced to the admin as a bare save failure.
+
+do $$
+declare codes text[];
+begin
+  raise notice 'generating codes with no prefix at all';
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+
+  select array_agg(c) into codes
+    from public.admin_generate_coupons(5, 20, null, 1, false, 'no-prefix', '', null) c;
+  perform public.assert(array_length(codes, 1) = 5,
+    'five codes generated with an empty prefix');
+  perform public.assert(
+    (select bool_and(c is not null and c ~ '^[A-Z0-9]{6,32}$') from unnest(codes) c),
+    'each is a real code, not NULL, and carries no stray separator');
+
+  -- NULL is what the client sends when the field is absent entirely.
+  select array_agg(c) into codes
+    from public.admin_generate_coupons(3, 20, null, 1, false, 'null-prefix', null, null) c;
+  perform public.assert(array_length(codes, 1) = 3,
+    'and a NULL prefix behaves the same as an empty one');
+
+  -- A prefix still works, for the cash desk batches that rely on it.
+  select array_agg(c) into codes
+    from public.admin_generate_coupons(3, 20, null, 1, true, 'kept-prefix', 'CAISSE', null) c;
+  perform public.assert(
+    (select bool_and(c like 'CAISSE-%') from unnest(codes) c),
+    'a prefix given is still honoured');
+  reset role;
+end $$;
+
 -- --- voiding a coupon ------------------------------------------------------
 
 do $$

@@ -4,7 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
-  CreditCard,
+  Gift,
   GraduationCap,
   Receipt,
   Tag,
@@ -75,17 +75,47 @@ export default async function AdminOverviewPage({
   // matching the RPC that would refuse an instructor anyway.
   const actions = [
     { key: 'qaOrders', desc: 'qaOrdersDesc', icon: Receipt, href: '/admin/orders', admin: false },
-    { key: 'qaCourses', desc: 'qaCoursesDesc', icon: BookOpen, href: '/admin/courses', admin: false },
+    {
+      key: 'qaCourses',
+      desc: 'qaCoursesDesc',
+      icon: BookOpen,
+      href: '/admin/courses',
+      admin: false,
+    },
     { key: 'qaPricing', desc: 'qaPricingDesc', icon: Tag, href: '/admin/courses', admin: false },
     { key: 'qaCoupons', desc: 'qaCouponsDesc', icon: Ticket, href: '/admin/coupons', admin: true },
   ].filter((a) => !a.admin || isAdmin);
 
   const stats = [
-    { key: 'statCourses', value: `${publishedCourses ?? 0}/${courses}`, hint: 'statFraction', icon: BookOpen, href: '/admin/courses' },
-    { key: 'statPrices', value: `${livePrices ?? 0}/${products}`, hint: 'statFraction', icon: Tag, href: '/admin/courses' },
-    { key: 'statPacks', value: String(packs), hint: null, icon: CreditCard, href: '/admin/packs' },
-    { key: 'statCursus', value: String(cursus), hint: null, icon: GraduationCap, href: '/admin/cursus' },
-    { key: 'statStudents', value: String(students), hint: null, icon: Users, href: '/admin/students' },
+    {
+      key: 'statCourses',
+      value: `${publishedCourses ?? 0}/${courses}`,
+      hint: 'statFraction',
+      icon: BookOpen,
+      href: '/admin/courses',
+    },
+    {
+      key: 'statPrices',
+      value: `${livePrices ?? 0}/${products}`,
+      hint: 'statFraction',
+      icon: Tag,
+      href: '/admin/courses',
+    },
+    { key: 'statPacks', value: String(packs), hint: null, icon: Gift, href: '/admin/coupons' },
+    {
+      key: 'statCursus',
+      value: String(cursus),
+      hint: null,
+      icon: GraduationCap,
+      href: '/admin/cursus',
+    },
+    {
+      key: 'statStudents',
+      value: String(students),
+      hint: null,
+      icon: Users,
+      href: '/admin/students',
+    },
   ] as const;
 
   // What still stands between this and a working shop.
@@ -121,7 +151,10 @@ export default async function AdminOverviewPage({
                 </span>
                 <span className="mt-3 flex items-center gap-1 font-medium text-ink">
                   {t(key)}
-                  <ArrowRight className="size-3.5 text-brand-500 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+                  <ArrowRight
+                    className="size-3.5 text-brand-500 opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-hidden="true"
+                  />
                 </span>
                 <span className="mt-0.5 text-[12px] leading-relaxed text-ink-muted">{t(desc)}</span>
               </Link>
@@ -175,7 +208,11 @@ export default async function AdminOverviewPage({
                 )}
                 <span className="flex-1 text-[13px] text-ink">{t(key)}</span>
                 <span
-                  className={done ? 'text-[11px] font-medium text-brand-600' : 'text-[11px] font-medium text-gold-700'}
+                  className={
+                    done
+                      ? 'text-[11px] font-medium text-brand-600'
+                      : 'text-[11px] font-medium text-gold-700'
+                  }
                 >
                   {done ? t('checkDone') : t('checkTodo')}
                 </span>

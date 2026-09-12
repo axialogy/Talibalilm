@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireStaff } from '@/lib/auth/guards';
+import { pickFreeSlug, slugify } from '@/lib/content/slug';
 
 /**
  * Course-builder mutations.
@@ -23,16 +24,6 @@ export interface AdminState {
 
 const OK: AdminState = { ok: true };
 
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 80);
-}
-
 async function client() {
   if (!supabaseConfigured) throw new Error('unavailable');
   await requireStaff();
@@ -42,7 +33,6 @@ async function client() {
 const courseSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().min(2).max(200),
-  slug: z.string().min(2).max(80).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
   subtitle: z.string().max(300).default(''),
   description: z.string().max(8000).default(''),
   title_ar: z.string().max(200).default(''),
@@ -56,16 +46,25 @@ const courseSchema = z.object({
 
 export async function createCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const title = String(formData.get('title') ?? '');
-  const parsed = courseSchema.safeParse({
-    title,
-    slug: String(formData.get('slug') || slugify(title)),
-  });
+  const parsed = courseSchema.safeParse({ title });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await client();
+  // The address is derived from the title, here, once. Two courses may share a
+  // title, so the free one in the series is taken rather than failing the save.
+  const base = slugify(parsed.data.title, 72);
+  const { data: siblings } = await supabase
+    .from('courses')
+    .select('slug')
+    .like('slug', `${base || 'cours'}%`);
+  const slug = pickFreeSlug(
+    base,
+    (siblings ?? []).map((r) => r.slug),
+  );
+
   const { data, error } = await supabase
     .from('courses')
-    .insert({ title: parsed.data.title, slug: parsed.data.slug })
+    .insert({ title: parsed.data.title, slug })
     .select('id')
     .single();
 
@@ -79,6 +78,8 @@ export async function updateCourse(_prev: AdminState, formData: FormData): Promi
   const parsed = courseSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success || !parsed.data.id) return { ok: false, error: 'invalid' };
 
+  // `slug` is deliberately absent from the schema: the address is settled at
+  // creation and kept, so renaming a course does not break the links to it.
   const { id, ...fields } = parsed.data;
   const supabase = await client();
   const { error } = await supabase.from('courses').update(fields).eq('id', id);

@@ -34,11 +34,13 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
   const [state, action] = useActionState(updateCourse, EMPTY);
 
   return (
-    <form action={action} className="space-y-3 rounded-[var(--radius-card)] border border-line bg-white p-5">
+    <form
+      action={action}
+      className="space-y-3 rounded-[var(--radius-card)] border border-line bg-white p-5"
+    >
       <input type="hidden" name="id" value={course.id} />
 
       <Field label={t('courseTitle')} name="title" defaultValue={course.title} required />
-      <Field label={t('slug')} name="slug" defaultValue={course.slug} required />
       <Field label={t('titleAr')} name="title_ar" defaultValue={course.title_ar} dir="rtl" />
       <Field label={t('subtitle')} name="subtitle" defaultValue={course.subtitle} />
 
@@ -53,9 +55,24 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Select label={tc('filterSubject')} name="category" value={course.category} options={CATEGORIES.map((c) => [c, tc(`category.${c}`)])} />
-        <Select label={tc('filterLevel')} name="level" value={course.level} options={LEVELS.map((l) => [l, tc(`level.${l}`)])} />
-        <Select label={tc('detail.facts.format')} name="format" value={course.format} options={FORMATS.map((f) => [f, tc(`format.${f}`)])} />
+        <Select
+          label={tc('filterSubject')}
+          name="category"
+          value={course.category}
+          options={CATEGORIES.map((c) => [c, tc(`category.${c}`)])}
+        />
+        <Select
+          label={tc('filterLevel')}
+          name="level"
+          value={course.level}
+          options={LEVELS.map((l) => [l, tc(`level.${l}`)])}
+        />
+        <Select
+          label={tc('detail.facts.format')}
+          name="format"
+          value={course.format}
+          options={FORMATS.map((f) => [f, tc(`format.${f}`)])}
+        />
         <Select label="Ton" name="tone" value={course.tone} options={TONES.map((x) => [x, x])} />
       </div>
 
@@ -70,7 +87,7 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
 
       {state.error && (
         <p role="alert" className="text-[11px] text-red-600">
-          {state.error === 'duplicate' ? `${t('slug')} — déjà utilisé` : state.error}
+          {t(`errors.${state.error}` as 'errors.saveFailed')}
         </p>
       )}
       {state.ok && !state.error && (

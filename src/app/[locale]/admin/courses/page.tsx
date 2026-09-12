@@ -21,7 +21,7 @@ export default async function AdminCoursesPage({
 
   const { data: courses } = await supabase
     .from('courses')
-    .select('id, slug, title, status, display_order, modules(id, lessons(id))')
+    .select('id, title, status, display_order, modules(id, lessons(id))')
     .order('display_order', { ascending: true });
 
   const rows = courses ?? [];
@@ -44,7 +44,13 @@ export default async function AdminCoursesPage({
                 course.modules?.reduce((n, m) => n + (m.lessons?.length ?? 0), 0) ?? 0;
 
               return (
-                <li key={course.id} className="flex flex-wrap items-center gap-4 p-4">
+                // The whole row opens the course: the title link stretches over
+                // it with a pseudo-element, so there is still exactly one link
+                // to tab to and the buttons on the right stay clickable above it.
+                <li
+                  key={course.id}
+                  className="relative flex flex-wrap items-center gap-4 p-4 transition-colors hover:bg-brand-50/40 focus-within:bg-brand-50/40 focus-within:ring-2 focus-within:ring-brand-300 focus-within:ring-inset"
+                >
                   <span
                     className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
                     aria-hidden="true"
@@ -54,18 +60,20 @@ export default async function AdminCoursesPage({
                   <div className="min-w-0 flex-1">
                     <Link
                       href={`/admin/courses/${course.id}`}
-                      className="font-display text-[15px] font-semibold text-ink transition-colors hover:text-brand-600"
+                      className="font-display text-[15px] font-semibold text-ink transition-colors after:absolute after:inset-0 hover:text-brand-600 focus-visible:outline-none"
                     >
                       {course.title}
                     </Link>
                     <p className="text-[11px] text-ink-muted">
-                      /{course.slug} · {moduleCount} {t('modules')} · {lessonCount} {t('lessons')}
+                      {moduleCount} {t('modules')} · {lessonCount} {t('lessons')}
                     </p>
                   </div>
                   <Badge variant={course.status === 'published' ? 'brand' : 'muted'}>
                     {t(course.status)}
                   </Badge>
-                  <CourseRowActions courseId={course.id} status={course.status} />
+                  <div className="relative">
+                    <CourseRowActions courseId={course.id} status={course.status} />
+                  </div>
                 </li>
               );
             })}

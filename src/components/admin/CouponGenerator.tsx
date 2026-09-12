@@ -39,7 +39,9 @@ export function CouponGenerator() {
       <form action={action} className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('generateKind')}</span>
+            <span className="mb-1.5 block text-[13px] font-medium text-ink">
+              {t('generateKind')}
+            </span>
             <select
               name="kind"
               value={kind}
@@ -51,7 +53,14 @@ export function CouponGenerator() {
               <option value="amount">{t('kindAmount')}</option>
             </select>
           </label>
-          <Field label={t('genQuantity')} name="quantity" type="number" min={1} max={500} defaultValue={10} />
+          <Field
+            label={t('genQuantity')}
+            name="quantity"
+            type="number"
+            min={1}
+            max={500}
+            defaultValue={10}
+          />
 
           {kind === 'percent' && (
             <Field
@@ -72,18 +81,18 @@ export function CouponGenerator() {
             />
           )}
 
-          <Field label={t('genMaxUses')} name="maxRedemptions" type="number" min={1} defaultValue={1} />
+          <Field
+            label={t('genMaxUses')}
+            name="maxRedemptions"
+            type="number"
+            min={1}
+            defaultValue={1}
+          />
           <Field
             label={t('genBatch')}
             name="batch"
             placeholder="sept-2026"
             hint={t('genBatchHint')}
-          />
-          <Field
-            label={t('genPrefix')}
-            name="prefix"
-            placeholder="CAISSE"
-            hint={t('genPrefixHint')}
           />
         </div>
 
@@ -106,7 +115,11 @@ export function CouponGenerator() {
               {t('genResult', { count: state.codes.length })}
             </p>
             <Button type="button" size="sm" variant="outline" onClick={copyAll}>
-              {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+              {copied ? (
+                <Check className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Copy className="size-3.5" aria-hidden="true" />
+              )}
               {t('copyAll')}
             </Button>
           </div>

@@ -6,7 +6,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
-import { normalisePrefix, slugifyBatch } from '@/lib/commerce/batch';
+import { slugifyBatch } from '@/lib/commerce/batch';
 import type { AdminState } from '@/app/actions/admin';
 
 /**
@@ -74,7 +74,10 @@ export async function grantEntitlement(_prev: AdminState, formData: FormData): P
   return OK;
 }
 
-export async function revokeEntitlement(_prev: AdminState, formData: FormData): Promise<AdminState> {
+export async function revokeEntitlement(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
   const parsed = z
     .object({ entitlementId: z.string().uuid(), reason: z.string().trim().min(3).max(200) })
     .safeParse({ entitlementId: formData.get('entitlementId'), reason: formData.get('reason') });
@@ -271,7 +274,6 @@ const couponBatchSchema = z
     // Normalised, not rejected: "October 2026" becomes october-2026 rather than
     // a red sentence next to the button that does not say which field it means.
     batch: z.string().trim().max(120).transform(slugifyBatch),
-    prefix: z.string().trim().max(40).transform(normalisePrefix),
   })
   .refine((v) => v.kind !== 'percent' || v.percentOff !== null, { message: 'percentRequired' })
   .refine((v) => v.kind !== 'amount' || (v.amountOff !== null && v.amountOff > 0), {
@@ -294,7 +296,6 @@ export async function generateCoupons(
     amountOff: (formData.get('amountOff') as string) || null,
     maxRedemptions: formData.get('maxRedemptions') || 1,
     batch: formData.get('batch') ?? '',
-    prefix: formData.get('prefix') ?? '',
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'invalid' };
 
@@ -308,7 +309,9 @@ export async function generateCoupons(
     max_redemptions: c.maxRedemptions,
     is_office: c.kind === 'office',
     batch: c.batch,
-    code_prefix: c.prefix,
+    // No prefix: the office asked for plain codes, and the generator's own
+    // random suffix is what makes them unique.
+    code_prefix: '',
     expires_at: null,
   });
   if (error || !data) return { ok: false, error: 'saveFailed' };
