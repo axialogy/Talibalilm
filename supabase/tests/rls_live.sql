@@ -39,6 +39,47 @@ values ('11110000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-0000000
 \echo '=== live classroom access ==='
 
 do $$
+declare made uuid;
+begin
+  raise notice 'staff can actually schedule a class';
+
+  -- Regression: the table once granted `authenticated` only SELECT, so this
+  -- INSERT died on the grant before `live_sessions_write_staff` was ever
+  -- consulted, and the admin screen could not create anything. The fixture rows
+  -- above are inserted as superuser, which is exactly why that went unnoticed —
+  -- so this asserts through a real staff session.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  insert into public.live_sessions (course_id, title)
+  values ('c0000000-0000-4000-8000-000000000001', 'Séance créée par le prof')
+  returning id into made;
+  perform public.assert(made is not null, 'a member of staff can schedule a live class');
+
+  update public.live_sessions set status = 'live' where id = made;
+  perform public.assert(
+    (select status from public.live_sessions where id = made) = 'live',
+    'and open it');
+
+  delete from public.live_sessions where id = made;
+  reset role;
+end $$;
+
+do $$
+declare refused boolean := false;
+begin
+  raise notice 'a student still cannot invent a class';
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    insert into public.live_sessions (course_id, title)
+    values ('c0000000-0000-4000-8000-000000000001', 'Cours pirate');
+  exception when insufficient_privilege then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused,
+    'widening the grant did not let a student create one — the policy still refuses');
+end $$;
+
+do $$
 declare n integer;
 begin
   raise notice 'the paywall decides the door';

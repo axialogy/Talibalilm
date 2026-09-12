@@ -39,6 +39,14 @@ export function resolveArtwork(...candidates: string[]): string {
  * SVG is last and is only a placeholder — anything the school supplies wins.
  */
 export function logoLockupSrc(): string {
+  // Resolved in next.config.ts while `public/` is still on disk. Probing here
+  // worked for pages rendered during the build and quietly failed for pages
+  // rendered per request, because Vercel does not ship `public/` into a
+  // serverless function — which is exactly how the admin sidebar ended up
+  // showing the placeholder while the site header showed the real lockup.
+  const built = process.env.NEXT_PUBLIC_LOGO_LOCKUP;
+  if (built) return built;
+
   return resolveArtwork(
     '/branding/logo-institut.webp',
     '/branding/logo-institut.png',
@@ -49,6 +57,9 @@ export function logoLockupSrc(): string {
 
 /** The square mark, for favicons and tight slots. */
 export function logoMarkSrc(): string {
+  const built = process.env.NEXT_PUBLIC_LOGO_MARK;
+  if (built) return built;
+
   return resolveArtwork(
     '/branding/logo-mark.webp',
     '/branding/logo-mark.png',
