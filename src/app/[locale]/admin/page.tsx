@@ -1,26 +1,31 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import {
   AlertTriangle,
+  ArrowRight,
   BookOpen,
   CheckCircle2,
   CreditCard,
   GraduationCap,
+  Receipt,
   Tag,
+  Ticket,
   Users,
   Wallet,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { currentViewer } from '@/lib/auth/guards';
 
 /**
  * The overview.
  *
- * Counts, and a checklist of what is not finished yet. The point is that
- * somebody opening this screen can tell in five seconds whether the site is
- * ready to take a student's money — an admin panel that only lists links
- * makes you go and look.
+ * Three bands, in the order a person actually uses them: the things you do
+ * every day (quick actions), the numbers that tell you the shop is alive
+ * (stats), and the short list of what is left before it can take money
+ * (checklist). Somebody opening this screen should be able to act without
+ * first learning what "products" or "cursus" mean.
  *
- * Every count comes through the ordinary anon client, so `is_staff()` decides
+ * Every read goes through the ordinary anon client, so `is_staff()` decides
  * what is visible. Nothing here uses the service role.
  */
 export default async function AdminOverviewPage({
@@ -33,6 +38,8 @@ export default async function AdminOverviewPage({
 
   const t = await getTranslations('admin');
   const supabase = await createClient();
+  const viewer = await currentViewer();
+  const isAdmin = viewer?.role === 'admin';
 
   const count = async (table: 'courses' | 'products' | 'packs' | 'cursus' | 'profiles') => {
     const { count: n } = await supabase.from(table).select('*', { count: 'exact', head: true });
@@ -57,12 +64,28 @@ export default async function AdminOverviewPage({
     .select('*', { count: 'exact', head: true })
     .eq('status', 'published');
 
+  // Real payment readiness, without ever reading the secret back: the status
+  // RPC reports only whether one is set, and an env-var override counts too.
+  const payEnvOverride = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  const { data: payStatus } = await supabase.rpc('payment_settings_status');
+  const ps = payStatus as unknown as { enabled?: boolean; has_secret?: boolean } | null;
+  const paymentsReady = payEnvOverride || Boolean(ps?.enabled && ps?.has_secret);
+
+  // The handful of things an office does again and again. Coupons are admin-only,
+  // matching the RPC that would refuse an instructor anyway.
+  const actions = [
+    { key: 'qaOrders', desc: 'qaOrdersDesc', icon: Receipt, href: '/admin/orders', admin: false },
+    { key: 'qaCourses', desc: 'qaCoursesDesc', icon: BookOpen, href: '/admin/courses', admin: false },
+    { key: 'qaPricing', desc: 'qaPricingDesc', icon: Tag, href: '/admin/pricing', admin: false },
+    { key: 'qaCoupons', desc: 'qaCouponsDesc', icon: Ticket, href: '/admin/coupons', admin: true },
+  ].filter((a) => !a.admin || isAdmin);
+
   const stats = [
-    { key: 'statCourses', value: `${publishedCourses ?? 0}/${courses}`, icon: BookOpen, href: '/admin/courses' },
-    { key: 'statPrices', value: `${livePrices ?? 0}/${products}`, icon: Tag, href: '/admin/pricing' },
-    { key: 'statPacks', value: String(packs), icon: CreditCard, href: '/admin/packs' },
-    { key: 'statCursus', value: String(cursus), icon: GraduationCap, href: '/admin/cursus' },
-    { key: 'statStudents', value: String(students), icon: Users, href: '/admin' },
+    { key: 'statCourses', value: `${publishedCourses ?? 0}/${courses}`, hint: 'statFraction', icon: BookOpen, href: '/admin/courses' },
+    { key: 'statPrices', value: `${livePrices ?? 0}/${products}`, hint: 'statFraction', icon: Tag, href: '/admin/pricing' },
+    { key: 'statPacks', value: String(packs), hint: null, icon: CreditCard, href: '/admin/packs' },
+    { key: 'statCursus', value: String(cursus), hint: null, icon: GraduationCap, href: '/admin/cursus' },
+    { key: 'statStudents', value: String(students), hint: null, icon: Users, href: '/admin/students' },
   ] as const;
 
   // What still stands between this and a working shop.
@@ -70,7 +93,7 @@ export default async function AdminOverviewPage({
     { key: 'checkCourses', done: (publishedCourses ?? 0) > 0, href: '/admin/courses' },
     { key: 'checkPrices', done: (livePrices ?? 0) > 0, href: '/admin/pricing' },
     { key: 'checkProgramme', done: cursus > 0, href: '/admin/cursus' },
-    { key: 'checkPayments', done: false, href: '/admin/payments' },
+    { key: 'checkPayments', done: paymentsReady, href: '/admin/payments' },
   ] as const;
 
   return (
@@ -80,27 +103,61 @@ export default async function AdminOverviewPage({
         {t('overviewLead')}
       </p>
 
-      <ul className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {stats.map(({ key, value, icon: Icon, href }) => (
-          <li key={key}>
-            <Link
-              href={href}
-              className="flex items-center gap-4 rounded-[var(--radius-card)] border border-line bg-white p-5 transition-colors hover:border-brand-300"
-            >
-              <span
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
-                aria-hidden="true"
+      {/* Everyday jobs, front and centre. */}
+      <section className="mt-8">
+        <h2 className="font-display text-lg font-semibold text-ink">{t('quickActions')}</h2>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {actions.map(({ key, desc, icon: Icon, href }) => (
+            <li key={key}>
+              <Link
+                href={href}
+                className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-white p-5 transition-colors hover:border-brand-300 hover:bg-brand-50/40"
               >
-                <Icon className="size-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block font-display text-xl font-semibold text-ink">{value}</span>
-                <span className="block text-[12px] text-ink-muted">{t(key)}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+                <span
+                  className="flex size-10 items-center justify-center rounded-xl bg-brand-500 text-white"
+                  aria-hidden="true"
+                >
+                  <Icon className="size-5" />
+                </span>
+                <span className="mt-3 flex items-center gap-1 font-medium text-ink">
+                  {t(key)}
+                  <ArrowRight className="size-3.5 text-brand-500 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+                </span>
+                <span className="mt-0.5 text-[12px] leading-relaxed text-ink-muted">{t(desc)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* The numbers. */}
+      <section className="mt-10">
+        <h2 className="font-display text-lg font-semibold text-ink">{t('statsTitle')}</h2>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {stats.map(({ key, value, hint, icon: Icon, href }) => (
+            <li key={key}>
+              <Link
+                href={href}
+                className="flex items-center gap-4 rounded-[var(--radius-card)] border border-line bg-white p-5 transition-colors hover:border-brand-300"
+              >
+                <span
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
+                  aria-hidden="true"
+                >
+                  <Icon className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-display text-xl font-semibold text-ink">{value}</span>
+                  <span className="block text-[12px] text-ink-muted">
+                    {t(key)}
+                    {hint && <span className="text-ink-muted/70"> · {t(hint)}</span>}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="mt-10">
         <h2 className="font-display text-lg font-semibold text-ink">{t('checklist')}</h2>
@@ -117,7 +174,9 @@ export default async function AdminOverviewPage({
                   <AlertTriangle className="size-4 shrink-0 text-gold-600" aria-hidden="true" />
                 )}
                 <span className="flex-1 text-[13px] text-ink">{t(key)}</span>
-                <span className="text-[11px] text-ink-muted">
+                <span
+                  className={done ? 'text-[11px] font-medium text-brand-600' : 'text-[11px] font-medium text-gold-700'}
+                >
                   {done ? t('checkDone') : t('checkTodo')}
                 </span>
               </Link>
