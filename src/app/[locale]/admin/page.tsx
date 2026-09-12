@@ -118,13 +118,19 @@ export default async function AdminOverviewPage({
     },
   ] as const;
 
-  // What still stands between this and a working shop.
+  // What still stands between this and a working shop. Once nothing does, the
+  // whole section goes away: a checklist showing four green ticks has stopped
+  // telling anyone anything and is just four rows between the office and the
+  // work. It comes back on its own if a step regresses — every course
+  // unpublished, payment switched off — which is when it is worth seeing again.
   const checks = [
     { key: 'checkCourses', done: (publishedCourses ?? 0) > 0, href: '/admin/courses' },
     { key: 'checkPrices', done: (livePrices ?? 0) > 0, href: '/admin/courses' },
     { key: 'checkProgramme', done: cursus > 0, href: '/admin/cursus' },
     { key: 'checkPayments', done: paymentsReady, href: '/admin/payments' },
   ] as const;
+
+  const setupComplete = checks.every((check) => check.done);
 
   return (
     <div>
@@ -192,39 +198,41 @@ export default async function AdminOverviewPage({
         </ul>
       </section>
 
-      <section className="mt-10">
-        <h2 className="font-display text-lg font-semibold text-ink">{t('checklist')}</h2>
-        <ul className="mt-4 space-y-2">
-          {checks.map(({ key, done, href }) => (
-            <li key={key}>
-              <Link
-                href={href}
-                className="flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-white p-4 transition-colors hover:border-brand-300"
-              >
-                {done ? (
-                  <CheckCircle2 className="size-4 shrink-0 text-brand-500" aria-hidden="true" />
-                ) : (
-                  <AlertTriangle className="size-4 shrink-0 text-gold-600" aria-hidden="true" />
-                )}
-                <span className="flex-1 text-[13px] text-ink">{t(key)}</span>
-                <span
-                  className={
-                    done
-                      ? 'text-[11px] font-medium text-brand-600'
-                      : 'text-[11px] font-medium text-gold-700'
-                  }
+      {!setupComplete && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold text-ink">{t('checklist')}</h2>
+          <ul className="mt-4 space-y-2">
+            {checks.map(({ key, done, href }) => (
+              <li key={key}>
+                <Link
+                  href={href}
+                  className="flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-white p-4 transition-colors hover:border-brand-300"
                 >
-                  {done ? t('checkDone') : t('checkTodo')}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-ink-muted">
-          <Wallet className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          {t('checkPaymentsNote')}
-        </p>
-      </section>
+                  {done ? (
+                    <CheckCircle2 className="size-4 shrink-0 text-brand-500" aria-hidden="true" />
+                  ) : (
+                    <AlertTriangle className="size-4 shrink-0 text-gold-600" aria-hidden="true" />
+                  )}
+                  <span className="flex-1 text-[13px] text-ink">{t(key)}</span>
+                  <span
+                    className={
+                      done
+                        ? 'text-[11px] font-medium text-brand-600'
+                        : 'text-[11px] font-medium text-gold-700'
+                    }
+                  >
+                    {done ? t('checkDone') : t('checkTodo')}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-ink-muted">
+            <Wallet className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            {t('checkPaymentsNote')}
+          </p>
+        </section>
+      )}
     </div>
   );
 }
