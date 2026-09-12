@@ -10,9 +10,9 @@
 -- handler below only catches for unique_violation — so the admin saw a bare
 -- "Enregistrement impossible" with no code generated.
 --
--- Same function, one line changed: build the prefix segment with a plain CASE
--- that yields '' rather than NULL. Also widen the inner handler to not_null
--- and check_violation so a malformed code can never masquerade as a collision.
+-- Same function, two changes: build the prefix segment with a plain CASE that
+-- yields '' rather than NULL, and make the guard test for NULL explicitly so a
+-- code that somehow came out empty is retried rather than sent to the INSERT.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.admin_generate_coupons(
