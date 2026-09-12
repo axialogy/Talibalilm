@@ -674,7 +674,9 @@
     "liveNotScheduled": "Date non fixée",
     "liveCapacityShort": "{count} places",
     "liveRecordingNote": "Enregistrement",
-    "liveRecordingHint": "Où vous avez déposé l’enregistrement — collez le lien YouTube ou Drive sur la leçon pour que les étudiants puissent le revoir."
+    "liveRecordingHint": "Où vous avez déposé l’enregistrement — collez le lien YouTube ou Drive sur la leçon pour que les étudiants puissent le revoir.",
+    "genBatchHint": "Un nom pour repérer cette série plus tard. Les espaces deviennent des tirets — « octobre 2026 » convient.",
+    "genPrefixHint": "Apparaît au début de chaque code de la série. Lettres et chiffres."
   },
   "live": {
     "startRecording": "Enregistrer",

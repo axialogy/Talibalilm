@@ -674,7 +674,9 @@
     "liveNotScheduled": "No date set",
     "liveCapacityShort": "{count} places",
     "liveRecordingNote": "Recording",
-    "liveRecordingHint": "Where you put the recording — paste the YouTube or Drive link on the lesson itself to let students watch it."
+    "liveRecordingHint": "Where you put the recording — paste the YouTube or Drive link on the lesson itself to let students watch it.",
+    "genBatchHint": "A name for this batch, so you can find it later. Spaces become hyphens — \"October 2026\" is fine.",
+    "genPrefixHint": "Appears at the start of every code in the batch. Letters and digits."
   },
   "live": {
     "startRecording": "Record",

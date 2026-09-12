@@ -6,6 +6,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
+import { normalisePrefix, slugifyBatch } from '@/lib/commerce/batch';
 import type { AdminState } from '@/app/actions/admin';
 
 /**
@@ -171,16 +172,10 @@ const couponBatchSchema = z
     percentOff: z.coerce.number().int().min(1).max(100).nullable(),
     amountOff: z.coerce.number().min(0).nullable(),
     maxRedemptions: z.coerce.number().int().min(1).max(100000),
-    batch: z
-      .string()
-      .trim()
-      .max(60)
-      .regex(/^[a-z0-9-]*$/i, 'slugShape'),
-    prefix: z
-      .string()
-      .trim()
-      .max(12)
-      .regex(/^[A-Za-z0-9-]*$/, 'slugShape'),
+    // Normalised, not rejected: "October 2026" becomes october-2026 rather than
+    // a red sentence next to the button that does not say which field it means.
+    batch: z.string().trim().max(120).transform(slugifyBatch),
+    prefix: z.string().trim().max(40).transform(normalisePrefix),
   })
   .refine((v) => v.kind !== 'percent' || v.percentOff !== null, { message: 'percentRequired' })
   .refine((v) => v.kind !== 'amount' || (v.amountOff !== null && v.amountOff > 0), {

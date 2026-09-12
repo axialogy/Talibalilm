@@ -73,8 +73,18 @@ export function CouponGenerator() {
           )}
 
           <Field label={t('genMaxUses')} name="maxRedemptions" type="number" min={1} defaultValue={1} />
-          <Field label={t('genBatch')} name="batch" placeholder="sept-2026" />
-          <Field label={t('genPrefix')} name="prefix" placeholder="CAISSE" />
+          <Field
+            label={t('genBatch')}
+            name="batch"
+            placeholder="sept-2026"
+            hint={t('genBatchHint')}
+          />
+          <Field
+            label={t('genPrefix')}
+            name="prefix"
+            placeholder="CAISSE"
+            hint={t('genPrefixHint')}
+          />
         </div>
 
         <div className="flex items-center gap-3">
