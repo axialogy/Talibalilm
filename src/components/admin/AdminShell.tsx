@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/navigation';
 import { Logo } from '@/components/layout/Logo';
+import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
 import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
 
@@ -157,6 +158,9 @@ export function AdminShell({
             >
               {t('backToSite')}
             </Link>
+            <div className="mt-2 -ms-3">
+              <LocaleSwitcher />
+            </div>
             {signOutButton}
           </div>
         </div>
@@ -201,6 +205,9 @@ export function AdminShell({
               <div className="mt-6 border-t border-line pt-4">
                 <p className="truncate text-[13px] font-medium text-ink">{name}</p>
                 <p className="text-[11px] tracking-wide text-ink-muted uppercase">{role}</p>
+                <div className="mt-2 -ms-3">
+                  <LocaleSwitcher />
+                </div>
                 {signOutButton}
               </div>
             </div>
