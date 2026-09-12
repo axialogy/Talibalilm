@@ -491,6 +491,7 @@
       "cursusGranted": "Des étudiants ont accès à ce cursus. Archivez-le plutôt — le supprimer effacerait leurs droits.",
       "cursusInBonus": "Ce cursus fait partie d’un bonus. Retirez-le d’abord du bonus, ou archivez-le.",
       "cursusSold": "Ce cursus a déjà été vendu : il ne peut pas être supprimé. Passez-le en « Archivé » pour le retirer du catalogue tout en conservant les ventes.",
+      "deckFull": "Cette séance a déjà le nombre maximum de diapositives.",
       "duplicate": "Un cours porte déjà ce titre. Modifiez le titre, ou ouvrez le cours existant.",
       "duplicateSlot": "Un tarif existe déjà pour cette matière, ce mode et ce créneau.",
       "invalid": "Formulaire incomplet.",
@@ -503,8 +504,10 @@
       "productSold": "Cette ligne a déjà servi à une commande : archivez-la au lieu de la supprimer.",
       "refused": "Enregistrement refusé. Vérifiez que vous êtes bien connecté en tant qu’administrateur.",
       "saveFailed": "Enregistrement impossible.",
+      "sessionNotFound": "Ce cours en direct est introuvable.",
       "slugShape": "Uniquement des minuscules, des chiffres et des tirets (par exemple : samedi-matin).",
       "slugTaken": "Cet identifiant est déjà utilisé.",
+      "storageUnavailable": "Le stockage des diapositives n’est pas configuré. Voir les variables R2 dans Vercel.",
       "studentHasOrders": "Cet étudiant a des commandes. Utilisez plutôt l’effacement, qui retire la personne et conserve la vente.",
       "studentIsStaff": "Il s’agit d’un compte du personnel, pas d’un étudiant.",
       "targetRequired": "Choisissez la matière ou le cursus.",
@@ -749,7 +752,22 @@
     "cursusDelete": "Supprimer ce cursus",
     "cursusDeleteConfirm": "Supprimer ce cursus, son programme et ses tarifs ? Action irréversible. S’il a déjà été vendu, archivez-le plutôt.",
     "collapseMenu": "Réduire le menu",
-    "expandMenu": "Agrandir le menu"
+    "expandMenu": "Agrandir le menu",
+    "slidesTab": "Diapositives",
+    "slidesLead": "Préparez les images que vous montrerez pendant le cours. Pendant la séance, partagez votre écran : les élèves les voient dans la salle. Les fichiers sont rangés en ligne, pas sur cet ordinateur.",
+    "slidesAdd": "Ajouter des diapositives",
+    "slidesHint": "PNG, JPEG ou WebP · 5 Mo maximum par image · plusieurs à la fois",
+    "slidesNone": "Aucune diapositive pour le moment.",
+    "slidesNumber": "Diapositive {n}",
+    "slidesUploading": "{count, plural, one {Envoi d’une image…} other {Envoi de # images…}}",
+    "slidesDelete": "Supprimer la diapositive",
+    "slidesDeleteConfirm": "Supprimer cette diapositive ? Action irréversible.",
+    "slidesMoveUp": "Monter",
+    "slidesMoveDown": "Descendre",
+    "slidesStorageMissing": "L’espace de stockage n’est pas encore configuré. Ajoutez les variables R2 dans Vercel pour pouvoir envoyer des diapositives — le reste du cours en direct fonctionne sans.",
+    "liveDoorTab": "{count, plural, =0 {À la porte} one {À la porte (#)} other {À la porte (#)}}",
+    "liveDoorEmpty": "Personne n’attend à la porte.",
+    "liveGuest": "Élève"
   },
   "live": {
     "startRecording": "Enregistrer",
@@ -760,6 +778,10 @@
     "recordingCancelled": "L’enregistrement n’a pas démarré.",
     "roomUnavailable": "La salle n’a pas pu être chargée. Vérifiez votre connexion et rechargez la page.",
     "closedTitle": "Ce cours n’est pas ouvert",
-    "closedBody": "Il est terminé, annulé, ou l’enseignant ne l’a pas encore ouvert."
+    "closedBody": "Il est terminé, annulé, ou l’enseignant ne l’a pas encore ouvert.",
+    "myClasses": "Mes cours en direct",
+    "liveNow": "En direct",
+    "joinNow": "Rejoindre",
+    "openRoom": "Entrer dans la salle"
   }
 }

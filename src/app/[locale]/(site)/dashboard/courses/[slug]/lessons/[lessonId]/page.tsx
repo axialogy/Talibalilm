@@ -18,6 +18,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { courseLessons } from '@/lib/content/types';
 import { embedUrl, type VideoProvider } from '@/lib/content/video';
 import { cn } from '@/lib/utils';
+import { UpcomingClasses } from '@/components/live/UpcomingClasses';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -80,7 +81,9 @@ export default async function LessonPage({
           <Link href="/dashboard" className="text-ink-muted transition-colors hover:text-brand-600">
             {t('breadcrumb')}
           </Link>
-          <span aria-hidden="true" className="text-ink-muted/60">/</span>
+          <span aria-hidden="true" className="text-ink-muted/60">
+            /
+          </span>
           <Link
             href={`/courses/${course.slug}`}
             className="text-ink-muted transition-colors hover:text-brand-600"
@@ -113,7 +116,9 @@ export default async function LessonPage({
                 if (!src) {
                   return (
                     <div className="mt-6 flex aspect-video items-center justify-center rounded-[var(--radius-card)] border border-line bg-surface text-center">
-                      <p className="max-w-sm px-6 text-[13px] text-ink-muted">{t('playerPending')}</p>
+                      <p className="max-w-sm px-6 text-[13px] text-ink-muted">
+                        {t('playerPending')}
+                      </p>
                     </div>
                   );
                 }
@@ -183,6 +188,14 @@ export default async function LessonPage({
       </article>
 
       <aside className="lg:sticky lg:top-24 lg:self-start">
+        {/* A class opening now is the most time-sensitive thing on this page,
+            so it sits above the syllabus. Renders nothing when there is none —
+            and nothing at all for a course the viewer does not hold, because
+            the query behind it reads through RLS. */}
+        <div className="mb-6 empty:mb-0">
+          <UpcomingClasses locale={locale} courseId={course.id} limit={3} />
+        </div>
+
         <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
           <p className="eyebrow">{tCourses('detail.syllabus')}</p>
           <h2 className="mt-2 font-display text-[15px] leading-snug font-semibold text-ink">
@@ -227,11 +240,20 @@ export default async function LessonPage({
                           )}
                         >
                           {isDone ? (
-                            <CheckCircle2 className="size-3.5 shrink-0 text-brand-500" aria-hidden="true" />
+                            <CheckCircle2
+                              className="size-3.5 shrink-0 text-brand-500"
+                              aria-hidden="true"
+                            />
                           ) : l.is_preview || hasAccess ? (
-                            <PlayCircle className="size-3.5 shrink-0 text-ink-muted/60" aria-hidden="true" />
+                            <PlayCircle
+                              className="size-3.5 shrink-0 text-ink-muted/60"
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <Circle className="size-3.5 shrink-0 text-ink-muted/40" aria-hidden="true" />
+                            <Circle
+                              className="size-3.5 shrink-0 text-ink-muted/40"
+                              aria-hidden="true"
+                            />
                           )}
                           <span className="line-clamp-1 flex-1">{l.title}</span>
                         </Link>

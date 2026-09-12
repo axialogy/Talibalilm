@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { BackLink } from '@/components/admin/BackLink';
 import { Badge } from '@/components/ui/badge';
 import { LiveSessionForm } from '@/components/admin/LiveSessionForm';
@@ -16,11 +17,7 @@ import type { LiveStatus } from '@/lib/supabase/database.types';
  * course, and `has_course_access()` decides who gets in — the same gate as the
  * lessons, so there is nothing here to keep in step by hand.
  */
-export default async function AdminLivePage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default async function AdminLivePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
@@ -69,10 +66,18 @@ export default async function AdminLivePage({
         ) : (
           <ul className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
             {sessions.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center gap-3 p-4">
+              <li
+                key={s.id}
+                className="relative flex flex-wrap items-center gap-3 p-4 transition-colors hover:bg-brand-50/40 focus-within:bg-brand-50/40 focus-within:ring-2 focus-within:ring-brand-300 focus-within:ring-inset"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-ink">{s.title}</p>
+                    <Link
+                      href={`/admin/live/${s.id}`}
+                      className="font-medium text-ink transition-colors after:absolute after:inset-0 hover:text-brand-600"
+                    >
+                      {s.title}
+                    </Link>
                     <Badge variant={tone[s.status]}>{label[s.status]}</Badge>
                   </div>
                   <p className="mt-0.5 text-[11px] text-ink-muted">
@@ -83,7 +88,9 @@ export default async function AdminLivePage({
                     {t('liveCapacityShort', { count: s.maxParticipants })}
                   </p>
                 </div>
-                <LiveSessionControls id={s.id} roomToken={s.roomToken} status={s.status} />
+                <div className="relative">
+                  <LiveSessionControls id={s.id} roomToken={s.roomToken} status={s.status} />
+                </div>
               </li>
             ))}
           </ul>

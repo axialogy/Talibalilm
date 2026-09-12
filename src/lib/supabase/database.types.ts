@@ -31,7 +31,6 @@ export type LiveStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
 export type LiveRole = 'host' | 'participant';
 export type JoinState = 'pending' | 'approved' | 'rejected';
 
-
 export interface Database {
   public: {
     Tables: {
@@ -100,7 +99,10 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Partial<Database['public']['Tables']['courses']['Row']> & { slug: string; title: string };
+        Insert: Partial<Database['public']['Tables']['courses']['Row']> & {
+          slug: string;
+          title: string;
+        };
         Update: Partial<Database['public']['Tables']['courses']['Row']>;
         Relationships: [
           {
@@ -563,7 +565,11 @@ export interface Database {
           note?: string;
           created_by?: string | null;
         };
-        Update: Partial<{ max_redemptions: number | null; expires_at: string | null; note: string }>;
+        Update: Partial<{
+          max_redemptions: number | null;
+          expires_at: string | null;
+          note: string;
+        }>;
         Relationships: [];
       };
       orders: {
@@ -787,6 +793,38 @@ export interface Database {
         Update: { status?: JoinState; decided_at?: string | null };
         Relationships: [];
       };
+      live_slides: {
+        Row: {
+          id: string;
+          session_id: string;
+          /** Key inside the R2 bucket. Never a URL — a slide is only ever served signed. */
+          storage_key: string;
+          filename: string;
+          mime_type: string;
+          byte_size: number;
+          display_order: number;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          session_id: string;
+          storage_key: string;
+          filename?: string;
+          mime_type: string;
+          byte_size: number;
+          display_order?: number;
+        };
+        Update: { filename?: string; display_order?: number };
+        Relationships: [
+          {
+            foreignKeyName: 'live_slides_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: false;
+            referencedRelation: 'live_sessions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<never, never>;
     Functions: {
@@ -914,6 +952,10 @@ export interface Database {
       };
       live_decide_join: {
         Args: { request_id: string; admit: boolean };
+        Returns: boolean;
+      };
+      can_read_slide: {
+        Args: { key: string; uid?: string };
         Returns: boolean;
       };
       admin_anonymise_user: {

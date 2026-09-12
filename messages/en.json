@@ -491,6 +491,7 @@
       "cursusGranted": "Students hold access to this cursus. Archive it instead — deleting it would erase their access.",
       "cursusInBonus": "This cursus is part of a bonus. Remove it from the bonus first, or archive it.",
       "cursusSold": "This cursus has already been sold, so it cannot be deleted. Set it to “Archived” to take it out of the catalogue while keeping the sales.",
+      "deckFull": "This class already has the maximum number of slides.",
       "duplicate": "A course already has this title. Change the title, or open the existing course.",
       "duplicateSlot": "A price already exists for this subject, mode and time slot.",
       "invalid": "The form is incomplete.",
@@ -503,8 +504,10 @@
       "productSold": "This row has already been ordered: archive it rather than deleting it.",
       "refused": "Save refused. Check that you are still signed in as an administrator.",
       "saveFailed": "Could not save.",
+      "sessionNotFound": "That live class could not be found.",
       "slugShape": "Lower-case letters, digits and hyphens only (for example: saturday-morning).",
       "slugTaken": "That identifier is already in use.",
+      "storageUnavailable": "Slide storage is not configured. See the R2 variables in Vercel.",
       "studentHasOrders": "This student has orders. Use Erasure instead, which removes the person and keeps the sale.",
       "studentIsStaff": "That is a staff account, not a student.",
       "targetRequired": "Choose the subject or cursus.",
@@ -749,7 +752,22 @@
     "cursusDelete": "Delete this cursus",
     "cursusDeleteConfirm": "Delete this cursus, its programme and its prices? This cannot be undone. If it has already been sold, archive it instead.",
     "collapseMenu": "Collapse the menu",
-    "expandMenu": "Expand the menu"
+    "expandMenu": "Expand the menu",
+    "slidesTab": "Slides",
+    "slidesLead": "Prepare the images you will show during the class. In the room, share your screen and the students see them. The files are kept online, not on this computer.",
+    "slidesAdd": "Add slides",
+    "slidesHint": "PNG, JPEG or WebP · 5 MB per image · several at once",
+    "slidesNone": "No slides yet.",
+    "slidesNumber": "Slide {n}",
+    "slidesUploading": "{count, plural, one {Uploading one image…} other {Uploading # images…}}",
+    "slidesDelete": "Delete slide",
+    "slidesDeleteConfirm": "Delete this slide? This cannot be undone.",
+    "slidesMoveUp": "Move up",
+    "slidesMoveDown": "Move down",
+    "slidesStorageMissing": "File storage is not set up yet. Add the R2 variables in Vercel to upload slides — the rest of the live class works without them.",
+    "liveDoorTab": "{count, plural, =0 {At the door} one {At the door (#)} other {At the door (#)}}",
+    "liveDoorEmpty": "Nobody is waiting at the door.",
+    "liveGuest": "Student"
   },
   "live": {
     "startRecording": "Record",
@@ -760,6 +778,10 @@
     "recordingCancelled": "Recording was not started.",
     "roomUnavailable": "The classroom could not be loaded. Check your connection and reload the page.",
     "closedTitle": "This class is not open",
-    "closedBody": "It has either finished, been cancelled, or has not been opened by the teacher yet."
+    "closedBody": "It has either finished, been cancelled, or has not been opened by the teacher yet.",
+    "myClasses": "My live classes",
+    "liveNow": "Live",
+    "joinNow": "Join",
+    "openRoom": "Enter the room"
   }
 }

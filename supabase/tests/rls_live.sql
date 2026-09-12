@@ -233,6 +233,147 @@ begin
   reset role;
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- Slides
+--
+-- The deck is metadata in Postgres and bytes in R2. These assertions cover the
+-- part Postgres is responsible for: that a row can only ever name an object
+-- filed under its own class, that only staff can build a deck, and that the
+-- signed-download check refuses a key belonging to a class the asker cannot
+-- enter. The bucket never sees an unsigned request, so if this holds, holding
+-- an object key is worth as little as holding a room link.
+-- ---------------------------------------------------------------------------
+
+-- A second course and class, which the buyer does NOT hold. This is the
+-- cross-class target every attempt below aims at.
+insert into public.courses (id, slug, title, status, published_at) values
+  ('c0000000-0000-4000-8000-000000000002', 'hadith', 'Hadith', 'published', now());
+insert into public.live_sessions (id, course_id, title, status) values
+  ('11110000-0000-4000-8000-000000000002', 'c0000000-0000-4000-8000-000000000002',
+   'Cours en direct — Hadith', 'live');
+
+-- Re-open the Fiqh class the previous block ended, so these run against a live
+-- room rather than a closed one.
+update public.live_sessions set status = 'live'
+ where id = '11110000-0000-4000-8000-000000000001';
+
+do $$
+declare refused boolean;
+begin
+  raise notice 'building a deck';
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  insert into public.live_slides (session_id, storage_key, filename, mime_type, byte_size, display_order)
+  values ('11110000-0000-4000-8000-000000000001',
+          'live/11110000-0000-4000-8000-000000000001/abcd1234efgh.png',
+          'plan-du-cours.png', 'image/png', 120000, 0);
+  perform public.assert(
+    (select count(*) from public.live_slides
+      where session_id = '11110000-0000-4000-8000-000000000001') = 1,
+    'staff can add a slide to their class');
+
+  -- The CHECK pins the key prefix to the row's own session, so even a bug in
+  -- the action cannot file a slide under another class.
+  refused := false;
+  begin
+    insert into public.live_slides (session_id, storage_key, mime_type, byte_size)
+    values ('11110000-0000-4000-8000-000000000001',
+            'live/11110000-0000-4000-8000-000000000002/stolen12.png', 'image/png', 1000);
+  exception when check_violation then refused := true;
+  end;
+  perform public.assert(refused, 'a slide cannot name an object belonging to another class');
+
+  refused := false;
+  begin
+    insert into public.live_slides (session_id, storage_key, mime_type, byte_size)
+    values ('11110000-0000-4000-8000-000000000001',
+            'live/11110000-0000-4000-8000-000000000001/../../secret.png', 'image/png', 1000);
+  exception when check_violation then refused := true;
+  end;
+  perform public.assert(refused, 'and it cannot walk out of the prefix with ..');
+
+  refused := false;
+  begin
+    insert into public.live_slides (session_id, storage_key, mime_type, byte_size)
+    values ('11110000-0000-4000-8000-000000000001',
+            'live/11110000-0000-4000-8000-000000000001/payload12.html', 'text/html', 1000);
+  exception when check_violation then refused := true;
+  end;
+  perform public.assert(refused, 'nor be something a browser would execute');
+  reset role;
+end $$;
+
+do $$
+declare refused boolean := false;
+begin
+  raise notice 'who may read the deck';
+
+  -- The buyer holds Fiqh, so the Fiqh deck is theirs to see.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    (select count(*) from public.live_slides
+      where session_id = '11110000-0000-4000-8000-000000000001') = 1,
+    'a student who bought the course sees its slides');
+  perform public.assert(
+    public.can_read_slide('live/11110000-0000-4000-8000-000000000001/abcd1234efgh.png'),
+    'and a download can be signed for them');
+
+  -- A student may not build a deck, whatever the grant says.
+  begin
+    insert into public.live_slides (session_id, storage_key, mime_type, byte_size)
+    values ('11110000-0000-4000-8000-000000000001',
+            'live/11110000-0000-4000-8000-000000000001/mine1234.png', 'image/png', 1000);
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'a student cannot add a slide');
+
+  perform public.assert(
+    (select count(*) from public.live_slides
+      where session_id = '11110000-0000-4000-8000-000000000001') = 1,
+    'and nothing was written');
+  reset role;
+
+  -- The stranger holds neither course.
+  call auth.login_as('a0000000-0000-4000-8000-000000000002');
+  perform public.assert(
+    (select count(*) from public.live_slides) = 0,
+    'someone who bought nothing sees no slides at all');
+  perform public.assert(
+    not public.can_read_slide('live/11110000-0000-4000-8000-000000000001/abcd1234efgh.png'),
+    'and no download can be signed for them, key in hand or not');
+  reset role;
+end $$;
+
+do $$
+begin
+  raise notice 'the deck follows the class it belongs to';
+
+  -- The buyer holds Fiqh, not Hadith: the second class is a different paywall.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  insert into public.live_slides (session_id, storage_key, mime_type, byte_size)
+  values ('11110000-0000-4000-8000-000000000002',
+          'live/11110000-0000-4000-8000-000000000002/hadith01.png', 'image/png', 2000);
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    not public.can_read_slide('live/11110000-0000-4000-8000-000000000002/hadith01.png'),
+    'holding one course does not open another course’s deck');
+  perform public.assert(
+    (select count(*) from public.live_slides) = 1,
+    'and the other class’s slides are not even visible');
+  reset role;
+
+  -- Once the class is over the deck closes with it, the same as the room.
+  update public.live_sessions set status = 'ended'
+   where id = '11110000-0000-4000-8000-000000000001';
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    not public.can_read_slide('live/11110000-0000-4000-8000-000000000001/abcd1234efgh.png'),
+    'and an ended class stops signing downloads');
+  reset role;
+end $$;
+
 drop function public.assert(boolean, text);
 
 \echo ''

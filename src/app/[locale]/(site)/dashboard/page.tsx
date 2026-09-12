@@ -4,6 +4,7 @@ import { BookOpen, ShieldCheck, Wrench } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/marketing/PageHero';
+import { UpcomingClasses } from '@/components/live/UpcomingClasses';
 import { requireViewer } from '@/lib/auth/guards';
 import { daysRemaining, getEntitlements } from '@/lib/data/learning';
 import { listCourses } from '@/lib/data/courses';
@@ -56,6 +57,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       <section className="py-12">
         <div className="shell grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div>
+            {/* Live classes first when there are any: a room that is open now
+                is the one thing on this page that is time-sensitive. */}
+            <div className="mb-10 empty:mb-0">
+              <UpcomingClasses locale={locale} />
+            </div>
+
             <h2 className="font-display text-xl font-semibold text-ink">{t('myCourses')}</h2>
 
             {opened.length > 0 ? (
@@ -130,10 +137,14 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                 </p>
               </div>
               {remaining !== null && (
-                <p className="mt-1 text-[11px] text-ink-muted">{t('expiresIn', { days: remaining })}</p>
+                <p className="mt-1 text-[11px] text-ink-muted">
+                  {t('expiresIn', { days: remaining })}
+                </p>
               )}
               <Button asChild size="sm" variant={hasAccess ? 'ghost' : 'primary'} className="mt-4">
-                <Link href="/checkout">{hasAccess ? t('renew') : tCourses('detail.enrollCta')}</Link>
+                <Link href="/checkout">
+                  {hasAccess ? t('renew') : tCourses('detail.enrollCta')}
+                </Link>
               </Button>
             </div>
 
