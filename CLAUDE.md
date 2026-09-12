@@ -98,6 +98,14 @@ correctly set. The policy is in `.env.example` beside them; `PUT` and
 `content-type` are all it needs, because slides are displayed with a plain
 `<img>` and those are not CORS-checked.
 
+The site's public origin lives in exactly one place — `NEXT_PUBLIC_SITE_URL`,
+read through `siteUrl()`; there is no domain string in `src/`. But six external
+services are told it separately (Vercel, Supabase's auth redirect allow list,
+the R2 CORS policy, the PayPal webhook, the GitHub `SWEEP_URL` secret, Resend),
+and the Supabase one fails silently — it substitutes the configured Site URL
+rather than erroring, so sign-up links quietly point at the old host.
+`DOMAIN-SWITCH.md` is the checklist.
+
 Pin the Node version. `engines.node` is `22.x` because `prisma generate` runs in
 `postinstall` and Prisma 7 requires `^20.19 || ^22.12 || >=24`; unpinned, the
 host picks its own default and the install can die before the build starts.
