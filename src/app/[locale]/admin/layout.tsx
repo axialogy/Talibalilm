@@ -7,6 +7,7 @@ import { AdminGate } from '@/components/admin/AdminGate';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { isStaff, requireViewer } from '@/lib/auth/guards';
 import { supabaseConfigured } from '@/lib/env';
+import { logoLockupSrc } from '@/lib/artwork';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -50,6 +51,7 @@ export default async function AdminLayout({
         role={viewer.role}
         isAdmin={viewer.role === 'admin'}
         title={t('title')}
+        logoSrc={logoLockupSrc()}
       >
         {children}
       </AdminShell>

@@ -33,7 +33,12 @@ export async function SiteFooter() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10">
           <div>
             <Link href="/" aria-label={tMeta('siteName')}>
-              <Logo className="h-20 w-auto sm:h-24" src={logoLockupSrc()} label={tMeta('siteName')} />
+              <Logo
+                className="h-20 w-auto sm:h-24"
+                sizes="(max-width: 640px) 240px, 300px"
+                src={logoLockupSrc()}
+                label={tMeta('siteName')}
+              />
             </Link>
           </div>
 

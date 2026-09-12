@@ -23,17 +23,6 @@ import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
 
 /**
- * The admin shell: a fixed sidebar on a desk, a drawer on a phone.
- *
- * A Client Component only because the sidebar opens and closes and needs to
- * know the current route to mark it. Everything inside it stays a Server
- * Component, so the pages keep reading the database directly through RLS
- * rather than fetching from the browser.
- *
- * The nav is one array. Adding a screen is a line here, not a layout edit in
- * three places.
- */
-/**
  * The nav, in three plain groups instead of one long list. "Overview" stands
  * alone; everything an office does day to day is under "Sales"; everything that
  * builds the catalogue is under "Setup". The labels are what a non-technical
@@ -64,18 +53,37 @@ const NAV = [
   },
 ] as const;
 
+/**
+ * The admin shell: a fixed sidebar on a desk, a drawer on a phone.
+ *
+ * A Client Component only because the sidebar opens and closes and needs to
+ * know the current route to mark it. Everything inside it stays a Server
+ * Component, so the pages keep reading the database directly through RLS
+ * rather than fetching from the browser.
+ *
+ * The nav is one array. Adding a screen is a line here, not a layout edit in
+ * three places.
+ */
 export function AdminShell({
   children,
   name,
   role,
   isAdmin,
   title,
+  logoSrc,
 }: {
   children: React.ReactNode;
   name: string;
   role: string;
   isAdmin: boolean;
   title: string;
+  /**
+   * Resolved by the layout through `@/lib/artwork`. It cannot be resolved here:
+   * that module reads the filesystem, and this is a Client Component. Passing
+   * it in is what stopped the sidebar rendering the drawn placeholder while the
+   * public site showed the school's real lockup.
+   */
+  logoSrc: string;
 }) {
   const t = useTranslations('admin');
   const pathname = usePathname();
@@ -144,7 +152,7 @@ export function AdminShell({
       <aside className="hidden w-64 shrink-0 border-e border-line bg-surface/40 lg:block">
         <div className="sticky top-0 flex h-screen flex-col p-5">
           <Link href="/" className="mb-7 block" aria-label={title}>
-            <Logo src="/branding/logo-institut.svg" label={title} className="h-9 w-auto" />
+            <Logo src={logoSrc} label={title} className="h-14 w-auto" sizes="220px" />
           </Link>
 
           {nav}
