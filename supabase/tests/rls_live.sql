@@ -374,6 +374,262 @@ begin
   reset role;
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- Host controls
+--
+-- The room was rebuilt because the embedded one gave the teacher no powers over
+-- anyone — they joined their own class as a student. These assertions prove the
+-- replacement is not the same mistake wearing a nicer coat: the separation is
+-- in the database, so hiding a button in React is decoration on top of a
+-- refusal that already happened here.
+-- ---------------------------------------------------------------------------
+
+update public.live_sessions set status = 'live'
+ where id = '11110000-0000-4000-8000-000000000001';
+
+do $$
+declare ok boolean; refused boolean;
+begin
+  raise notice 'the teacher can act on a student, the student cannot act at all';
+
+  -- Both are in the room.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.live_join('11110000-0000-4000-8000-000000000001');
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  ok := public.live_set_participant(
+    '11110000-0000-4000-8000-000000000001',
+    'a0000000-0000-4000-8000-000000000001',
+    set_muted => true);
+  perform public.assert(ok, 'the host can mute a student');
+  reset role;
+
+  -- The student cannot undo it, and cannot mute anyone else either.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  refused := false;
+  begin
+    perform public.live_set_participant(
+      '11110000-0000-4000-8000-000000000001',
+      'a0000000-0000-4000-8000-000000000001',
+      set_muted => false);
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'a student cannot unmute themselves');
+
+  perform public.assert(
+    (select muted from public.live_participants
+      where session_id = '11110000-0000-4000-8000-000000000001'
+        and user_id = 'a0000000-0000-4000-8000-000000000001'
+        and left_at is null),
+    'and the mute still stands');
+
+  -- The mute must survive a refresh, which is why it is a column and not a
+  -- realtime message: rejoining reuses the open row rather than clearing it.
+  perform public.live_join('11110000-0000-4000-8000-000000000001');
+  perform public.assert(
+    (select muted from public.live_participants
+      where session_id = '11110000-0000-4000-8000-000000000001'
+        and user_id = 'a0000000-0000-4000-8000-000000000001'
+        and left_at is null),
+    'and reloading the page does not clear it');
+  reset role;
+end $$;
+
+do $$
+declare refused boolean := false;
+begin
+  raise notice 'a muted student cannot speak in chat';
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    insert into public.live_messages (session_id, user_id, body)
+    values ('11110000-0000-4000-8000-000000000001',
+            'a0000000-0000-4000-8000-000000000001', 'je parle quand même');
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'the chat policy refuses a muted student');
+  reset role;
+
+  -- Unmuted, the same student is heard.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  perform public.live_set_participant(
+    '11110000-0000-4000-8000-000000000001',
+    'a0000000-0000-4000-8000-000000000001', set_muted => false);
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  insert into public.live_messages (session_id, user_id, body)
+  values ('11110000-0000-4000-8000-000000000001',
+          'a0000000-0000-4000-8000-000000000001', 'bonjour');
+  perform public.assert(
+    (select count(*) from public.live_messages) = 1, 'and unmuted they are');
+
+  -- Nobody may put words in another student's mouth.
+  refused := false;
+  begin
+    insert into public.live_messages (session_id, user_id, body)
+    values ('11110000-0000-4000-8000-000000000001',
+            'a0000000-0000-4000-8000-000000000002', 'ce n’est pas moi');
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'and cannot post as someone else');
+  reset role;
+end $$;
+
+do $$
+declare refused boolean := false;
+begin
+  raise notice 'closing the chat closes it for students only';
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  update public.live_sessions set chat_enabled = false
+   where id = '11110000-0000-4000-8000-000000000001';
+  -- The teacher can still write: closing the chat is for the class, not a gag
+  -- the teacher puts on themselves.
+  insert into public.live_messages (session_id, user_id, body)
+  values ('11110000-0000-4000-8000-000000000001',
+          'a0000000-0000-4000-8000-000000000003', 'silence, on écrit');
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    insert into public.live_messages (session_id, user_id, body)
+    values ('11110000-0000-4000-8000-000000000001',
+            'a0000000-0000-4000-8000-000000000001', 'et moi ?');
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'a student cannot write once chat is closed');
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  update public.live_sessions set chat_enabled = true
+   where id = '11110000-0000-4000-8000-000000000001';
+  reset role;
+end $$;
+
+do $$
+declare refused boolean := false;
+begin
+  raise notice 'the whiteboard is the host’s to draw on';
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  insert into public.live_board_ops (session_id, op)
+  values ('11110000-0000-4000-8000-000000000001',
+          '{"t":"draw","points":[[10,10],[20,20]],"color":"#111"}'::jsonb);
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    (select count(*) from public.live_board_ops
+      where session_id = '11110000-0000-4000-8000-000000000001') = 1,
+    'a student in the room sees what the teacher drew');
+
+  begin
+    insert into public.live_board_ops (session_id, op)
+    values ('11110000-0000-4000-8000-000000000001', '{"t":"clear"}'::jsonb);
+  exception when insufficient_privilege then refused := true;
+  end;
+  perform public.assert(refused, 'but cannot draw on it or wipe it');
+  reset role;
+
+  -- Someone who bought nothing sees neither the board nor the chat, whatever
+  -- room token they were sent.
+  call auth.login_as('a0000000-0000-4000-8000-000000000002');
+  perform public.assert(
+    (select count(*) from public.live_board_ops) = 0,
+    'and a stranger sees no board at all');
+  perform public.assert(
+    (select count(*) from public.live_messages) = 0,
+    'nor a single line of the chat');
+  reset role;
+end $$;
+
+do $$
+declare ok boolean; refused boolean := false;
+begin
+  raise notice 'removing someone from the class keeps them out';
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  ok := public.live_set_participant(
+    '11110000-0000-4000-8000-000000000001',
+    'a0000000-0000-4000-8000-000000000001',
+    set_banned => true);
+  perform public.assert(ok, 'the host removes a student');
+
+  -- And cannot be tricked into removing themselves or another teacher.
+  begin
+    perform public.live_set_participant(
+      '11110000-0000-4000-8000-000000000001',
+      'a0000000-0000-4000-8000-000000000003',
+      set_banned => true);
+  exception when check_violation then refused := true;
+  end;
+  perform public.assert(refused, 'staff cannot be removed from their own class');
+  reset role;
+
+  -- The ban is enforced at the door, not in the browser: reloading does not help.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    not public.can_join_live('11110000-0000-4000-8000-000000000001'),
+    'a removed student cannot re-enter by reloading');
+  perform public.assert(
+    public.live_room_state('11110000-0000-4000-8000-000000000001') is null,
+    'and the room tells them nothing about itself');
+  perform public.assert(
+    (select count(*) from public.live_messages) = 0,
+    'the chat closes to them with it');
+  reset role;
+
+  -- Lifting the ban lets them back in.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  perform public.live_set_participant(
+    '11110000-0000-4000-8000-000000000001',
+    'a0000000-0000-4000-8000-000000000001',
+    set_banned => false);
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    public.can_join_live('11110000-0000-4000-8000-000000000001'),
+    'and lifting it lets them back');
+  reset role;
+end $$;
+
+do $$
+declare state jsonb;
+begin
+  raise notice 'the room says the same thing to every caller';
+
+  -- One function answers "what may this person do here", so the page, the
+  -- realtime token and the chat policy cannot drift apart.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  state := public.live_room_state('11110000-0000-4000-8000-000000000001');
+  perform public.assert((state->>'is_host')::boolean, 'the teacher is the host');
+  perform public.assert((state->>'camera_allowed')::boolean, 'and may use their camera unasked');
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  state := public.live_room_state('11110000-0000-4000-8000-000000000001');
+  perform public.assert(not (state->>'is_host')::boolean, 'the student is not');
+  perform public.assert(not (state->>'camera_allowed')::boolean,
+    'and may not turn a camera on until asked');
+  reset role;
+
+  -- The teacher allows this one student a camera; nobody else gains one.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  perform public.live_set_participant(
+    '11110000-0000-4000-8000-000000000001',
+    'a0000000-0000-4000-8000-000000000001', set_camera => true);
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(
+    (public.live_room_state('11110000-0000-4000-8000-000000000001')->>'camera_allowed')::boolean,
+    'once allowed, the camera opens for them');
+  reset role;
+end $$;
+
 drop function public.assert(boolean, text);
 
 \echo ''
