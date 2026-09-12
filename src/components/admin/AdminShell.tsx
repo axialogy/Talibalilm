@@ -7,6 +7,7 @@ import {
   CreditCard,
   GraduationCap,
   LayoutDashboard,
+  LogOut,
   Menu,
   Receipt,
   Tag,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/navigation';
 import { Logo } from '@/components/layout/Logo';
+import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
 
 /**
@@ -90,6 +92,20 @@ export function AdminShell({
     </nav>
   );
 
+  // A real POST to the server action, so it works with JS off and clears the
+  // session server-side rather than only in the browser.
+  const signOutButton = (
+    <form action={signOut}>
+      <button
+        type="submit"
+        className="mt-3 inline-flex items-center gap-2 text-[12px] text-ink-muted transition-colors hover:text-red-600"
+      >
+        <LogOut className="size-3.5" aria-hidden="true" />
+        {t('signOut')}
+      </button>
+    </form>
+  );
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       {/* Desk: a column that stays put while the page scrolls. */}
@@ -110,6 +126,7 @@ export function AdminShell({
             >
               {t('backToSite')}
             </Link>
+            {signOutButton}
           </div>
         </div>
       </aside>
@@ -153,6 +170,7 @@ export function AdminShell({
               <div className="mt-6 border-t border-line pt-4">
                 <p className="truncate text-[13px] font-medium text-ink">{name}</p>
                 <p className="text-[11px] tracking-wide text-ink-muted uppercase">{role}</p>
+                {signOutButton}
               </div>
             </div>
           </div>

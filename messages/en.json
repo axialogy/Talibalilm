@@ -514,6 +514,7 @@
     "checkTodo": "To do",
     "checkPaymentsNote": "Payment status is not checked automatically: the PayPal secret is never read back, not even by you. Open the Payment screen to see it.",
     "backToSite": "Back to the site",
+    "signOut": "Sign out",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "navOverview": "Overview",

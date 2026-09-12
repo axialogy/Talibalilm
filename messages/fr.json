@@ -514,6 +514,7 @@
     "checkTodo": "À faire",
     "checkPaymentsNote": "L’état du paiement n’est pas vérifié automatiquement : le secret PayPal n’est jamais relu, même par vous. Ouvrez l’écran Paiement pour le voir.",
     "backToSite": "Retour au site",
+    "signOut": "Se déconnecter",
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
     "navOverview": "Vue d’ensemble",
