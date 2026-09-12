@@ -511,7 +511,7 @@
     "qaOrdersDesc": "Who bought what, and whether their payment went through.",
     "qaCourses": "Add or edit a course",
     "qaCoursesDesc": "Create a course, write its lessons, publish it.",
-    "qaPricing": "Set prices",
+    "qaPricing": "Set prices on a course",
     "qaPricingDesc": "Decide what each course and mode costs.",
     "qaCoupons": "Make cash codes",
     "qaCouponsDesc": "Single-use codes for students who pay at the desk.",
@@ -709,7 +709,15 @@
     "bonusAdd": "Add the bonus",
     "bonusDelete": "Delete this bonus",
     "bonusDeleteConfirm": "Delete this bonus? Students who already claimed it keep what they received.",
-    "bonusNeedsProducts": "Publish a price on at least two courses first — a bonus needs something to buy and something to give."
+    "bonusNeedsProducts": "Publish a price on at least two courses first — a bonus needs something to buy and something to give.",
+    "cursusTariff": "Price",
+    "cursusTariffLead": "What this programme costs, per mode. Leave a line blank to not sell it that way.",
+    "cursusDetails": "Programme details",
+    "feePlanning": "Timetable shown to students (optional)",
+    "feeScheduleLabel": "Schedule",
+    "feeTimeSlot": "Time-slot code",
+    "feeHoursYear": "Hours / year",
+    "feeHoursWeek": "Hours / week"
   },
   "live": {
     "startRecording": "Record",

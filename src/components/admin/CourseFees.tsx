@@ -15,6 +15,12 @@ export interface CourseFee {
   priceCents: number;
   durationDays: number;
   status: 'draft' | 'published' | 'archived';
+  /** Shown to students on the public pricing page. Optional, and folded away. */
+  timeSlot: string;
+  scheduleLabel: string;
+  hoursPerYear: number | null;
+  /** Stored in tenths of an hour; entered in hours. */
+  hoursPerWeek: number | null;
 }
 
 /** Cents back to what a person types: "300", "300.50". */
@@ -108,6 +114,64 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
                 <Button type="submit" size="sm" variant="ghost">
                   {t('save')}
                 </Button>
+
+                {/* The timetable a student reads on the public pricing page.
+                    Folded away because most courses never set it, but it has to
+                    live somewhere now that the separate price list is gone. */}
+                <details className="w-full">
+                  <summary className="cursor-pointer text-[11px] text-ink-muted transition-colors hover:text-brand-600">
+                    {t('feePlanning')}
+                  </summary>
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium text-ink-muted">
+                        {t('feeScheduleLabel')}
+                      </span>
+                      <input
+                        name="schedule_label"
+                        defaultValue={fee.scheduleLabel}
+                        maxLength={120}
+                        className={`${field} w-56`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium text-ink-muted">
+                        {t('feeTimeSlot')}
+                      </span>
+                      <input
+                        name="time_slot"
+                        defaultValue={fee.timeSlot}
+                        maxLength={40}
+                        placeholder="semaine-soir"
+                        className={`${field} w-40`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium text-ink-muted">
+                        {t('feeHoursYear')}
+                      </span>
+                      <input
+                        type="number"
+                        name="hours_per_year"
+                        defaultValue={fee.hoursPerYear ?? ''}
+                        min={0}
+                        max={2000}
+                        className={`${field} w-24`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium text-ink-muted">
+                        {t('feeHoursWeek')}
+                      </span>
+                      <input
+                        name="hours_per_week"
+                        defaultValue={fee.hoursPerWeek === null ? '' : fee.hoursPerWeek / 10}
+                        inputMode="decimal"
+                        className={`${field} w-24`}
+                      />
+                    </label>
+                  </div>
+                </details>
               </form>
 
               <form action={remove} className="mt-2">

@@ -76,13 +76,13 @@ export default async function AdminOverviewPage({
   const actions = [
     { key: 'qaOrders', desc: 'qaOrdersDesc', icon: Receipt, href: '/admin/orders', admin: false },
     { key: 'qaCourses', desc: 'qaCoursesDesc', icon: BookOpen, href: '/admin/courses', admin: false },
-    { key: 'qaPricing', desc: 'qaPricingDesc', icon: Tag, href: '/admin/pricing', admin: false },
+    { key: 'qaPricing', desc: 'qaPricingDesc', icon: Tag, href: '/admin/courses', admin: false },
     { key: 'qaCoupons', desc: 'qaCouponsDesc', icon: Ticket, href: '/admin/coupons', admin: true },
   ].filter((a) => !a.admin || isAdmin);
 
   const stats = [
     { key: 'statCourses', value: `${publishedCourses ?? 0}/${courses}`, hint: 'statFraction', icon: BookOpen, href: '/admin/courses' },
-    { key: 'statPrices', value: `${livePrices ?? 0}/${products}`, hint: 'statFraction', icon: Tag, href: '/admin/pricing' },
+    { key: 'statPrices', value: `${livePrices ?? 0}/${products}`, hint: 'statFraction', icon: Tag, href: '/admin/courses' },
     { key: 'statPacks', value: String(packs), hint: null, icon: CreditCard, href: '/admin/packs' },
     { key: 'statCursus', value: String(cursus), hint: null, icon: GraduationCap, href: '/admin/cursus' },
     { key: 'statStudents', value: String(students), hint: null, icon: Users, href: '/admin/students' },
@@ -91,7 +91,7 @@ export default async function AdminOverviewPage({
   // What still stands between this and a working shop.
   const checks = [
     { key: 'checkCourses', done: (publishedCourses ?? 0) > 0, href: '/admin/courses' },
-    { key: 'checkPrices', done: (livePrices ?? 0) > 0, href: '/admin/pricing' },
+    { key: 'checkPrices', done: (livePrices ?? 0) > 0, href: '/admin/courses' },
     { key: 'checkProgramme', done: cursus > 0, href: '/admin/cursus' },
     { key: 'checkPayments', done: paymentsReady, href: '/admin/payments' },
   ] as const;

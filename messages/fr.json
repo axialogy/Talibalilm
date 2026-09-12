@@ -511,7 +511,7 @@
     "qaOrdersDesc": "Qui a acheté quoi, et si le paiement est bien passé.",
     "qaCourses": "Ajouter ou modifier un cours",
     "qaCoursesDesc": "Créer un cours, rédiger ses leçons, le publier.",
-    "qaPricing": "Définir les tarifs",
+    "qaPricing": "Définir les tarifs d’un cours",
     "qaPricingDesc": "Fixer le prix de chaque cours et de chaque mode.",
     "qaCoupons": "Créer des codes caisse",
     "qaCouponsDesc": "Codes à usage unique pour les paiements au bureau.",
@@ -709,7 +709,15 @@
     "bonusAdd": "Ajouter le bonus",
     "bonusDelete": "Supprimer ce bonus",
     "bonusDeleteConfirm": "Supprimer ce bonus ? Les étudiants qui en ont déjà profité gardent ce qu’ils ont reçu.",
-    "bonusNeedsProducts": "Publiez d’abord un tarif sur au moins deux cours — un bonus a besoin de quelque chose à acheter et de quelque chose à offrir."
+    "bonusNeedsProducts": "Publiez d’abord un tarif sur au moins deux cours — un bonus a besoin de quelque chose à acheter et de quelque chose à offrir.",
+    "cursusTariff": "Tarif",
+    "cursusTariffLead": "Le prix de ce cursus, par mode. Laissez une ligne vide pour ne pas le vendre ainsi.",
+    "cursusDetails": "Détails du cursus",
+    "feePlanning": "Planning affiché aux étudiants (facultatif)",
+    "feeScheduleLabel": "Horaire",
+    "feeTimeSlot": "Code du créneau",
+    "feeHoursYear": "Heures / an",
+    "feeHoursWeek": "Heures / semaine"
   },
   "live": {
     "startRecording": "Enregistrer",

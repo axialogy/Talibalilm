@@ -6,7 +6,7 @@ import { CourseSettingsForm } from '@/components/admin/CourseSettingsForm';
 import { CoverUpload } from '@/components/admin/CoverUpload';
 import { CourseOutline } from '@/components/admin/CourseOutline';
 import { PublishControls } from '@/components/admin/PublishControls';
-import { CourseTabs } from '@/components/admin/CourseTabs';
+import { Tabs } from '@/components/ui/tabs';
 import { CourseFees, type CourseFee } from '@/components/admin/CourseFees';
 import { CourseCursus, membershipKey } from '@/components/admin/CourseCursus';
 import { LiveSessionForm } from '@/components/admin/LiveSessionForm';
@@ -68,7 +68,7 @@ export default async function CourseBuilderPage({
     await Promise.all([
       supabase
         .from('products')
-        .select('id, delivery, price_cents, duration_days, status')
+        .select('id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week')
         .eq('kind', 'module')
         .eq('course_id', id)
         .order('delivery'),
@@ -83,6 +83,10 @@ export default async function CourseBuilderPage({
     priceCents: f.price_cents,
     durationDays: f.duration_days,
     status: f.status,
+    timeSlot: f.time_slot,
+    scheduleLabel: f.schedule_label,
+    hoursPerYear: f.hours_per_year,
+    hoursPerWeek: f.hours_per_week,
   }));
 
   const included = new Set(
@@ -127,7 +131,7 @@ export default async function CourseBuilderPage({
       </div>
 
       <div className="mt-6">
-        <CourseTabs
+        <Tabs
           tabs={[
             {
               key: 'content',

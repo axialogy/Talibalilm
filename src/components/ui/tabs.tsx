@@ -4,17 +4,17 @@ import { useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * The course page, in sections the teacher can hold in their head.
+ * Sections of one screen, in tabs.
  *
- * Everything about a course now lives on its own page — content, price, which
- * programmes it belongs to, its live classes — which is right, but stacked in
- * one column it would be a very long scroll. Tabs keep "where do I set the
- * price?" a one-click answer instead of a hunt.
+ * Everything about a course — or a cursus — now lives on its own page, which is
+ * right, but stacked in one column it is a very long scroll. Tabs keep "where
+ * do I set the price?" a one-click answer instead of a hunt.
  *
  * State only, no routing: switching tabs must not reload the page and lose an
- * unsaved lesson body.
+ * unsaved lesson body. Panels stay mounted and are hidden, so a half-typed form
+ * survives a glance at another tab.
  */
-export function CourseTabs({ tabs }: { tabs: { key: string; label: string; content: ReactNode }[] }) {
+export function Tabs({ tabs }: { tabs: { key: string; label: string; content: ReactNode }[] }) {
   const [active, setActive] = useState(tabs[0]?.key ?? '');
 
   return (
