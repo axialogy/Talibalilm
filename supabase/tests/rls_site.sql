@@ -314,4 +314,92 @@ begin
     'a student cannot use the badge to count the school''s registrations');
   reset role;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Push subscriptions
+--
+-- A subscription is a capability, not merely a record: anyone holding one can
+-- make that device buzz. So it is owner-only, and deliberately owner-only even
+-- against STAFF — the teacher has no business reading which devices a student
+-- has registered, and the send path does not need a policy because it runs as
+-- the service role from a background job.
+-- ---------------------------------------------------------------------------
+
+insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values
+  ('a0000000-0000-0000-0000-000000000001', 'https://push.example/aaa', 'k1', 'a1'),
+  ('a0000000-0000-0000-0000-000000000002', 'https://push.example/bbb', 'k2', 'a2');
+
+do $$
+declare
+  refused boolean := false;
+begin
+  raise notice 'push — a stranger has no business here at all';
+  begin
+    set local role anon;
+    perform count(*) from public.push_subscriptions;
+  exception when insufficient_privilege then
+    refused := true;
+  end;
+  reset role;
+  perform public.assert(refused,
+    'anon is refused outright — no select grant, so the policy is never even reached');
+end $$;
+
+do $$
+declare
+  changed integer;
+begin
+  raise notice 'push — a device belongs to one person';
+  call auth.login_as('a0000000-0000-0000-0000-000000000001');
+
+  perform public.assert(
+    (select count(*) from public.push_subscriptions) = 1,
+    'a student sees their own subscription and no other');
+  perform public.assert(
+    not exists (select 1 from public.push_subscriptions
+                where endpoint = 'https://push.example/bbb'),
+    'and cannot see the admin''s device');
+
+  -- No error: the row is invisible, so the delete matches nothing. That is the
+  -- shape worth asserting — "it threw" would pass for the wrong reason.
+  delete from public.push_subscriptions where endpoint = 'https://push.example/bbb';
+  get diagnostics changed = row_count;
+  perform public.assert(changed = 0, 'nor unsubscribe somebody else''s phone');
+
+  insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
+  values ('a0000000-0000-0000-0000-000000000001', 'https://push.example/ccc', 'k3', 'a3');
+  perform public.assert(
+    (select count(*) from public.push_subscriptions) = 2,
+    'but may register a second device of their own');
+
+  reset role;
+end $$;
+
+do $$
+declare
+  refused boolean := false;
+begin
+  raise notice 'push — a row cannot be addressed to somebody else';
+  call auth.login_as('a0000000-0000-0000-0000-000000000001');
+  begin
+    insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
+    values ('a0000000-0000-0000-0000-000000000002', 'https://push.example/ddd', 'k4', 'a4');
+  exception when insufficient_privilege then
+    refused := true;
+  end;
+  reset role;
+  perform public.assert(refused,
+    'a student cannot subscribe the admin''s account to their own device');
+end $$;
+
+do $$
+begin
+  raise notice 'push — not even staff read other people''s devices';
+  call auth.login_as('a0000000-0000-0000-0000-000000000002');
+  perform public.assert(
+    (select count(*) from public.push_subscriptions) = 1,
+    'the admin sees their own device only — there is no staff-read policy here');
+  reset role;
+end $$;
+
 \echo 'ALL SITE CONTENT TESTS PASSED'

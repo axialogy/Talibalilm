@@ -13,6 +13,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { PushToggle } from '@/components/admin/PushToggle';
 import { createClient } from '@/lib/supabase/server';
 import { currentViewer } from '@/lib/auth/guards';
 
@@ -167,6 +168,13 @@ export default async function AdminOverviewPage({
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Notifications, above the numbers rather than buried in a settings
+          screen: it is per-device, so it has to be somewhere the office lands
+          on each new phone or laptop without going looking for it. */}
+      <section className="mt-10">
+        <PushToggle />
       </section>
 
       {/* The numbers. */}

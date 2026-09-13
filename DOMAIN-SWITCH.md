@@ -174,6 +174,12 @@ This sends the order receipts, the alert when somebody uses the contact form,
 and the alert when somebody registers. The alerts go to `SMTP_USER` — the same
 mailbox — unless `OFFICE_EMAIL` says otherwise.
 
+Both alerts now also arrive as a push notification on any device subscribed
+from Admin → Aperçu. That path is independent of the domain and needs nothing
+here beyond the VAPID variables in `.env.example`; it is listed only so that
+"the e-mail did not arrive" and "the phone did not buzz" are understood as two
+separate failures with two separate causes.
+
 Optional by design: unset, every send is a logged no-op. A student still gets
 their access and the failure is a line in the log, never a lost sale.
 

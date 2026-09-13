@@ -948,7 +948,16 @@
     "studentPending": "Nouveau",
     "studentNewNote": "Cette inscription vient d’arriver et personne ne l’a encore ouverte. Cliquez sur « Vu » pour retirer la notification — cela ne change rien pour l’étudiant, qui peut déjà s’inscrire et régler ses modules.",
     "studentSeenCta": "Vu",
-    "newStudents": "{count, plural, =1 {# nouvelle inscription} other {# nouvelles inscriptions}}"
+    "newStudents": "{count, plural, =1 {# nouvelle inscription} other {# nouvelles inscriptions}}",
+    "pushTitle": "Notifications sur cet appareil",
+    "pushOffNote": "Recevez une notification dès qu’une personne crée un compte. À activer sur chaque appareil séparément : l’activer ici ne l’active pas sur le téléphone. Sur iPhone, ouvrez d’abord l’application installée sur l’écran d’accueil — Safari seul ne reçoit pas les notifications.",
+    "pushOnNote": "Cet appareil recevra une notification à chaque nouvelle inscription.",
+    "pushEnable": "Activer les notifications",
+    "pushDisable": "Désactiver sur cet appareil",
+    "pushDenied": "Les notifications ont été refusées pour ce site. Il faut les réautoriser dans les réglages du navigateur : une fois refusées, le navigateur ne redemande plus.",
+    "pushUnsupported": "Ce navigateur ne gère pas les notifications web. Sur iPhone, elles ne fonctionnent que depuis l’application installée sur l’écran d’accueil (iOS 16.4 ou plus récent).",
+    "pushUnconfigured": "Les clés de notification ne sont pas encore configurées sur le serveur. Voir VAPID dans .env.example.",
+    "pushFailed": "L’activation a échoué. Réessayez ; si cela persiste, le détail est dans le journal du serveur."
   },
   "live": {
     "allow": "Autoriser",

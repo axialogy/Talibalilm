@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { after } from 'next/server';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
@@ -9,6 +10,7 @@ import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { reportError } from '@/lib/observability/report';
 import { notifyOfficeOfRegistration } from '@/lib/auth/registrations';
+import { notifyStaffOfRegistration } from '@/lib/push/server';
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -204,6 +206,15 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
   if (!supabaseConfigured) return notConfigured();
 
   const supabase = await createClient();
+
+  // Timed, because "registering is slow" has two possible causes and they are
+  // not distinguishable from the outside. Supabase sends the confirmation
+  // e-mail through the school's SMTP server INSIDE this call and does not
+  // answer until the mail server does, so most of the wait is usually here —
+  // but the alerts below are a second connection to the same host, and
+  // guessing which dominates is how an afternoon gets spent on the wrong one.
+  // One line in the Vercel log settles it.
+  const startedAt = Date.now();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -215,15 +226,32 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
       emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/dashboard')}`,
     },
   });
+  console.info(`[auth] signUp took ${Date.now() - startedAt}ms`);
 
-  // The office is told there is somebody to let in. Never allowed to fail the
-  // sign-up: a student who has just created an account must not see an error
-  // because the school's mail server was slow.
+  // The office is told somebody has registered — by e-mail, and as a push
+  // notification on whatever device the school has subscribed.
+  //
+  // Both run in `after()`, which is the point: they are side effects, and the
+  // student has no reason to wait for either. Before this, the sign-up held the
+  // response open for a second SMTP connection — TCP, TLS, AUTH, DATA, QUIT to
+  // a shared mail host — while the person stared at a spinner. `after()` runs
+  // the block once the response is on its way and keeps the function alive for
+  // it, so the push added here costs the student nothing at all.
   if (!error) {
-    await notifyOfficeOfRegistration({
+    const notify = {
       fullName: parsed.data.fullName,
       email: parsed.data.email,
       userId: data.user?.id ?? '',
+    };
+    after(async () => {
+      const alertsAt = Date.now();
+      await Promise.allSettled([
+        notifyOfficeOfRegistration(notify),
+        notifyStaffOfRegistration(notify),
+      ]);
+      console.info(
+        `[auth] registration alerts took ${Date.now() - alertsAt}ms (after the response)`,
+      );
     });
   }
 

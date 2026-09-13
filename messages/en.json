@@ -948,7 +948,16 @@
     "studentPending": "New",
     "studentNewNote": "This registration has just arrived and nobody has opened it yet. Press “Seen” to clear the notification — it changes nothing for the student, who can already enrol and pay for modules.",
     "studentSeenCta": "Seen",
-    "newStudents": "{count, plural, =1 {# new registration} other {# new registrations}}"
+    "newStudents": "{count, plural, =1 {# new registration} other {# new registrations}}",
+    "pushTitle": "Notifications on this device",
+    "pushOffNote": "Get a notification the moment somebody creates an account. Turn it on per device: enabling it here does not enable it on the phone. On iPhone, open the app installed on the Home Screen first — Safari alone receives nothing.",
+    "pushOnNote": "This device will be notified on every new registration.",
+    "pushEnable": "Turn on notifications",
+    "pushDisable": "Turn off on this device",
+    "pushDenied": "Notifications were blocked for this site. They have to be allowed again in the browser settings — once denied, the browser stops asking.",
+    "pushUnsupported": "This browser does not support web notifications. On iPhone they work only from the app installed on the Home Screen (iOS 16.4 or later).",
+    "pushUnconfigured": "The notification keys are not configured on the server yet. See VAPID in .env.example.",
+    "pushFailed": "Turning it on failed. Try again; if it keeps failing, the detail is in the server log."
   },
   "live": {
     "allow": "Allow",

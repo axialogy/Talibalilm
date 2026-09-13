@@ -2,7 +2,7 @@
 export const institut = {
   addressLines: ['Locaux de la Mosquée El Mominine', '77130 Montereau-Fault-Yonne'],
   phone: '07 56 85 79 64',
-  email: 'talibalim77@gmail.com',
+  email: 'contact@talibalim.com',
   social: {
     facebook: 'https://facebook.com/',
     instagram: 'https://instagram.com/',
