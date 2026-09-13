@@ -32,7 +32,43 @@ function localePrefix(pathname: string): string {
   return '';
 }
 
+/**
+ * A confirmation link that landed somewhere other than the callback.
+ *
+ * We ask Supabase to send people to `{siteUrl()}/auth/callback`. Supabase
+ * refuses any redirect target that is not on its allow-list — and it does not
+ * error, it SILENTLY substitutes the project's Site URL. The student then
+ * arrives at `/?code=…`, where nothing exchanges the code, and the account is
+ * never confirmed. That failure is invisible from both ends: the e-mail sent,
+ * the page rendered, the account stayed shut.
+ *
+ * Landing on the Site URL is also simply Supabase's default behaviour for
+ * anyone who has not configured a redirect at all. Either way, a link that
+ * reaches the right host should work rather than dead-end on the home page.
+ *
+ * The matcher below excludes `/auth`, so the callback itself is never matched
+ * and there is no loop to guard against.
+ */
+function authCodeRedirect(request: NextRequest): URL | null {
+  const params = request.nextUrl.searchParams;
+  const hasCode = params.has('code');
+  const hasTokenHash = params.has('token_hash') && params.has('type');
+  if (!hasCode && !hasTokenHash) return null;
+
+  const url = request.nextUrl.clone();
+  url.pathname = '/auth/callback';
+  // Where to land afterwards. The callback refuses anything off-origin, so a
+  // hand-crafted `next` cannot turn this into an open redirect.
+  if (!params.has('next')) url.searchParams.set('next', '/dashboard');
+  return url;
+}
+
 export async function middleware(request: NextRequest) {
+  // Before anything else, including the locale: a verification code is not a
+  // page, and prefixing it with a language only delays handing it over.
+  const codeUrl = authCodeRedirect(request);
+  if (codeUrl) return NextResponse.redirect(codeUrl);
+
   // Locale first: it decides the final URL, and the session cookies have to be
   // written onto whatever response it produces — including its redirects.
   const response = handleI18n(request);

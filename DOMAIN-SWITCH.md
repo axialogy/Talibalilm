@@ -1,6 +1,6 @@
-# The domain: `t.talibalim.com`
+# The domain: `talibalim.com`
 
-The site is reachable at **https://t.talibalim.com**. Nothing in the code knows
+The site is reachable at **https://talibalim.com**. Nothing in the code knows
 that — there is no domain string anywhere in `src/`; every URL the app builds
 comes from `siteUrl()`, which reads one variable. What *does* have to be told,
 separately, is six outside services. Five of them fail loudly if they are
@@ -12,10 +12,15 @@ Work down the list in order. Each step says how to tell it worked.
 
 ## 1. Vercel — the domain itself
 
-Project → Settings → Domains → `t.talibalim.com`, with the DNS record at the
-registrar. **Done.**
+Project → Settings → Domains → `talibalim.com`, with the DNS record at the
+registrar.
 
-Check: `https://t.talibalim.com` answers and the certificate is valid. Every
+Keep `t.talibalim.com` pointed at the project too, as a **redirect** to the
+apex rather than a second live domain. Confirmation links already sitting in
+somebody's inbox name it, and a domain that stops answering turns those into
+dead links for no benefit.
+
+Check: `https://talibalim.com` answers and the certificate is valid. Every
 step below assumes that.
 
 ## 2. Vercel — `NEXT_PUBLIC_SITE_URL`, then REDEPLOY
@@ -23,7 +28,7 @@ step below assumes that.
 Settings → Environment Variables:
 
 ```
-NEXT_PUBLIC_SITE_URL = https://t.talibalim.com
+NEXT_PUBLIC_SITE_URL = https://talibalim.com
 ```
 
 No trailing slash, no path.
@@ -40,7 +45,7 @@ URLs handed to PayPal for each order.
 Check: **Admin → Diagnostic**. The line *Adresse publique du site* now compares
 what the app announces against the host that actually served the page, and says
 so in red if they disagree. Green there means this step is done; red names both
-values. (`https://t.talibalim.com/sitemap.xml` is the second opinion — the URLs
+values. (`https://talibalim.com/sitemap.xml` is the second opinion — the URLs
 inside it must name the new domain.)
 
 ## 3. Supabase — the redirect allow list
@@ -49,14 +54,34 @@ inside it must name the new domain.)
 
 Supabase → Authentication → URL Configuration:
 
-- **Site URL** → `https://t.talibalim.com`
-- **Redirect URLs** → add `https://t.talibalim.com/auth/callback`
+- **Site URL** → `https://talibalim.com`
+- **Redirect URLs** → add `https://talibalim.com/auth/callback`
 
-Sign-up confirmation, magic links and password resets all ask Supabase to send
-the student to `{siteUrl()}/auth/callback`. Supabase refuses any redirect target
-that is not on this list — it does not error, it quietly substitutes the Site
-URL. So the symptom is never "an error"; it is a student landing somewhere
-unexpected after clicking the link in their email.
+Add the wildcard as well:
+
+- **Redirect URLs** → also add `https://talibalim.com/**`
+
+**This is not theory — it has already happened here.** A confirmation e-mail
+arrived carrying
+
+```
+https://e-learning-ten-eta.vercel.app/?code=e608e214-…
+```
+
+Look at what is missing: `/auth/callback`. The app asks Supabase to send the
+student to `{siteUrl()}/auth/callback`; Supabase found that target absent from
+this list, discarded it, and **silently substituted the Site URL** — which was
+still the old host. No error anywhere. The e-mail sent, the page rendered, and
+the account was never confirmed, because nothing at `/` exchanges a code.
+
+So two things are wrong at once when this happens, and both need fixing: the
+Site URL names the wrong host, AND the callback is not on the allow-list.
+
+The app now catches a stray `?code=` on any page and hands it to
+`/auth/callback` (see `src/middleware.ts`), so a link that reaches the right
+host works even when Supabase substitutes. That is a safety net, not a
+substitute for this list — a substituted link still names whatever the Site URL
+says, so if that is wrong the link goes to the wrong site entirely.
 
 Keep the old `*.vercel.app` callback on the list until you are sure no
 confirmation emails are still in flight. There is no cost to leaving both.
@@ -96,7 +121,7 @@ R2 → your bucket → Settings → CORS Policy:
 ```json
 [
   {
-    "AllowedOrigins": ["https://t.talibalim.com"],
+    "AllowedOrigins": ["https://talibalim.com"],
     "AllowedMethods": ["PUT"],
     "AllowedHeaders": ["content-type"],
     "MaxAgeSeconds": 3600
@@ -112,7 +137,7 @@ symptom is "uploads stopped working, the deck still shows".
 ## 5. PayPal — the webhook URL
 
 developer.paypal.com → Apps & Credentials → your app → Webhooks → edit the URL
-to `https://t.talibalim.com/api/paypal/webhook`.
+to `https://talibalim.com/api/paypal/webhook`.
 
 Sandbox and Live are separate apps with separate webhooks. If both exist, both
 need changing, and each has its own `PAYPAL_WEBHOOK_ID`.
@@ -128,7 +153,7 @@ The return and cancel URLs need no change; they are built per order from
 ## 6. GitHub — the `SWEEP_URL` secret
 
 Repo → Settings → Secrets and variables → Actions → `SWEEP_URL` →
-`https://t.talibalim.com/api/cron/sweep`.
+`https://talibalim.com/api/cron/sweep`.
 
 `CRON_SECRET` does not change. Verify with Actions → Sweep → Run workflow: a
 green run printing `HTTP 200` and a small JSON body.
@@ -161,7 +186,7 @@ at it — nothing reads them.
 
 1. **Admin → Diagnostic.** *Adresse publique du site* green. (Covers 2.)
 2. **Register a brand-new test account.** It must complete. With confirmation
-   on, the email must link to `t.talibalim.com` and clicking it must land on the
+   on, the email must link to `talibalim.com` and clicking it must land on the
    dashboard. (Covers 3.)
 3. **Admin → a live class → Diapositives → upload an image.** (Covers 4.)
 4. **Buy something in sandbox** and confirm the entitlement appears in
