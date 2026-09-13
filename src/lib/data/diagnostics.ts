@@ -1,4 +1,5 @@
 import 'server-only';
+import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured, siteUrl } from '@/lib/env';
 import { r2Configured, r2Missing } from '@/lib/storage/r2';
@@ -85,6 +86,74 @@ function isMissing(code: string | undefined): boolean {
   return code === 'PGRST202' || code === 'PGRST205' || code === '42P01' || code === '42883';
 }
 
+/**
+ * Does the address we announce match the address we were reached at?
+ *
+ * `Host` is set by the proxy in front of the app, not by the browser, so on
+ * Vercel it is the domain the visitor typed. A mismatch is reported as a
+ * problem with both values named, because knowing which two disagree is the
+ * whole of the fix.
+ *
+ * Ports and case are normalised away; a preview deployment, which has no
+ * configured address at all, is reported as unset rather than wrong.
+ */
+async function siteAddressCheck(): Promise<Check> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  const announced = siteUrl();
+
+  let servingHost = '';
+  try {
+    servingHost = ((await headers()).get('host') ?? '').toLowerCase();
+  } catch {
+    // No request context — a build-time render. Nothing to compare against.
+  }
+
+  if (!configured) {
+    return {
+      group: 'Configuration',
+      name: 'Adresse publique du site',
+      state: 'unset',
+      detail: `NEXT_PUBLIC_SITE_URL n’est pas définie ; l’adresse est déduite de Vercel : ${announced}`,
+    };
+  }
+
+  const announcedHost = (() => {
+    try {
+      return new URL(announced).host.toLowerCase();
+    } catch {
+      return '';
+    }
+  })();
+
+  if (servingHost === '' || announcedHost === '') {
+    return {
+      group: 'Configuration',
+      name: 'Adresse publique du site',
+      state: 'ok',
+      detail: announced,
+    };
+  }
+
+  if (servingHost !== announcedHost) {
+    return {
+      group: 'Configuration',
+      name: 'Adresse publique du site',
+      state: 'error',
+      detail:
+        `NEXT_PUBLIC_SITE_URL annonce ${announcedHost}, mais cette page a été servie par ${servingHost}. ` +
+        'Les liens d’inscription, les retours PayPal et le sitemap pointent donc vers la mauvaise adresse. ' +
+        'Corrigez la variable dans Vercel PUIS redéployez — une variable NEXT_PUBLIC_ est figée dans le build.',
+    };
+  }
+
+  return {
+    group: 'Configuration',
+    name: 'Adresse publique du site',
+    state: 'ok',
+    detail: `${announced} — correspond à l’adresse servie`,
+  };
+}
+
 export async function runDiagnostics(): Promise<Check[]> {
   const checks: Check[] = [];
 
@@ -104,18 +173,19 @@ export async function runDiagnostics(): Promise<Check[]> {
     detail: supabaseConfigured ? projectHost : 'NEXT_PUBLIC_SUPABASE_URL / ANON_KEY',
   });
 
-  // Worth its own line. This value is what auth links, PayPal returns and the
-  // sitemap are built from, and a deployment reachable at one address while
-  // announcing another sends students to a site that is not the one they are
-  // using. Comparing it against the address in the browser is the check.
-  checks.push({
-    group: 'Configuration',
-    name: 'Adresse publique du site',
-    state: process.env.NEXT_PUBLIC_SITE_URL ? 'ok' : 'unset',
-    detail: process.env.NEXT_PUBLIC_SITE_URL
-      ? `${siteUrl()} — doit correspondre à l’adresse dans la barre du navigateur`
-      : `déduite de Vercel : ${siteUrl()}`,
-  });
+  // Worth its own line, and worth CHECKING rather than describing.
+  //
+  // This value is what auth links, PayPal returns and the sitemap are built
+  // from. A deployment reachable at one address while announcing another sends
+  // students to a site that is not the one they are using — and it does so
+  // silently, because every page still renders. It cost a round of guessing
+  // once already: the variable still named the old host after the domain moved,
+  // because `NEXT_PUBLIC_*` is baked in at build time and saving it in Vercel
+  // without redeploying changes nothing.
+  //
+  // So the answer is compared here against the host actually serving this
+  // request, instead of being printed for a human to eyeball.
+  checks.push(await siteAddressCheck());
 
   const missingR2 = r2Missing();
   checks.push({
@@ -149,7 +219,9 @@ export async function runDiagnostics(): Promise<Check[]> {
     name: 'Reçus par e-mail (Resend)',
     state: process.env.RESEND_API_KEY ? 'ok' : 'unset',
     detail: process.env.RESEND_API_KEY
-      ? 'clé lue — les reçus partent après un paiement'
+      ? process.env.EMAIL_FROM
+        ? `clé lue, expéditeur : ${process.env.EMAIL_FROM}`
+        : 'clé lue, mais EMAIL_FROM est absente : les reçus partent de onboarding@resend.dev, qui finit souvent en indésirables'
       : 'facultatif : sans lui, l’élève obtient son accès sans reçu',
   });
 
@@ -161,7 +233,10 @@ export async function runDiagnostics(): Promise<Check[]> {
     name: 'E-mails d’inscription',
     state: 'unset',
     detail:
-      'envoyés par Supabase, pas par Resend. Sans SMTP personnalisé, le service intégré est limité à quelques messages par heure — désactivez « Confirm email » dans Supabase tant que l’institut n’a pas son domaine.',
+      'envoyés par Supabase, jamais par Resend — ce sont deux expéditeurs différents et un seul empêche de s’inscrire. ' +
+      'Le service intégré de Supabase est limité à quelques messages par heure : renseignez le SMTP personnalisé ' +
+      '(smtp.resend.com, port 465, utilisateur « resend », mot de passe = la clé Resend) avant de réactiver « Confirm email ». ' +
+      'Voir DOMAIN-SWITCH.md, étape 3.',
   });
 
   checks.push({
