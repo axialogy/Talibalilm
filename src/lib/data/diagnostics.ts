@@ -299,6 +299,123 @@ async function authSettingsChecks(): Promise<Check[]> {
   return checks;
 }
 
+/**
+ * Every function the app calls by name, including the ones that write.
+ *
+ * The probe above calls a function to see whether it answers, which rules out
+ * anything that changes data — and that is precisely where the faults have
+ * been. `admin_generate_coupons` cannot be test-called without generating
+ * coupons, so its absence was invisible here while the coupon screen failed.
+ */
+const RPC_NAMES = [
+  'admin_anonymise_user',
+  'admin_generate_coupons',
+  'admin_grant_entitlement',
+  'admin_revoke_entitlement',
+  'admin_void_coupon',
+  'can_read_slide',
+  'claim_confirmation_email',
+  'claim_pack',
+  'emails_for',
+  'expire_entitlements',
+  'expire_pending_orders',
+  'grant_order_entitlements',
+  'has_course_access',
+  'live_decide_join',
+  'live_join',
+  'live_leave',
+  'live_room_state',
+  'live_set_participant',
+  'payment_settings_status',
+  'prune_rate_limits',
+  'rate_limit_hit',
+  'redeem_coupon',
+  'release_coupon',
+  'release_order_holds',
+  'revoke_order_entitlements',
+] as const;
+
+/**
+ * Ask PostgREST what it actually has, rather than inferring it from a failure.
+ *
+ * PostgREST publishes its own schema cache as an OpenAPI document at the root
+ * of the REST endpoint. Every function it will answer for appears there as
+ * `/rpc/<name>`. That makes it the one authority on the question that has cost
+ * this project the most time: "the migration ran, so why does the app say the
+ * function is missing?"
+ *
+ * It separates the two causes cleanly. A name absent here is absent from the
+ * cache — the migration did not run on THIS project, or PostgREST has not
+ * reloaded. A name present here while the app still reports it missing means
+ * the arguments disagree, not the function.
+ *
+ * Read-only, and it calls nothing: this is the only way to check a function
+ * that writes without writing.
+ */
+async function rpcCacheChecks(): Promise<Check[]> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!base || !key) return [];
+
+  let known: Set<string>;
+  try {
+    const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      return [
+        {
+          group: 'Fonctions',
+          name: 'cache PostgREST',
+          state: 'error',
+          detail: `la description du schéma a répondu ${response.status}`,
+        },
+      ];
+    }
+    const doc = (await response.json()) as { paths?: Record<string, unknown> };
+    known = new Set(
+      Object.keys(doc.paths ?? {})
+        .filter((path) => path.startsWith('/rpc/'))
+        .map((path) => path.slice('/rpc/'.length)),
+    );
+  } catch (cause) {
+    return [
+      {
+        group: 'Fonctions',
+        name: 'cache PostgREST',
+        state: 'error',
+        detail: `description du schéma illisible : ${(cause as Error).message}`,
+      },
+    ];
+  }
+
+  const absent = RPC_NAMES.filter((name) => !known.has(name));
+  if (absent.length === 0) {
+    return [
+      {
+        group: 'Fonctions',
+        name: 'cache PostgREST',
+        state: 'ok',
+        detail: `les ${RPC_NAMES.length} fonctions appelées par le site sont publiées`,
+      },
+    ];
+  }
+
+  return [
+    {
+      group: 'Fonctions',
+      name: 'cache PostgREST',
+      state: 'missing',
+      detail:
+        `absentes du cache : ${absent.join(', ')}.` +
+        RELOAD_HINT +
+        ' Si le rechargement ne change rien, vérifiez que l’éditeur SQL où vous exécutez les ' +
+        'migrations est bien le projet nommé sur la ligne « Supabase » ci-dessus.',
+    },
+  ];
+}
+
 export async function runDiagnostics(): Promise<Check[]> {
   const checks: Check[] = [];
 
@@ -311,11 +428,18 @@ export async function runDiagnostics(): Promise<Check[]> {
     }
   })();
 
+  // Named rather than merely confirmed. A deployment pointed at one Supabase
+  // project while the migrations are pasted into another looks exactly like a
+  // migration that did not run — every early table answers, and the newest
+  // function or column does not. The project is printed so the two can be
+  // compared without leaving this page.
   checks.push({
     group: 'Configuration',
     name: 'Supabase',
     state: supabaseConfigured ? 'ok' : 'unset',
-    detail: supabaseConfigured ? projectHost : 'NEXT_PUBLIC_SUPABASE_URL / ANON_KEY',
+    detail: supabaseConfigured
+      ? `${projectHost} — c’est CE projet qui doit recevoir les migrations`
+      : 'NEXT_PUBLIC_SUPABASE_URL / ANON_KEY',
   });
 
   // Worth its own line, and worth CHECKING rather than describing.
@@ -438,6 +562,8 @@ export async function runDiagnostics(): Promise<Check[]> {
       });
     }),
   );
+
+  checks.push(...(await rpcCacheChecks()));
 
   // --- columns -------------------------------------------------------------
   await Promise.all(
