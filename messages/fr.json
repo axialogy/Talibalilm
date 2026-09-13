@@ -405,7 +405,8 @@
     "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
     "signupsDisabled": "Les inscriptions sont fermées pour le moment.",
     "unexpected": "Connexion impossible pour le moment. Réessayez dans un instant.",
-    "weakPassword": "Ce mot de passe est trop faible. Choisissez-en un plus long."
+    "weakPassword": "Ce mot de passe est trop faible. Choisissez-en un plus long.",
+    "serviceUnavailable": "Le service n’a pas répondu à temps et votre compte n’a pas pu être créé. Le problème vient de chez nous, pas de vous. L’institut a été prévenu — réessayez dans quelques minutes."
   },
   "footer": {
     "tagline": "Apprendre et se former",

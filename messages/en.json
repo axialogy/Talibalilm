@@ -405,7 +405,8 @@
     "rateLimited": "Too many attempts. Try again in a few minutes.",
     "signupsDisabled": "Registration is closed at the moment.",
     "unexpected": "We cannot sign you in at the moment. Try again in a moment.",
-    "weakPassword": "That password is too weak. Choose a longer one."
+    "weakPassword": "That password is too weak. Choose a longer one.",
+    "serviceUnavailable": "The service did not answer in time, so your account could not be created. The fault is ours, not yours. The institute has been notified — try again in a few minutes."
   },
   "footer": {
     "tagline": "Learn and train",

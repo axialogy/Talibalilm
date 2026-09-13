@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured, siteUrl } from '@/lib/env';
 import { r2Configured, r2Missing } from '@/lib/storage/r2';
+import { smtpProbe } from '@/lib/email/send';
 import { liveKitConfigured } from '@/lib/live/server';
 
 /**
@@ -428,6 +429,90 @@ async function rpcCacheChecks(): Promise<Check[]> {
   ];
 }
 
+/**
+ * Where does the time actually go?
+ *
+ * Registration was taking about fifty seconds and every explanation for it was
+ * a theory. Three round trips are timed here instead, because between them they
+ * cover everything a sign-up waits on:
+ *
+ *   Postgres        what `guard('register')` pays before anything else runs
+ *   Supabase Auth   the service `signUp()` itself talks to
+ *   SMTP            the mail server, which is what the theories were about
+ *
+ * Whichever number is the large one names the cause, from this page, without
+ * another registration attempt and without reading a hosting provider's log.
+ * If all three are small, the time is somewhere none of us has looked yet —
+ * which is also worth knowing, and is not something a theory can tell you.
+ *
+ * The threshold is deliberately generous: anything under ten seconds is drawn
+ * as normal, because the finding here is the NUMBER, and a page full of amber
+ * for a 900 ms round trip teaches a reader to ignore the colour.
+ */
+async function latencyChecks(): Promise<Check[]> {
+  const group = 'Latence';
+  const checks: Check[] = [];
+  const slow = (ms: number): CheckState => (ms >= 10_000 ? 'error' : 'ok');
+
+  if (supabaseConfigured) {
+    const supabase = await createClient();
+
+    const dbAt = Date.now();
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true });
+    const dbMs = Date.now() - dbAt;
+    checks.push({
+      group,
+      name: 'Base de données',
+      state: dbError ? 'error' : slow(dbMs),
+      detail: dbError ? `${dbMs} ms — ${dbError.message}` : `${dbMs} ms pour un aller-retour`,
+    });
+
+    // The same service `signUp()` calls. A large number here means the wait is
+    // the auth service or the network to it, and has nothing to do with e-mail
+    // — which is the distinction the theories kept collapsing.
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (base && key) {
+      const authAt = Date.now();
+      let authDetail: string;
+      let authState: CheckState;
+      try {
+        const response = await fetch(`${base}/auth/v1/settings`, {
+          headers: { apikey: key },
+          cache: 'no-store',
+        });
+        const authMs = Date.now() - authAt;
+        authState = response.ok ? slow(authMs) : 'error';
+        authDetail = response.ok
+          ? `${authMs} ms — c’est le service que signUp() appelle`
+          : `${authMs} ms — Supabase a répondu ${response.status}`;
+      } catch (cause) {
+        authState = 'error';
+        authDetail = `${Date.now() - authAt} ms — ${(cause as Error).message}`;
+      }
+      checks.push({ group, name: 'Supabase Auth', state: authState, detail: authDetail });
+    }
+  }
+
+  // Opens the connection and authenticates; sends nothing. This is the exact
+  // operation that hangs when a shared mail host is unwell.
+  const smtp = await smtpProbe();
+  checks.push({
+    group,
+    name: 'Serveur d’envoi (SMTP)',
+    state: !smtp.configured ? 'unset' : smtp.ok ? slow(smtp.ms) : 'error',
+    detail: !smtp.configured
+      ? 'SMTP_HOST non défini — rien à mesurer'
+      : smtp.ok
+        ? `${smtp.ms} ms pour ouvrir la connexion et s’authentifier (aucun message envoyé)`
+        : `${smtp.ms} ms puis échec — ${smtp.error ?? 'raison inconnue'}`,
+  });
+
+  return checks;
+}
+
 export async function runDiagnostics(): Promise<Check[]> {
   const checks: Check[] = [];
 
@@ -468,6 +553,7 @@ export async function runDiagnostics(): Promise<Check[]> {
   // request, instead of being printed for a human to eyeball.
   checks.push(await siteAddressCheck());
   checks.push(...(await authSettingsChecks()));
+  checks.push(...(await latencyChecks()));
 
   // Worth saying out loud when it is on: accounts are being opened without the
   // address ever being proved, which is a decision the school made, not a

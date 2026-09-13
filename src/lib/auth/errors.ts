@@ -18,6 +18,7 @@ export type AuthErrorKey =
   | 'databaseError'
   | 'emailSendFailed'
   | 'emailInvalid'
+  | 'serviceUnavailable'
   | 'unexpected';
 
 /** Longest, most specific patterns first — several of these overlap. */
@@ -53,6 +54,18 @@ const PATTERNS: [RegExp, AuthErrorKey][] = [
   // Some addresses are refused outright by the provider, which reads to the
   // visitor as a broken site rather than a typo in their own address.
   [/invalid(_|\s)?email|email address.*invalid|unable to validate email/i, 'emailInvalid'],
+  // LAST, so it cannot swallow any of the specific cases above.
+  //
+  // Nothing answered in time. supabase-js reports a network failure as "fetch
+  // failed" or "Failed to fetch", and a gateway giving up on a slow upstream as
+  // a 502/503/504 — none of which say anything about what was slow. Before this
+  // branch they all fell to the catch-all, whose text tells somebody REGISTERING
+  // that we "cannot sign you in": the wrong verb, and no hint that an operator
+  // should go and look at a service.
+  [
+    /fetch failed|failed to fetch|network (error|request failed)|timeout|timed out|deadline exceeded|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|\b50[234]\b|bad gateway|gateway time-?out|service unavailable/i,
+    'serviceUnavailable',
+  ],
 ];
 
 export function classifyAuthError(raw: string): AuthErrorKey {

@@ -70,4 +70,40 @@ describe('the failures that stop a school taking registrations', () => {
       classifyAuthError('For security purposes, you can only request this after 51 seconds'),
     ).toBe('rateLimited');
   });
+  it('recognises a service that simply did not answer', () => {
+    // What supabase-js reports for a network failure. Neither string says
+    // anything about auth, e-mail or the person registering, which is why they
+    // all used to land in the catch-all and tell a REGISTERING student that we
+    // "cannot sign you in".
+    expect(classifyAuthError('fetch failed')).toBe('serviceUnavailable');
+    expect(classifyAuthError('TypeError: Failed to fetch')).toBe('serviceUnavailable');
+    expect(classifyAuthError('connect ETIMEDOUT 10.0.0.1:443')).toBe('serviceUnavailable');
+    expect(classifyAuthError('read ECONNRESET')).toBe('serviceUnavailable');
+    expect(classifyAuthError('504 Gateway Timeout')).toBe('serviceUnavailable');
+    expect(classifyAuthError('upstream context deadline exceeded')).toBe('serviceUnavailable');
+  });
+
+  it('lets every specific cause beat the new catch-all', () => {
+    // The whole risk of a broad pattern is that it swallows the narrow ones
+    // above it. Each of these contains a word the serviceUnavailable pattern
+    // also matches, and each must still classify as itself.
+    expect(classifyAuthError('failed to send email: smtp: dial tcp: timeout')).toBe(
+      'emailSendFailed',
+    );
+    expect(classifyAuthError('Error sending confirmation email: i/o timeout')).toBe(
+      'emailSendFailed',
+    );
+    expect(
+      classifyAuthError('For security purposes, you can only request this after 51 seconds'),
+    ).toBe('rateLimited');
+    expect(classifyAuthError('Database error saving new user: timeout')).toBe('databaseError');
+  });
+
+  it('keeps a genuinely unknown message in the catch-all', () => {
+    // The point of serviceUnavailable is to be narrower than "anything we do
+    // not recognise". Something we have never seen must still be reported as
+    // unmapped so a pattern gets added, rather than being quietly explained
+    // away as an outage.
+    expect(classifyAuthError('Some entirely new GoTrue message')).toBe('unexpected');
+  });
 });

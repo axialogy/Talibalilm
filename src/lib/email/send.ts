@@ -101,6 +101,67 @@ function transport(smtp: SmtpConfig): Transporter {
   return transporter;
 }
 
+export interface SmtpProbe {
+  configured: boolean;
+  ms: number;
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * How long does the mail server take to answer at all?
+ *
+ * `verify()` opens the connection and authenticates but SENDS NOTHING, which
+ * makes it safe on a diagnostics page and makes it exactly the operation that
+ * hangs when a shared mail host is unwell. One number here is worth an
+ * afternoon of theorising about where a slow sign-up spends its time.
+ *
+ * Two deliberate choices:
+ *
+ * It builds its OWN transporter rather than using the cached one. A probe that
+ * poisoned the sending path — or was poisoned by it — would report on
+ * something other than the thing being measured.
+ *
+ * And it races a hard timeout, because a page that diagnoses a hang must not
+ * inherit it. Nodemailer's own timeouts would usually cover this; the race is
+ * the belt to their braces.
+ */
+export async function smtpProbe(timeoutMs = 15_000): Promise<SmtpProbe> {
+  const smtp = config();
+  if (!smtp) return { configured: false, ms: 0, ok: false };
+
+  const startedAt = Date.now();
+  const probe = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.port === 465,
+    auth: { user: smtp.user, pass: smtp.pass },
+    connectionTimeout: timeoutMs,
+    greetingTimeout: timeoutMs,
+    socketTimeout: timeoutMs,
+    pool: false,
+  });
+
+  try {
+    await Promise.race([
+      probe.verify(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`aucune réponse en ${timeoutMs} ms`)), timeoutMs),
+      ),
+    ]);
+    return { configured: true, ms: Date.now() - startedAt, ok: true };
+  } catch (cause) {
+    return {
+      configured: true,
+      ms: Date.now() - startedAt,
+      ok: false,
+      error: cause instanceof Error ? cause.message : String(cause),
+    };
+  } finally {
+    probe.close();
+  }
+}
+
 /** Returns true when the mail server accepted the message, false otherwise. */
 export async function sendMail(mail: Mail): Promise<boolean> {
   const smtp = config();

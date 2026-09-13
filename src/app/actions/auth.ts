@@ -81,6 +81,14 @@ async function authErrorMessage(raw: string): Promise<string> {
       note: 'usually handle_new_user failing — migrations missing or partial',
     });
   }
+  // A service did not answer. Reported because it names an outage somebody has
+  // to go and look at — and because it is the branch that used to masquerade as
+  // the generic catch-all, which is how it went unexamined.
+  if (key === 'serviceUnavailable') {
+    reportError('auth.serviceUnavailable', new Error(raw), {
+      note: 'network or gateway failure reaching Supabase Auth — check Admin → Diagnostic → Latence',
+    });
+  }
   if (key === 'emailSendFailed') {
     reportError('auth.emailSendFailed', new Error(raw), {
       note: "Supabase's built-in sender is over its limit; configure custom SMTP",
