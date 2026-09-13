@@ -1,8 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, MessageSquare, PresentationIcon, SquarePen, Users, X } from 'lucide-react';
+import {
+  Loader2,
+  Maximize2,
+  MessageSquare,
+  Minimize2,
+  PresentationIcon,
+  SquarePen,
+  Users,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRoom } from './useRoom';
 import { Stage } from './Stage';
@@ -68,8 +77,11 @@ export function Classroom({
     ops: [],
     clearedAt: 0,
   });
+  /** The board in a 320px column is not something anyone can teach on. */
+  const [boardOnStage, setBoardOnStage] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(340);
 
-  const recorder = useRecorder(recordingBaseName);
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
   const onMessage = useCallback((message: RoomMessage) => {
     // Only messages that survived `acceptFrom` reach here, so anything below
@@ -81,6 +93,24 @@ export function Classroom({
   }, []);
 
   const live = useRoom({ roomToken, isHost, onMessage });
+
+  /**
+   * What the recorder captures.
+   *
+   * Whatever is on the stage — the teacher, a shared screen, a slide, the
+   * whiteboard — read from the DOM at each frame rather than held in state, so
+   * switching between them mid-lesson needs no restart. The audio is every live
+   * track in the room; the teacher's own microphone is added by the recorder,
+   * because the room carries no copy of a voice the browser never plays back.
+   */
+  const recorder = useRecorder(recordingBaseName, {
+    stage: () => stageRef.current?.querySelector('video, img, canvas') as HTMLVideoElement | null,
+    audio: () =>
+      Array.from(live.room.remoteParticipants.values())
+        .flatMap((p) => Array.from(p.trackPublications.values()))
+        .map((pub) => pub.track?.mediaStreamTrack)
+        .filter((t): t is MediaStreamTrack => !!t && t.kind === 'audio'),
+  });
 
   // History arrives from the database, already filtered by the same policies
   // that guard the room, so a late joiner sees the lesson so far.
@@ -229,18 +259,43 @@ export function Classroom({
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          {live.status === 'connecting' ? (
-            <div className="flex flex-1 items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-white/40" aria-hidden="true" />
-            </div>
-          ) : (
-            <Stage
-              room={live.room}
-              people={live.people}
-              presenting={presenting}
-              slide={currentSlideUrl}
-            />
-          )}
+          {/* The recorder reads its picture from inside here, so whatever is on
+              the stage is what lands in the file — camera, shared screen,
+              slide, or the board — with no restart when it changes. */}
+          <div ref={stageRef} className="flex min-h-0 flex-1 flex-col">
+            {live.status === 'connecting' ? (
+              <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-white/40" aria-hidden="true" />
+              </div>
+            ) : boardOnStage ? (
+              <div className="relative m-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
+                <Whiteboard
+                  canDraw={isHost}
+                  history={boardHistory}
+                  incoming={board}
+                  onOp={drawOp}
+                  onLiveOp={(op) => live.sendLossy({ t: 'board', op })}
+                  onClear={clearBoard}
+                />
+                <button
+                  type="button"
+                  onClick={() => setBoardOnStage(false)}
+                  title={t('boardShrink')}
+                  className="absolute end-2 top-2 rounded-lg bg-black/50 p-2 text-white/80 transition-colors hover:bg-black/70"
+                >
+                  <Minimize2 className="size-4" aria-hidden="true" />
+                  <span className="sr-only">{t('boardShrink')}</span>
+                </button>
+              </div>
+            ) : (
+              <Stage
+                room={live.room}
+                people={live.people}
+                presenting={presenting}
+                slide={currentSlideUrl}
+              />
+            )}
+          </div>
 
           <Controls
             isHost={isHost}
@@ -273,11 +328,39 @@ export function Classroom({
           />
         </div>
 
+        {/* Drag to widen the panel. The board is the reason it exists: a
+            whiteboard in a fixed 320px column is not something anyone can
+            teach on, and a teacher's idea of enough room is theirs to set. */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t('resizePanel')}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowLeft') setPanelWidth((w) => Math.min(720, w + 32));
+            if (event.key === 'ArrowRight') setPanelWidth((w) => Math.max(280, w - 32));
+          }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            const move = (e: PointerEvent) => {
+              setPanelWidth(Math.min(720, Math.max(280, window.innerWidth - e.clientX)));
+            };
+            const up = () => {
+              window.removeEventListener('pointermove', move);
+              window.removeEventListener('pointerup', up);
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+          }}
+          className="hidden w-1.5 shrink-0 cursor-col-resize bg-white/5 transition-colors hover:bg-brand-500/60 focus-visible:bg-brand-500 lg:block"
+        />
+
         <aside
+          style={{ width: panelOpen ? undefined : `${panelWidth}px` }}
           className={cn(
             'flex w-full max-w-sm shrink-0 flex-col border-s border-white/10 bg-black/25',
             panelOpen ? 'fixed inset-y-0 end-0 z-40 max-w-xs' : 'hidden',
-            'lg:static lg:flex lg:w-80 lg:max-w-none',
+            'lg:static lg:flex lg:max-w-none',
           )}
         >
           <div className="flex border-b border-white/10" role="tablist">
@@ -318,18 +401,37 @@ export function Classroom({
               onClearAsk={live.clearAsk}
             />
           )}
-          {tab === 'board' && (
-            <Whiteboard
-              canDraw={isHost}
-              history={boardHistory}
-              incoming={board}
-              onOp={drawOp}
-              onLiveOp={(op) => live.sendLossy({ t: 'board', op })}
-              onClear={clearBoard}
-            />
-          )}
+          {tab === 'board' &&
+            (boardOnStage ? (
+              <p className="p-6 text-center text-[12px] text-white/40">{t('boardOnStage')}</p>
+            ) : (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <button
+                  type="button"
+                  onClick={() => setBoardOnStage(true)}
+                  className="flex items-center justify-center gap-2 border-b border-white/10 p-2 text-[12px] text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  <Maximize2 className="size-3.5" aria-hidden="true" />
+                  {t('boardExpand')}
+                </button>
+                <Whiteboard
+                  canDraw={isHost}
+                  history={boardHistory}
+                  incoming={board}
+                  onOp={drawOp}
+                  onLiveOp={(op) => live.sendLossy({ t: 'board', op })}
+                  onClear={clearBoard}
+                />
+              </div>
+            ))}
           {tab === 'slides' && (
-            <SlidesPanel slides={slides} current={slide} canPresent={isHost} onGo={goToSlide} />
+            <SlidesPanel
+              sessionId={sessionId}
+              slides={slides}
+              current={slide}
+              canPresent={isHost}
+              onGo={goToSlide}
+            />
           )}
         </aside>
       </div>

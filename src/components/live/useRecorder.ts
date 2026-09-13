@@ -1,26 +1,33 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Record the class to the teacher's own machine.
  *
- * The room is a cross-origin iframe, so `MediaRecorder` cannot reach inside it.
- * Screen capture is the way in — and it turns out to be the better recording
- * anyway: it keeps the class exactly as the teacher saw it, video grid, shared
- * slides, screen share and all, rather than a handful of raw camera streams
- * that then need compositing.
+ * It used to ask which screen to capture, because the room was a cross-origin
+ * iframe and `MediaRecorder` could not reach inside it — `getDisplayMedia` was
+ * the only way in. The room is ours now, so the picker is gone: recording
+ * starts on the class itself, with no dialogue and nothing for the teacher to
+ * choose in front of forty waiting students.
  *
- * Two audio sources are mixed, because either alone is half a lesson: the
- * display capture carries the students (whatever the tab is playing) but never
- * the teacher, since a browser does not play your own microphone back to you.
- * So the mic is captured separately and merged through a WebAudio graph.
+ * What it records is whatever is on the stage — the teacher's camera, or the
+ * shared screen, or the slide — drawn onto a canvas at 30fps, with every
+ * audio track in the room mixed underneath. Tracks that appear mid-lesson are
+ * picked up: a student unmuted ten minutes in is in the recording.
  *
- * On stop the file is handed straight to the browser's downloader. Nothing is
- * uploaded: the school puts it on YouTube or Drive themselves and pastes the
- * link onto the lesson, which is the workflow they already had.
+ * Nothing is uploaded. The file is handed to the browser's downloader, and the
+ * school puts it on YouTube or Drive themselves and pastes the link onto the
+ * lesson — the workflow they already had.
  */
 export type RecorderState = 'idle' | 'recording' | 'paused' | 'saving';
+
+export interface RecordSources {
+  /** The element filling the stage right now: a video, or a slide image. */
+  stage: () => HTMLVideoElement | HTMLImageElement | null;
+  /** Every audio track worth capturing — the local mic and each participant. */
+  audio: () => MediaStreamTrack[];
+}
 
 interface Recorder {
   state: RecorderState;
@@ -28,13 +35,14 @@ interface Recorder {
   seconds: number;
   start: () => Promise<void>;
   stop: () => void;
-  /** Pause and resume the same file, for a break in the middle of a lesson. */
   togglePause: () => void;
 }
 
+const WIDTH = 1280;
+const HEIGHT = 720;
+
 function pickMimeType(): string | undefined {
   if (typeof MediaRecorder === 'undefined') return undefined;
-  // Ordered best-first; Safari only recently grew webm, so mp4 is a real case.
   for (const type of [
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
@@ -46,83 +54,127 @@ function pickMimeType(): string | undefined {
   return undefined;
 }
 
-export function useRecorder(fileBaseName: string): Recorder {
+export function useRecorder(fileBaseName: string, sources: RecordSources): Recorder {
   const [state, setState] = useState<RecorderState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const stopAllRef = useRef<(() => void) | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const audioRef = useRef<{
+    context: AudioContext;
+    destination: MediaStreamAudioDestinationNode;
+  } | null>(null);
+  const wiredRef = useRef<Set<string>>(new Set());
+  const micRef = useRef<MediaStream | null>(null);
+  const sourcesRef = useRef(sources);
+  sourcesRef.current = sources;
 
   const cleanup = useCallback(() => {
     if (tickRef.current) clearInterval(tickRef.current);
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
     tickRef.current = null;
-    stopAllRef.current?.();
-    stopAllRef.current = null;
+    frameRef.current = null;
+    audioRef.current?.context.close().catch(() => {});
+    audioRef.current = null;
+    wiredRef.current.clear();
+    micRef.current?.getTracks().forEach((track) => track.stop());
+    micRef.current = null;
     recorderRef.current = null;
   }, []);
 
+  useEffect(() => cleanup, [cleanup]);
+
   const start = useCallback(async () => {
     setError(null);
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getDisplayMedia) {
+    if (typeof MediaRecorder === 'undefined' || typeof document === 'undefined') {
       setError('unsupported');
       return;
     }
 
-    let display: MediaStream;
-    try {
-      display = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
-        audio: true,
-      });
-    } catch {
-      // Almost always the teacher dismissing the picker; not worth an alarm.
-      setError('cancelled');
+    const canvas = document.createElement('canvas');
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || typeof canvas.captureStream !== 'function') {
+      setError('unsupported');
       return;
     }
 
-    // The microphone is a separate ask, and a refusal is survivable: a silent
-    // teacher is worse than no recording, but a recording with only the
-    // students audible is still worth having.
-    let mic: MediaStream | null = null;
+    // Audio. The teacher's own microphone is captured separately because a
+    // browser does not play your own voice back to you, so it is in no track
+    // the room is already carrying — without this the lesson has everyone in it
+    // except the person teaching.
+    const Ctor: typeof AudioContext =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const context = new Ctor();
+    const destination = context.createMediaStreamDestination();
+    audioRef.current = { context, destination };
+
     try {
-      mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      mic = null;
+      // A refusal is survivable: a recording of the students alone is still
+      // worth having, and this must not be why the class is not recorded.
+      micRef.current = null;
     }
 
-    const audioTracks = [...display.getAudioTracks(), ...(mic?.getAudioTracks() ?? [])];
-    let context: AudioContext | null = null;
-    let mixedTrack: MediaStreamTrack | null = null;
-
-    if (audioTracks.length > 1) {
-      // Two sources: merge them so the file has one coherent audio track.
-      const Ctor: typeof AudioContext =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      context = new Ctor();
-      const destination = context.createMediaStreamDestination();
-      for (const track of audioTracks) {
-        context.createMediaStreamSource(new MediaStream([track])).connect(destination);
+    const wire = () => {
+      const tracks = [...(micRef.current?.getAudioTracks() ?? []), ...sourcesRef.current.audio()];
+      for (const track of tracks) {
+        if (wiredRef.current.has(track.id) || track.readyState !== 'live') continue;
+        wiredRef.current.add(track.id);
+        try {
+          context.createMediaStreamSource(new MediaStream([track])).connect(destination);
+        } catch {
+          wiredRef.current.delete(track.id);
+        }
       }
-      mixedTrack = destination.stream.getAudioTracks()[0] ?? null;
-    }
+    };
+    wire();
+    // Someone who unmutes ten minutes in belongs in the recording too.
+    const rewire = setInterval(wire, 2000);
 
-    const composed = new MediaStream([
-      ...display.getVideoTracks(),
-      ...(mixedTrack ? [mixedTrack] : audioTracks),
+    const draw = () => {
+      frameRef.current = requestAnimationFrame(draw);
+      const element = sourcesRef.current.stage();
+      ctx.fillStyle = '#16221f';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      if (!element) return;
+
+      const w = element instanceof HTMLVideoElement ? element.videoWidth : element.naturalWidth;
+      const h = element instanceof HTMLVideoElement ? element.videoHeight : element.naturalHeight;
+      if (!w || !h) return;
+
+      // Letterbox rather than crop: a slide with its edges cut off is worse
+      // than a slide with a margin.
+      const scale = Math.min(WIDTH / w, HEIGHT / h);
+      const dw = w * scale;
+      const dh = h * scale;
+      try {
+        ctx.drawImage(element, (WIDTH - dw) / 2, (HEIGHT - dh) / 2, dw, dh);
+      } catch {
+        // A frame that is not ready yet; the next one will be.
+      }
+    };
+    draw();
+
+    const stream = new MediaStream([
+      ...canvas.captureStream(30).getVideoTracks(),
+      ...destination.stream.getAudioTracks(),
     ]);
 
     const mimeType = pickMimeType();
     let recorder: MediaRecorder;
     try {
-      recorder = new MediaRecorder(composed, mimeType ? { mimeType } : undefined);
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     } catch {
+      clearInterval(rewire);
+      cleanup();
       setError('unsupported');
-      display.getTracks().forEach((t) => t.stop());
-      mic?.getTracks().forEach((t) => t.stop());
       return;
     }
 
@@ -132,6 +184,7 @@ export function useRecorder(fileBaseName: string): Recorder {
     };
 
     recorder.onstop = () => {
+      clearInterval(rewire);
       setState('saving');
       const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' });
       const extension = (recorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
@@ -143,31 +196,18 @@ export function useRecorder(fileBaseName: string): Recorder {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      // Revoked on a timer rather than immediately: Safari has been known to
-      // abandon the download if the URL dies the same tick as the click.
+      // Revoked on a timer: Safari has been known to abandon the download if
+      // the URL dies in the same tick as the click.
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
 
       chunksRef.current = [];
-      context?.close().catch(() => {});
+      cleanup();
       setState('idle');
       setSeconds(0);
     };
 
-    stopAllRef.current = () => {
-      display.getTracks().forEach((t) => t.stop());
-      mic?.getTracks().forEach((t) => t.stop());
-    };
-
-    // The teacher can also stop the capture from the browser's own bar; that
-    // must end the recording, not leave it running against a dead track.
-    display.getVideoTracks()[0]?.addEventListener('ended', () => {
-      if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-      cleanup();
-    });
-
     recorderRef.current = recorder;
-    // A timeslice means chunks arrive as it goes, so a crash costs seconds
-    // rather than the whole lesson.
+    // Chunks as it goes, so a crash costs seconds rather than the whole lesson.
     recorder.start(5_000);
     setState('recording');
     setSeconds(0);
@@ -176,22 +216,18 @@ export function useRecorder(fileBaseName: string): Recorder {
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current;
-    // A paused recorder still has to be stopped to flush its file; only an
-    // inactive one has nothing to do.
+    // A paused recorder still has to be stopped to flush its file.
     if (recorder && recorder.state !== 'inactive') recorder.stop();
-    cleanup();
+    else cleanup();
   }, [cleanup]);
 
   /**
    * Pause without ending the file.
    *
-   * A break, a private word with a student, a moment the teacher would rather
-   * not keep — all of which previously meant stopping and starting a second
-   * recording, leaving the school with two files to join. `MediaRecorder`
-   * pauses natively, so the chunks either side end up in one file.
-   *
-   * The timer stops with it, so the duration on screen is the length of the
-   * recording rather than the time since it began.
+   * A break, or a private word with a student. `MediaRecorder` pauses natively,
+   * so both halves end up in one file rather than leaving the school two to
+   * join. The timer stops with it, so the duration on screen is the length of
+   * the recording and not the time since it began.
    */
   const togglePause = useCallback(() => {
     const recorder = recorderRef.current;

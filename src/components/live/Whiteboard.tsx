@@ -51,6 +51,15 @@ export function Whiteboard({
   const drawing = useRef(false);
   const points = useRef<number[]>([]);
   const start = useRef<{ x: number; y: number } | null>(null);
+  /**
+   * Where the caret is, when the text tool is in use.
+   *
+   * A `prompt()` was the quick way to get a string and the wrong way to write
+   * on a board: it steals the screen, puts the words somewhere other than where
+   * they will land, and in front of a class it looks like an error. Typing
+   * happens on the board, at the point that was clicked.
+   */
+  const [typing, setTyping] = useState<{ x: number; y: number; value: string } | null>(null);
 
   /** Ops are stored in a 0–1 space so every screen shows the same board. */
   const paint = useCallback((ctx: CanvasRenderingContext2D, op: BoardOp, W: number, H: number) => {
@@ -139,10 +148,10 @@ export function Whiteboard({
     start.current = p;
 
     if (tool === 'text') {
-      const s = window.prompt(t('boardText'));
       drawing.current = false;
-      if (s?.trim())
-        onOp({ t: 'text', x: p.x, y: p.y, s: s.trim().slice(0, 500), color: colour, size: 0.05 });
+      // Commit whatever was already being typed before the caret moves.
+      commitText();
+      setTyping({ x: p.x, y: p.y, value: '' });
       return;
     }
     points.current = [p.x, p.y];
@@ -196,6 +205,23 @@ export function Whiteboard({
       });
     }
   };
+
+  const commitText = useCallback(() => {
+    setTyping((current) => {
+      const body = current?.value.trim();
+      if (current && body) {
+        onOp({
+          t: 'text',
+          x: current.x,
+          y: current.y,
+          s: body.slice(0, 500),
+          color: colour,
+          size: 0.05,
+        });
+      }
+      return null;
+    });
+  }, [colour, onOp]);
 
   const toolButton = (value: Tool, Icon: typeof Pen, label: string) => (
     <button
@@ -260,17 +286,47 @@ export function Whiteboard({
         </div>
       )}
 
-      <canvas
-        ref={canvasRef}
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-        className={cn(
-          'min-h-0 flex-1 bg-ink',
-          canDraw ? 'cursor-crosshair touch-none' : 'cursor-default',
+      {/* The caret sits over the canvas rather than in a dialogue: a prompt()
+          steals the screen, puts the words somewhere other than where they will
+          land, and in front of a class it looks like an error. */}
+      <div className="relative min-h-0 flex-1">
+        <canvas
+          ref={canvasRef}
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          className={cn(
+            'size-full bg-ink',
+            canDraw
+              ? tool === 'text'
+                ? 'cursor-text touch-none'
+                : 'cursor-crosshair touch-none'
+              : 'cursor-default',
+          )}
+        />
+
+        {typing && (
+          <input
+            autoFocus
+            value={typing.value}
+            onChange={(event) => setTyping((c) => (c ? { ...c, value: event.target.value } : c))}
+            onBlur={commitText}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitText();
+              } else if (event.key === 'Escape') {
+                setTyping(null);
+              }
+            }}
+            maxLength={500}
+            aria-label={t('boardText')}
+            className="absolute min-w-[8ch] -translate-y-full border-b border-dashed border-white/40 bg-transparent p-0 text-[clamp(14px,4vh,36px)] leading-none outline-none"
+            style={{ left: `${typing.x * 100}%`, top: `${typing.y * 100}%`, color: colour }}
+          />
         )}
-      />
+      </div>
     </div>
   );
 }
