@@ -830,6 +830,7 @@
     "removedBody": "L’enseignant vous a retiré de cette séance. Contactez l’institut si vous pensez qu’il s’agit d’une erreur.",
     "removedTitle": "Vous avez été retiré du cours",
     "resumeRecording": "Reprendre",
+    "retry": "Réessayer",
     "roomUnavailable": "La salle n’a pas pu être chargée. Vérifiez votre connexion et rechargez la page.",
     "saving": "Enregistrement…",
     "share": "Partager l’écran",
@@ -845,6 +846,8 @@
     "tabPeople": "Participants",
     "tabSlides": "Diapositives",
     "unmuteThem": "Réactiver le micro",
+    "unreachableBody": "Le serveur du cours en direct n’a pas répondu. Vérifiez que NEXT_PUBLIC_LIVEKIT_URL commence par wss:// et que le serveur tourne, puis réessayez.",
+    "unreachableTitle": "Impossible de joindre la salle",
     "you": "vous"
   }
 }

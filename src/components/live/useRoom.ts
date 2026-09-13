@@ -67,6 +67,8 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
   const room = useMemo(() => new Room({ adaptiveStream: true, dynacast: true }), []);
   const [status, setStatus] = useState<RoomStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
+  /** The underlying failure, shown to staff and logged. Never guessed at. */
+  const [detail, setDetail] = useState<string | null>(null);
   const [people, setPeople] = useState<RoomPerson[]>([]);
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [micOn, setMicOn] = useState(false);
@@ -115,8 +117,11 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
         if (!response.ok) {
           // 403 covers not entitled, removed, and class over — deliberately the
           // same answer, so the page says "the room is closed" rather than
-          // telling a student which.
+          // telling a student which. Anything else is our fault, not theirs,
+          // and is reported as such.
+          const body = (await response.json().catch(() => null)) as { error?: string } | null;
           setError(response.status === 403 ? 'closed' : 'unavailable');
+          setDetail(`HTTP ${response.status}${body?.error ? ` · ${body.error}` : ''}`);
           setStatus('failed');
           return;
         }
@@ -126,6 +131,7 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
           // The server has LiveKit credentials but no public URL to hand out,
           // which is a misconfiguration rather than a closed door.
           setError('unavailable');
+          setDetail('NEXT_PUBLIC_LIVEKIT_URL is empty');
           setStatus('failed');
           return;
         }
@@ -133,9 +139,13 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
         if (cancelled) return;
         setStatus('connected');
         snapshot();
-      } catch {
+      } catch (thrown) {
         if (!cancelled) {
+          // Almost always the media server being unreachable: a wrong URL, a
+          // server that is not running, or a firewall. Saying which beats
+          // telling the teacher their own class was cancelled.
           setError('unavailable');
+          setDetail(thrown instanceof Error ? thrown.message : String(thrown));
           setStatus('failed');
         }
       }
@@ -298,6 +308,7 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
     room,
     status,
     error,
+    detail,
     people,
     chat,
     setChat,

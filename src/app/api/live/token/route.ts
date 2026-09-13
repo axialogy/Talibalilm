@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { currentViewer } from '@/lib/auth/guards';
 import { getLiveSessionByToken } from '@/lib/data/live';
-import { liveKitConfigured, mintRoomToken } from '@/lib/live/server';
+import { liveKitConfigured, liveKitUrl, mintRoomToken } from '@/lib/live/server';
 import { reportError } from '@/lib/observability/report';
 import type { LiveRoomState } from '@/lib/supabase/database.types';
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'realtime_unavailable' }, { status: 503 });
 
   return NextResponse.json(
-    { token, url: process.env.NEXT_PUBLIC_LIVEKIT_URL ?? '', room },
+    { token, url: liveKitUrl, room },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

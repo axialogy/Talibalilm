@@ -159,15 +159,36 @@ export function Classroom({
   ];
 
   if (live.status === 'failed' || (live.status === 'closed' && live.error)) {
+    // Three different failures used to share one message — "this class is not
+    // open" — which sent a teacher hunting for a class nobody had cancelled.
+    // They are told apart here, and the underlying reason is shown to staff so
+    // a misconfiguration can be fixed rather than guessed at.
+    const removed = live.error === 'removed';
+    const unreachable = live.error === 'unavailable';
+
     return (
       <main className="flex min-h-dvh items-center justify-center bg-ink px-6 text-center">
-        <div className="max-w-sm">
+        <div className="max-w-md">
           <h1 className="font-display text-xl font-semibold text-white">
-            {live.error === 'removed' ? t('removedTitle') : t('closedTitle')}
+            {removed ? t('removedTitle') : unreachable ? t('unreachableTitle') : t('closedTitle')}
           </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-white/60">
-            {live.error === 'removed' ? t('removedBody') : t('closedBody')}
+            {removed ? t('removedBody') : unreachable ? t('unreachableBody') : t('closedBody')}
           </p>
+
+          {isHost && live.detail && (
+            <p className="mt-4 rounded-lg bg-white/5 p-3 text-start font-mono text-[11px] break-words text-white/50">
+              {live.detail}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 rounded-full bg-white/10 px-5 py-2 text-[13px] text-white transition-colors hover:bg-white/20"
+          >
+            {t('retry')}
+          </button>
         </div>
       </main>
     );

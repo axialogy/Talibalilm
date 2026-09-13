@@ -830,6 +830,7 @@
     "removedBody": "The teacher removed you from this session. Contact the institute if you think this is a mistake.",
     "removedTitle": "You were removed from the class",
     "resumeRecording": "Resume",
+    "retry": "Try again",
     "roomUnavailable": "The classroom could not be loaded. Check your connection and reload the page.",
     "saving": "Saving…",
     "share": "Share screen",
@@ -845,6 +846,8 @@
     "tabPeople": "People",
     "tabSlides": "Slides",
     "unmuteThem": "Unmute",
+    "unreachableBody": "The live class server did not answer. Check that NEXT_PUBLIC_LIVEKIT_URL starts with wss:// and that the server is running, then try again.",
+    "unreachableTitle": "The room could not be reached",
     "you": "you"
   }
 }

@@ -19,16 +19,38 @@ import { liveKitRoom, roomGrant, type RoomPermissions, type TrackSource } from '
  * merely what their page displays.
  */
 
-const URL = process.env.LIVEKIT_URL?.trim() || process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() || '';
+const RAW_URL =
+  process.env.LIVEKIT_URL?.trim() || process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() || '';
 const KEY = process.env.LIVEKIT_API_KEY?.trim() ?? '';
 const SECRET = process.env.LIVEKIT_API_SECRET?.trim() ?? '';
 
+/**
+ * The websocket address, tidied.
+ *
+ * A LiveKit URL is copied out of a dashboard by hand, so it arrives with a
+ * trailing slash, or as `https://`, about as often as it arrives correctly.
+ * Both are silently fatal: the browser fails to connect and the room has no way
+ * to say why. Normalising here means one pasted character does not cost an
+ * evening.
+ */
+function normaliseUrl(raw: string): string {
+  const trimmed = raw.replace(/\/+$/, '');
+  if (!trimmed) return '';
+  if (trimmed.startsWith('wss://') || trimmed.startsWith('ws://')) return trimmed;
+  if (trimmed.startsWith('https://')) return `wss://${trimmed.slice(8)}`;
+  if (trimmed.startsWith('http://')) return `ws://${trimmed.slice(7)}`;
+  // A bare hostname is the other common paste.
+  return `wss://${trimmed}`;
+}
+
+export const liveKitUrl = normaliseUrl(RAW_URL);
+
 /** Unset, the classroom says so plainly instead of crashing. */
-export const liveKitConfigured = Boolean(URL && KEY && SECRET);
+export const liveKitConfigured = Boolean(liveKitUrl && KEY && SECRET);
 
 /** The https form of the websocket URL, which the server API wants. */
 function httpUrl(): string {
-  return URL.replace(/^ws/, 'http');
+  return liveKitUrl.replace(/^ws/, 'http');
 }
 
 let rooms: RoomServiceClient | null = null;
