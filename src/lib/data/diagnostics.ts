@@ -321,6 +321,7 @@ const RPC_NAMES = [
   'admin_anonymise_user',
   'admin_generate_coupons',
   'admin_grant_entitlement',
+  'admin_mark_reviewed',
   'admin_revoke_entitlement',
   'admin_void_coupon',
   'can_read_slide',
@@ -343,6 +344,7 @@ const RPC_NAMES = [
   'release_coupon',
   'release_order_holds',
   'revoke_order_entitlements',
+  'unreviewed_student_count',
 ] as const;
 
 /**

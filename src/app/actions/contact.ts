@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { institut } from '@/lib/content/institut';
-import { sendMail } from '@/lib/email/send';
+import { officeInbox, sendMail } from '@/lib/email/send';
 import { reportError } from '@/lib/observability/report';
 
 /**
@@ -93,7 +93,7 @@ export async function sendContactMessage(
   // that throws must not turn a stored enquiry into an error page.
   try {
     await sendMail({
-      to: institut.email,
+      to: officeInbox(institut.email),
       subject: `[Site] ${subject || t('noSubject')} — ${name}`,
       // `reply-to` is what makes this useful: the office hits reply and
       // reaches the visitor rather than the sending domain.

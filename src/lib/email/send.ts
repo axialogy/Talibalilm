@@ -61,6 +61,22 @@ export function emailConfigured(): boolean {
   return config() !== null;
 }
 
+/**
+ * Where the school's own alerts land — a registration, a contact form.
+ *
+ * Deliberately NOT `institut.email`. That is the address printed on the
+ * Contact page for students to write to; this is the mailbox the office
+ * actually watches, which is the same one the site sends from. With the SMTP
+ * variables set it needs no configuration of its own, and `OFFICE_EMAIL` is
+ * there for the day the two want to differ.
+ *
+ * Falls back to the public address so an unconfigured install still addresses
+ * its alerts to a real person rather than to nobody.
+ */
+export function officeInbox(fallback: string): string {
+  return process.env.OFFICE_EMAIL?.trim() || process.env.SMTP_USER?.trim() || fallback;
+}
+
 /** Which mailbox the message comes from. Must be one the server may send as. */
 function fromAddress(): string {
   return process.env.EMAIL_FROM ?? `Institut Talib Alim <${process.env.SMTP_USER ?? ''}>`;

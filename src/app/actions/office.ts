@@ -5,9 +5,6 @@ import { z } from 'zod';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
-import { siteUrl } from '@/lib/env';
-import { sendMail } from '@/lib/email/send';
-import { accountApproved } from '@/lib/email/templates';
 import { reportError } from '@/lib/observability/report';
 import { slugifyBatch } from '@/lib/commerce/batch';
 import type { AdminState } from '@/app/actions/admin';
@@ -211,65 +208,36 @@ export async function deleteStudent(_prev: AdminState, formData: FormData): Prom
 }
 
 /**
- * Let a student in, or put them back in the queue.
+ * Mark a registration as seen.
  *
- * The write happens in `admin_set_approval`, a SECURITY DEFINER function, for
+ * This is a notification being dismissed, nothing more: it clears the badge in
+ * the sidebar and the "Nouveau" flag on the row, and changes nothing at all for
+ * the student, who could already enrol and pay before anybody pressed it.
+ *
+ * The write happens in `admin_mark_reviewed`, a SECURITY DEFINER function, for
  * two reasons: it checks `is_admin()` itself, and it can call
  * `record_admin_action`, which is revoked from every session role — so "who
- * approved this account" is answerable, which it would not be if the update
- * were a plain UPDATE through a policy.
+ * cleared this" is answerable, which it would not be if the update were a
+ * plain UPDATE through a policy.
  *
- * It returns the address to write to ONLY when something actually changed.
- * That is what stops a second press sending a second welcome message, and it
- * is the database deciding that rather than this function remembering.
- *
- * The e-mail is a courtesy: if it fails the approval still stands, because
- * making the gate depend on the mail server is how we got here.
+ * Idempotent in the database rather than here: the function only touches a row
+ * whose `reviewed_at` is null, so a second press writes no second audit row.
  */
-export async function setStudentApproval(
+export async function markStudentReviewed(
   _prev: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
-  const parsed = z
-    .object({ userId: z.string().uuid(), approve: z.enum(['yes', 'no']) })
-    .safeParse(Object.fromEntries(formData));
+  const parsed = z.object({ userId: z.string().uuid() }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
-  const { userId, approve } = parsed.data;
-  const approving = approve === 'yes';
+  const { userId } = parsed.data;
   const supabase = await admin();
 
-  const { data: address, error } = await supabase.rpc('admin_set_approval', {
-    uid: userId,
-    approve: approving,
-  });
+  const { error } = await supabase.rpc('admin_mark_reviewed', { uid: userId });
 
   if (error) {
-    reportError('students.approval', error, { userId, approving });
+    reportError('students.markReviewed', error, { userId });
     return { ok: false, error: error.code === '42501' ? 'notAdmin' : 'saveFailed' };
-  }
-
-  if (approving && typeof address === 'string' && address !== '') {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, locale')
-      .eq('id', userId)
-      .maybeSingle();
-
-    try {
-      await sendMail(
-        accountApproved({
-          to: address,
-          locale: profile?.locale === 'en' ? 'en' : 'fr',
-          fullName: profile?.full_name ?? '',
-          signInUrl: `${siteUrl()}/login`,
-        }),
-      );
-    } catch (cause) {
-      reportError('students.approvalMail', cause, {
-        note: 'the account is approved; only the welcome message failed',
-      });
-    }
   }
 
   revalidatePath('/[locale]/admin/students', 'layout');

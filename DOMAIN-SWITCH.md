@@ -158,7 +158,7 @@ Repo → Settings → Secrets and variables → Actions → `SWEEP_URL` →
 `CRON_SECRET` does not change. Verify with Actions → Sweep → Run workflow: a
 green run printing `HTTP 200` and a small JSON body.
 
-## 7. The app's own e-mail — receipts, alerts, approvals
+## 7. The app's own e-mail — receipts and alerts
 
 Same mailbox as step 3. In Vercel:
 
@@ -171,8 +171,8 @@ EMAIL_FROM    = Institut Talib Alim <contact@talibalim.com>
 ```
 
 This sends the order receipts, the alert when somebody uses the contact form,
-the alert when somebody registers, and the welcome message when you approve an
-account.
+and the alert when somebody registers. The alerts go to `SMTP_USER` — the same
+mailbox — unless `OFFICE_EMAIL` says otherwise.
 
 Optional by design: unset, every send is a logged no-op. A student still gets
 their access and the failure is a line in the log, never a lost sale.

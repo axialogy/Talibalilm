@@ -75,9 +75,10 @@ export default async function AdminStudentsPage({
                         {s.role}
                       </Badge>
                     )}
-                    {/* The reason to open this row. Staff are never pending, so
-                        the badge is drawn for students only. */}
-                    {s.role === 'student' && s.approvedAt === null && (
+                    {/* The reason to open this row: nobody has looked at this
+                        registration yet. Drawn for students only — a staff
+                        account is not a registration the office has to see. */}
+                    {s.role === 'student' && s.reviewedAt === null && (
                       <Badge variant="warn" className="ml-2">
                         {t('studentPending')}
                       </Badge>

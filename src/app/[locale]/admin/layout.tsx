@@ -8,7 +8,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { isStaff, requireViewer } from '@/lib/auth/guards';
 import { supabaseConfigured } from '@/lib/env';
 import { logoLockupSrc } from '@/lib/artwork';
-import { pendingStudentCount } from '@/lib/auth/approval';
+import { unreviewedStudentCount } from '@/lib/auth/registrations';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -53,7 +53,7 @@ export default async function AdminLayout({
         isAdmin={viewer.role === 'admin'}
         title={t('title')}
         logoSrc={logoLockupSrc()}
-        pendingStudents={await pendingStudentCount()}
+        newStudents={await unreviewedStudentCount()}
       >
         {children}
       </AdminShell>

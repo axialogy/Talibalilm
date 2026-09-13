@@ -76,7 +76,7 @@ export function AdminShell({
   isAdmin,
   title,
   logoSrc,
-  pendingStudents = 0,
+  newStudents = 0,
 }: {
   children: React.ReactNode;
   name: string;
@@ -84,11 +84,11 @@ export function AdminShell({
   isAdmin: boolean;
   title: string;
   /**
-   * How many registrations are waiting. Drawn beside Étudiants so a new
-   * sign-up is visible from whichever admin page the office happens to be on,
-   * rather than only from the one screen that lists them.
+   * How many registrations nobody has opened yet. Drawn beside Étudiants so a
+   * new sign-up is visible from whichever admin page the office happens to be
+   * on, rather than only from the one screen that lists them.
    */
-  pendingStudents?: number;
+  newStudents?: number;
   /**
    * Resolved by the layout through `@/lib/artwork`. It cannot be resolved here:
    * that module reads the filesystem, and this is a Client Component. Passing
@@ -171,7 +171,7 @@ export function AdminShell({
             const active = isActive(href);
             // Only Étudiants carries a count today; written this way so the
             // next one is a line rather than a refactor.
-            const badge = key === 'navStudents' ? pendingStudents : 0;
+            const badge = key === 'navStudents' ? newStudents : 0;
             return (
               <Link
                 key={href}
@@ -191,7 +191,7 @@ export function AdminShell({
                 <span className={cn('flex-1', compact && 'sr-only')}>{t(key)}</span>
                 {badge > 0 && (
                   <span
-                    aria-label={t('pendingStudents', { count: badge })}
+                    aria-label={t('newStudents', { count: badge })}
                     className={cn(
                       'flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                       active ? 'bg-white text-brand-700' : 'bg-gold-500 text-white',

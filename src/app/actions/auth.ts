@@ -8,7 +8,7 @@ import { envProblem, supabaseConfigured, siteUrl } from '@/lib/env';
 import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { reportError } from '@/lib/observability/report';
-import { notifyOfficeOfRegistration } from '@/lib/auth/approval';
+import { notifyOfficeOfRegistration } from '@/lib/auth/registrations';
 import {
   forgotPasswordSchema,
   loginSchema,

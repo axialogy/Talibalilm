@@ -203,100 +203,115 @@ end $$;
 
 
 -- ---------------------------------------------------------------------------
--- Account approval
+-- A new registration is a notification
 --
--- The gate the school asked for: a new account is pending until an admin lets
--- it in. What is asserted here is that the ANSWER lives in the database — a
--- client cannot claim to be approved — and that approving is idempotent, so a
--- second press cannot send a second welcome message.
+-- There is no gate here any more: `reviewed_at` grants nothing and refuses
+-- nothing, it only says whether the office has looked. What is still worth
+-- asserting is that the OFFICE is the one who decides it — a student cannot
+-- clear their own notification — and that marking twice is not two events, so
+-- the audit log cannot be inflated by pressing the button again.
 -- ---------------------------------------------------------------------------
 
 insert into auth.users (id, email, raw_user_meta_data) values
-  ('a0000000-0000-0000-0000-000000000003', 'pending@test.fr', '{"full_name":"En attente"}'::jsonb);
+  ('a0000000-0000-0000-0000-000000000003', 'nouveau@test.fr', '{"full_name":"Nouvelle"}'::jsonb),
+  -- A second unseen registration, so the staff-only assertion at the end has
+  -- something real to hide. Asserting "a student sees 0" against a database
+  -- where the true answer is also 0 would pass for the wrong reason.
+  ('a0000000-0000-0000-0000-000000000004', 'autre@test.fr',   '{"full_name":"Autre"}'::jsonb);
 
--- `handle_new_user` approves nobody, so every fixture account above is pending
--- exactly as a real new registration is. The migration's back-fill cannot be
--- observed from here — it ran before any of these rows existed — so an already
--- admitted account is set up explicitly instead of pretended into existence.
-update public.profiles set approved_at = now()
+-- `handle_new_user` marks nobody as seen, so every fixture account above
+-- arrives exactly as a real registration does. The migration's back-fill
+-- cannot be observed from here — it ran before any of these rows existed — so
+-- an account the office has already looked at is set up explicitly instead of
+-- pretended into existence.
+update public.profiles set reviewed_at = now()
 where id = 'a0000000-0000-0000-0000-000000000001';
 
 do $$
 begin
-  raise notice 'approval — who may buy';
+  raise notice 'registrations — what the badge counts';
+  call auth.login_as('a0000000-0000-0000-0000-000000000002');
 
   perform public.assert(
-    not public.is_approved('a0000000-0000-0000-0000-000000000003'),
-    'a fresh student account is pending');
+    (select reviewed_at is null from public.profiles
+      where id = 'a0000000-0000-0000-0000-000000000003'),
+    'a fresh registration has not been seen yet');
   perform public.assert(
-    public.is_approved('a0000000-0000-0000-0000-000000000001'),
-    'an account with a date in approved_at is let in');
-  perform public.assert(
-    public.is_approved('a0000000-0000-0000-0000-000000000002'),
-    'staff are never pending — the teacher does not approve themselves');
+    (select reviewed_at is not null from public.profiles
+      where id = 'a0000000-0000-0000-0000-000000000001'),
+    'one the office has already looked at carries a date');
+  perform public.assert(public.unreviewed_student_count() = 2,
+    'the badge counts exactly the registrations nobody has opened');
+
+  reset role;
 end $$;
 
 do $$
 declare
   refused boolean := false;
 begin
-  raise notice 'approval — only an admin decides';
+  raise notice 'registrations — only an admin clears the notification';
   call auth.login_as('a0000000-0000-0000-0000-000000000003');
   begin
-    perform public.admin_set_approval('a0000000-0000-0000-0000-000000000003', true);
+    perform public.admin_mark_reviewed('a0000000-0000-0000-0000-000000000003');
   exception when insufficient_privilege then
     refused := true;
   end;
   reset role;
-  perform public.assert(refused, 'a student cannot approve themselves');
+  perform public.assert(refused, 'a student cannot mark their own registration as seen');
+
   perform public.assert(
-    not public.is_approved('a0000000-0000-0000-0000-000000000003'),
-    'and is still pending afterwards');
+    (select reviewed_at is null from public.profiles
+      where id = 'a0000000-0000-0000-0000-000000000003'),
+    'and it is still unseen afterwards');
 end $$;
 
 do $$
 declare
-  address text;
+  marked boolean;
+  rows_before integer;
+  rows_after integer;
 begin
-  raise notice 'approval — the admin lets them in, once';
+  raise notice 'registrations — the office presses Vu, once';
   call auth.login_as('a0000000-0000-0000-0000-000000000002');
 
-  address := public.admin_set_approval('a0000000-0000-0000-0000-000000000003', true);
-  perform public.assert(address = 'pending@test.fr',
-    'approving hands back the address to write to');
+  marked := public.admin_mark_reviewed('a0000000-0000-0000-0000-000000000003');
+  perform public.assert(marked, 'marking an unseen registration reports a real change');
   perform public.assert(
-    public.is_approved('a0000000-0000-0000-0000-000000000003'),
-    'the account is now let in');
+    (select reviewed_at is not null from public.profiles
+      where id = 'a0000000-0000-0000-0000-000000000003'),
+    'the date lands');
+  perform public.assert(public.unreviewed_student_count() = 1,
+    'and the badge drops by exactly one — the other registration still waits');
 
-  -- The idempotence that stops a second welcome e-mail going out.
-  address := public.admin_set_approval('a0000000-0000-0000-0000-000000000003', true);
-  perform public.assert(address is null,
-    'approving an approved account is not an event — no address, so no second e-mail');
+  select count(*) into rows_before from public.admin_audit
+  where action = 'student.reviewed'
+    and target_id = 'a0000000-0000-0000-0000-000000000003';
+  perform public.assert(rows_before = 1, 'who cleared it is on the record');
 
-  perform public.assert(
-    exists (select 1 from public.admin_audit
-            where action = 'student.approve'
-              and target_id = 'a0000000-0000-0000-0000-000000000003'),
-    'and who approved it is on the record');
+  -- Idempotent, and it says so by returning false. This used to be what
+  -- stopped a second welcome e-mail; with the e-mail gone it is what stops a
+  -- second audit row for the same event.
+  marked := public.admin_mark_reviewed('a0000000-0000-0000-0000-000000000003');
+  perform public.assert(not marked, 'pressing it again is not an event');
 
-  address := public.admin_set_approval('a0000000-0000-0000-0000-000000000003', false);
-  perform public.assert(address = 'pending@test.fr', 'putting them back is an event too');
-  perform public.assert(
-    not public.is_approved('a0000000-0000-0000-0000-000000000003'),
-    'and they are pending again');
-
-  perform public.assert(public.pending_student_count() = 1,
-    'the queue the office sees counts exactly the pending students');
+  select count(*) into rows_after from public.admin_audit
+  where action = 'student.reviewed'
+    and target_id = 'a0000000-0000-0000-0000-000000000003';
+  perform public.assert(rows_after = rows_before,
+    'and writes no second audit row');
 
   reset role;
 end $$;
 
 do $$
 begin
-  raise notice 'approval — the count is staff-only';
+  raise notice 'registrations — the count is staff-only';
   call auth.login_as('a0000000-0000-0000-0000-000000000003');
-  perform public.assert(public.pending_student_count() = 0,
-    'a student cannot use the queue to count the school''s registrations');
+  -- One registration really is unseen at this point, so a zero here is the
+  -- function refusing rather than the table being empty.
+  perform public.assert(public.unreviewed_student_count() = 0,
+    'a student cannot use the badge to count the school''s registrations');
   reset role;
 end $$;
 \echo 'ALL SITE CONTENT TESTS PASSED'

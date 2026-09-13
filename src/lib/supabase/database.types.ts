@@ -41,7 +41,7 @@ export interface Database {
           phone: string | null;
           locale: AppLocale;
           role: UserRole;
-          approved_at: string | null;
+          reviewed_at: string | null;
           anonymised_at: string | null;
           created_at: string;
           updated_at: string;
@@ -1020,15 +1020,11 @@ export interface Database {
         Args: { entitlement_id: string; reason: string };
         Returns: boolean;
       };
-      is_approved: {
-        Args: { uid?: string };
+      admin_mark_reviewed: {
+        Args: { uid: string };
         Returns: boolean;
       };
-      admin_set_approval: {
-        Args: { uid: string; approve: boolean };
-        Returns: string | null;
-      };
-      pending_student_count: {
+      unreviewed_student_count: {
         Args: Record<string, never>;
         Returns: number;
       };

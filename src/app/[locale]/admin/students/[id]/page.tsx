@@ -84,7 +84,7 @@ export default async function AdminStudentDetailPage({
               phone={account.phone}
               locale={account.locale}
               hasOrders={account.hasOrders}
-              approved={student.approvedAt !== null}
+              reviewed={student.reviewedAt !== null}
             />
           </div>
         </section>
