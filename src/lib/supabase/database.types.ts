@@ -75,6 +75,81 @@ export interface Database {
           },
         ];
       };
+      site_settings: {
+        Row: {
+          id: boolean;
+          announcement_text: string;
+          announcement_href: string;
+          announcement_enabled: boolean;
+          facebook: string;
+          instagram: string;
+          tiktok: string;
+          youtube: string;
+          whatsapp: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['site_settings']['Row']>;
+        Update: Partial<Database['public']['Tables']['site_settings']['Row']>;
+        Relationships: [];
+      };
+      contact_messages: {
+        Row: {
+          id: string;
+          name: string;
+          email: string;
+          subject: string;
+          body: string;
+          handled_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['contact_messages']['Row']> & {
+          name: string;
+          email: string;
+          body: string;
+        };
+        Update: Partial<Database['public']['Tables']['contact_messages']['Row']>;
+        Relationships: [];
+      };
+      events: {
+        Row: {
+          id: string;
+          title: string;
+          title_ar: string;
+          excerpt: string;
+          body: string;
+          image_url: string | null;
+          starts_at: string | null;
+          location: string;
+          href: string;
+          status: CatalogStatus;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['events']['Row']> & { title: string };
+        Update: Partial<Database['public']['Tables']['events']['Row']>;
+        Relationships: [];
+      };
+      reviews: {
+        Row: {
+          id: string;
+          author_name: string;
+          author_context: string;
+          quote: string;
+          rating: number;
+          avatar_url: string | null;
+          status: CatalogStatus;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['reviews']['Row']> & {
+          author_name: string;
+          quote: string;
+        };
+        Update: Partial<Database['public']['Tables']['reviews']['Row']>;
+        Relationships: [];
+      };
       courses: {
         Row: {
           id: string;
@@ -1035,6 +1110,10 @@ export interface Database {
 }
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type SiteSettingsRow = Database['public']['Tables']['site_settings']['Row'];
+export type ContactMessageRow = Database['public']['Tables']['contact_messages']['Row'];
+export type EventRow = Database['public']['Tables']['events']['Row'];
+export type ReviewRow = Database['public']['Tables']['reviews']['Row'];
 export type CourseRow = Database['public']['Tables']['courses']['Row'];
 export type ModuleRow = Database['public']['Tables']['modules']['Row'];
 export type LessonRow = Database['public']['Tables']['lessons']['Row'];
