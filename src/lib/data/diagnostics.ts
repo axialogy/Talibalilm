@@ -301,10 +301,11 @@ async function authSettingsChecks(): Promise<Check[]> {
     state: settings.mailer_autoconfirm ? 'ok' : 'unset',
     detail: settings.mailer_autoconfirm
       ? 'désactivée : le compte s’ouvre immédiatement, sans e-mail à envoyer. Rien ne peut échouer à l’envoi.'
-      : 'ACTIVÉE : chaque inscription dépend d’un e-mail envoyé par Supabase. Sans SMTP personnalisé valide ' +
-        '(smtp.resend.com, port 465, utilisateur « resend », mot de passe = clé Resend, expéditeur sur un domaine ' +
-        'vérifié chez Resend), l’inscription échoue avec « Error sending confirmation email ». ' +
-        'Pour débloquer tout de suite : Authentication → Sign In / Providers → Email → décochez « Confirm email ».',
+      : 'ACTIVÉE : chaque inscription attend qu’un e-mail parte de Supabase, et l’élève attend avec elle. ' +
+        'Si le serveur d’envoi ne répond pas, l’inscription échoue au bout d’une minute environ — comparez ' +
+        'avec la ligne « Serveur d’envoi (SMTP) » du groupe Latence, qui mesure exactement ce que Supabase ' +
+        'appelle ici. Pour débloquer tout de suite : Authentication → Sign In / Providers → Email → ' +
+        'décochez « Confirm email ». Le compte s’ouvre alors immédiatement et rien ne peut échouer à l’envoi.',
   });
 
   return checks;
@@ -377,12 +378,23 @@ async function rpcCacheChecks(): Promise<Check[]> {
       cache: 'no-store',
     });
     if (!response.ok) {
+      // 401 and 404 here are NOT a fault. Supabase closed the OpenAPI root to
+      // the anon key on newer projects, so this probe simply cannot run — and
+      // reporting that as a red error taught the reader to distrust a page
+      // whose whole job is to be trusted. The tables and functions above are
+      // queried directly and answer for themselves; losing this probe costs
+      // only the ability to see a WRITING function that is never called here.
+      const closed = response.status === 401 || response.status === 404;
       return [
         {
           group: 'Fonctions',
           name: 'cache PostgREST',
-          state: 'error',
-          detail: `la description du schéma a répondu ${response.status}`,
+          state: closed ? 'unset' : 'error',
+          detail: closed
+            ? `non consultable sur ce projet (${response.status}) — Supabase ne publie plus la description ` +
+              'du schéma à la clé anon. Les tables et fonctions ci-dessus sont interrogées directement et ' +
+              'restent fiables ; seule la vérification des fonctions d’écriture jamais appelées ici est perdue.'
+            : `la description du schéma a répondu ${response.status}`,
         },
       ];
     }
