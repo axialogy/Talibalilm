@@ -31,8 +31,18 @@ export interface Check {
   detail: string;
 }
 
-/** Every table the app reads. A missing one means a migration was not applied. */
+/**
+ * Every table the app reads. A missing one means a migration was not applied.
+ *
+ * `admin_audit` is here for a reason worth stating: it is the ONLY table
+ * created by `20260911180000_admin_operations.sql`. Leave it out and that whole
+ * migration can be absent while this page reports a clean bill of health — the
+ * `coupons` table it appears to be about is created by an earlier file, so its
+ * green tick proves nothing about the generator function. The rate limiter's
+ * own table is covered through `rate_limit_hit` in the cache probe below.
+ */
 const TABLES = [
+  'admin_audit',
   'profiles',
   'courses',
   'modules',
