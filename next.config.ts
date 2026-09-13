@@ -42,6 +42,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
+  // A Server Action body is capped at 1 MB by default, and the cover uploader
+  // posts the file through one. That cap is SMALLER than the 5 MB the image
+  // validator accepts, so for a long time every photo off a phone was refused
+  // by a limit that reported no size and appeared nowhere in the code — while
+  // `MAX_IMAGE_BYTES` sat there looking like the rule. Two limits that disagree
+  // are worse than either, so this one matches the validator exactly. The
+  // browser now re-encodes covers before sending (see `@/lib/media/downscale`),
+  // which means this is the safety net rather than the everyday path.
+  experimental: {
+    serverActions: { bodySizeLimit: '5mb' },
+  },
+
   // Inlined at build time; read through `@/lib/artwork`.
   env: {
     NEXT_PUBLIC_LOGO_LOCKUP: LOGO_LOCKUP,
