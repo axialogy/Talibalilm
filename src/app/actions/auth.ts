@@ -3,7 +3,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { envProblem, supabaseConfigured, siteUrl } from '@/lib/env';
 import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
@@ -122,6 +122,68 @@ export async function login(_prev: ActionState, formData: FormData): Promise<Act
   redirect(target);
 }
 
+/**
+ * Open an account when Supabase cannot send the confirmation email.
+ *
+ * OFF unless `AUTH_ALLOW_UNVERIFIED_SIGNUP=true`. It is a deliberate decision
+ * by the school, not a default, because it does two things worth stating:
+ *
+ * It creates the user through the SERVICE ROLE, from a public form. CLAUDE.md
+ * keeps that client away from unvalidated input, and this is the narrowest
+ * exception it can be: the input has already been through the same Zod schema
+ * the form used, the rate limiter has already let this caller through, the only
+ * fields written are the address, the password and the two the trigger reads,
+ * and it is reached only after Supabase itself has refused for this one reason.
+ * No `role` is ever passed; `handle_new_user` decides that, as it does for an
+ * ordinary sign-up.
+ *
+ * And it marks the address confirmed without anybody having proved they own it.
+ * That is exactly what turning "Confirm email" off in Supabase does, and it is
+ * the same trade: an address here unlocks nothing on its own. Access is decided
+ * by entitlements and row-level security, which are granted by a payment, never
+ * by an inbox.
+ *
+ * Returns an ActionState to show, or null when the account is open and the
+ * caller should redirect. The redirect is left to the caller because it throws.
+ */
+async function openAccountWithoutEmail(
+  input: { email: string; password: string; fullName: string; locale: string },
+  cause: string,
+): Promise<ActionState | null> {
+  reportError('auth.unverifiedSignupFallback', new Error(cause), {
+    note: 'AUTH_ALLOW_UNVERIFIED_SIGNUP is on; opening the account without confirmation',
+  });
+
+  const admin = createAdminClient();
+  const { error: createError } = await admin.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    email_confirm: true,
+    user_metadata: { full_name: input.fullName, locale: input.locale },
+  });
+
+  if (createError) {
+    return { ok: false, message: await authErrorMessage(createError.message) };
+  }
+
+  // Sign in on the ORDINARY client, so the session cookie belongs to this
+  // browser. The admin client holds no session and sets no cookies by design.
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: input.email,
+    password: input.password,
+  });
+  if (signInError) {
+    // The account exists; only the automatic sign-in failed. Say so rather than
+    // implying nothing happened and inviting them to register again.
+    reportError('auth.fallbackSignIn', new Error(signInError.message));
+    const t = await getTranslations('authErrors');
+    return { ok: false, message: t('accountOpenedSignInFailed') };
+  }
+
+  return null;
+}
+
 export async function register(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const limited = await guard('register', 5);
   if (limited) return limited;
@@ -152,7 +214,21 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
       emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/dashboard')}`,
     },
   });
-  if (error) return { ok: false, message: await authErrorMessage(error.message) };
+
+  if (error) {
+    // The one failure that is not about this person and cannot be retried away:
+    // Supabase could not send the confirmation email. If the school has said it
+    // would rather open accounts than wait for the mail to work, do that.
+    if (
+      classifyAuthError(error.message) === 'emailSendFailed' &&
+      process.env.AUTH_ALLOW_UNVERIFIED_SIGNUP === 'true'
+    ) {
+      const fallback = await openAccountWithoutEmail(parsed.data, error.message);
+      if (fallback) return fallback;
+      redirect('/dashboard');
+    }
+    return { ok: false, message: await authErrorMessage(error.message) };
+  }
 
   // Whether a confirmation email is required is a Supabase setting, not
   // something this code gets to assume. With confirmation off — which is how a

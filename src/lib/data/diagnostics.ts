@@ -293,6 +293,20 @@ export async function runDiagnostics(): Promise<Check[]> {
   checks.push(await siteAddressCheck());
   checks.push(...(await authSettingsChecks()));
 
+  // Worth saying out loud when it is on: accounts are being opened without the
+  // address ever being proved, which is a decision the school made, not a
+  // default, and one to undo once the mail path works.
+  if (process.env.AUTH_ALLOW_UNVERIFIED_SIGNUP === 'true') {
+    checks.push({
+      group: 'Configuration',
+      name: 'Inscription sans confirmation',
+      state: 'unset',
+      detail:
+        'AUTH_ALLOW_UNVERIFIED_SIGNUP est activée : si Supabase ne parvient pas à envoyer l’e-mail, ' +
+        'le compte est tout de même ouvert et l’adresse marquée confirmée. À retirer une fois le SMTP en place.',
+    });
+  }
+
   const missingR2 = r2Missing();
   checks.push({
     group: 'Configuration',

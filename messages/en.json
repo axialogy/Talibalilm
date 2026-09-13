@@ -387,6 +387,7 @@
     "termsRequired": "You must accept the terms to continue."
   },
   "authErrors": {
+    "accountOpenedSignInFailed": "Your account was created, but signing you in automatically did not work. Log in with the address and password you just chose.",
     "databaseError": "Your account could not be created. The institute has been notified; try again later.",
     "emailInvalid": "That email address was refused. Check the spelling, or try another address.",
     "emailNotConfirmed": "Your email address has not been confirmed yet. Open the link we sent you.",
