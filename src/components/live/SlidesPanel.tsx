@@ -4,8 +4,7 @@ import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight, Loader2, PresentationIcon, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { confirmSlide, requestSlideUpload } from '@/app/actions/slides';
-import { MAX_IMAGE_BYTES } from '@/lib/media/image';
+import { useSlideUpload } from './useSlideUpload';
 
 /**
  * The deck, during the lesson.
@@ -31,68 +30,17 @@ export function SlidesPanel({
 }) {
   const t = useTranslations('live');
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [busy, setBusy] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { busy, converting, error, upload } = useSlideUpload(sessionId, () =>
+    window.location.reload(),
+  );
 
-  /**
-   * Upload from inside the room.
-   *
-   * A teacher who realises mid-lesson that a slide is missing should not have
-   * to leave the class to add it. Same two-step path as the preparation
-   * screen — a signed ticket, a direct upload to Cloudflare, then the server
-   * reads the first bytes back and decides whether it really is an image — so
-   * nothing is weaker for being done in a hurry.
-   */
-  async function upload(files: FileList) {
-    setError(null);
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_IMAGE_BYTES) {
-        setError('tooLarge');
-        continue;
-      }
-      setBusy((n) => n + 1);
-      try {
-        const ticket = await requestSlideUpload({
-          sessionId,
-          contentType: file.type,
-          byteSize: file.size,
-        });
-        if (!ticket.ok || !ticket.url || !ticket.key) {
-          setError(ticket.error ?? 'uploadFailed');
-          continue;
-        }
-        const put = await fetch(ticket.url, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': ticket.contentType ?? file.type },
-        });
-        if (!put.ok) {
-          setError('uploadFailed');
-          continue;
-        }
-        const done = await confirmSlide({ sessionId, key: ticket.key, filename: file.name });
-        if (!done.ok) setError(done.error ?? 'uploadFailed');
-      } catch {
-        setError('uploadFailed');
-      } finally {
-        setBusy((n) => n - 1);
-      }
-    }
-    if (inputRef.current) inputRef.current.value = '';
-    // The deck comes from the server, so the new slide appears on a refresh.
-    window.location.reload();
-  }
+  const choose = (files: FileList | File[]) => {
+    void upload(files).then(() => {
+      if (inputRef.current) inputRef.current.value = '';
+    });
+  };
 
-  /**
-   * The same dropzone as the preparation screen, in the room's own colours.
-   *
-   * A thin bar was easy to miss in a panel a teacher is glancing at between
-   * questions. This is the target they already know from before the lesson, so
-   * there is nothing new to learn at the worst possible moment — and it takes a
-   * drag as well as a click, because with a folder open on the other half of
-   * the screen that is the shorter path.
-   */
   const uploader = canPresent ? (
     <label
       onDragOver={(event) => {
@@ -103,7 +51,7 @@ export function SlidesPanel({
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        if (event.dataTransfer.files?.length) void upload(event.dataTransfer.files);
+        if (event.dataTransfer.files?.length) choose(event.dataTransfer.files);
       }}
       className={cn(
         'm-2 flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-5 text-center transition-colors',
@@ -118,17 +66,21 @@ export function SlidesPanel({
         <Upload className="size-5 text-white/50" aria-hidden="true" />
       )}
       <span className="text-[13px] font-medium text-white">
-        {busy > 0 ? t('slidesUploading', { count: busy }) : t('slidesAdd')}
+        {converting
+          ? t('slidesConverting', { page: converting.page, pages: converting.pages })
+          : busy > 0
+            ? t('slidesUploading', { count: busy })
+            : t('slidesAdd')}
       </span>
       <span className="text-[11px] leading-relaxed text-white/40">{t('slidesHint')}</span>
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,application/pdf"
         multiple
         className="sr-only"
         onChange={(event) => {
-          if (event.target.files?.length) void upload(event.target.files);
+          if (event.target.files?.length) choose(event.target.files);
         }}
       />
     </label>

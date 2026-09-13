@@ -483,6 +483,7 @@
       "amountRequired": "Indiquez le montant de la remise.",
       "bonusDeliveryMismatch": "Les deux modules doivent être dans le même mode — tous deux en ligne, ou tous deux en présentiel.",
       "bonusSameProduct": "Le module offert doit être différent de celui qui est acheté.",
+      "convertToPdf": "PowerPoint ne peut pas être lu directement. Dans PowerPoint : Fichier → Enregistrer sous → choisissez PDF, puis déposez le PDF ici. Chaque page deviendra une diapositive.",
       "couponFunctionMissing": "La fonction de génération est absente de la base de données. Le fichier supabase/migrations/20260912160000_coupon_prefix_optional.sql n’a pas été exécuté sur ce projet Supabase.",
       "couponFunctionOutdated": "La base de données utilise encore l’ancienne version de la génération, celle qui échoue sans préfixe. Exécutez supabase/migrations/20260912160000_coupon_prefix_optional.sql dans l’éditeur SQL de Supabase.",
       "courseGranted": "Des étudiants ont accès à ce module. Archivez-le plutôt — le supprimer effacerait leurs droits.",
@@ -502,6 +503,8 @@
       "notAdmin": "La base de données ne vous reconnaît pas comme administrateur. Vérifiez le rôle de votre compte dans la table profiles.",
       "notAnImage": "Ce fichier n’est pas une image valide (PNG, JPEG ou WebP).",
       "partialErasure": "Le compte n’a été qu’en partie effacé. Relancez pour terminer.",
+      "pdfEmpty": "Ce PDF ne contient aucune page.",
+      "pdfFailed": "Ce PDF n’a pas pu être lu. S’il est protégé par mot de passe, enregistrez-en une copie sans protection.",
       "percentRequired": "Indiquez le pourcentage de remise.",
       "priceInvalid": "Le prix n’est pas valide. Exemple : 300 ou 300,50.",
       "productSold": "Cette ligne a déjà servi à une commande : archivez-la au lieu de la supprimer.",
@@ -759,7 +762,7 @@
     "slidesTab": "Diapositives",
     "slidesLead": "Préparez les images que vous montrerez pendant la séance. Pendant le direct, partagez votre écran : les élèves les voient dans la salle. Les fichiers sont rangés en ligne, pas sur cet ordinateur.",
     "slidesAdd": "Ajouter des diapositives",
-    "slidesHint": "PNG, JPEG ou WebP · 5 Mo maximum par image · plusieurs à la fois",
+    "slidesHint": "PDF, PNG, JPEG ou WebP · un PDF devient une diapositive par page · plusieurs à la fois",
     "slidesNone": "Aucune diapositive pour le moment.",
     "slidesNumber": "Diapositive {n}",
     "slidesUploading": "{count, plural, one {Envoi d’une image…} other {Envoi de # images…}}",
@@ -771,7 +774,8 @@
     "liveDoorTab": "{count, plural, =0 {À la porte} one {À la porte (#)} other {À la porte (#)}}",
     "liveDoorEmpty": "Personne n’attend à la porte.",
     "liveGuest": "Élève",
-    "slidesStorageHint": "Ajoutez-les dans Vercel → Settings → Environment Variables (type Secret, tous les environnements), puis redéployez : une variable ajoutée n’atteint pas un déploiement déjà en ligne."
+    "slidesStorageHint": "Ajoutez-les dans Vercel → Settings → Environment Variables (type Secret, tous les environnements), puis redéployez : une variable ajoutée n’atteint pas un déploiement déjà en ligne.",
+    "slidesConverting": "Conversion du PDF — page {page} sur {pages}…"
   },
   "live": {
     "allow": "Autoriser",
@@ -809,9 +813,12 @@
     "errorBody": "La base de données n’a pas répondu. Réessayez dans un instant ; si cela persiste, consultez les journaux Vercel.",
     "errorTitle": "La salle est momentanément indisponible",
     "errors": {
+      "convertToPdf": "PowerPoint ne peut pas être lu directement. Dans PowerPoint : Fichier → Enregistrer sous → choisissez PDF, puis déposez le PDF ici. Chaque page deviendra une diapositive.",
       "deckFull": "Cette séance a déjà le nombre maximum de diapositives.",
       "invalid": "Envoi refusé.",
       "notAnImage": "Ce fichier n’est pas une image PNG, JPEG ou WebP.",
+      "pdfEmpty": "Ce PDF ne contient aucune page.",
+      "pdfFailed": "Ce PDF n’a pas pu être lu. S’il est protégé par mot de passe, enregistrez-en une copie sans protection.",
       "saveFailed": "Enregistrement impossible.",
       "sessionNotFound": "Séance introuvable.",
       "storageUnavailable": "Le stockage des diapositives n’est pas configuré.",
@@ -852,7 +859,7 @@
     "slideNext": "Diapositive suivante",
     "slidePrev": "Diapositive précédente",
     "slidesAdd": "Ajouter des diapositives",
-    "slidesHint": "PNG, JPEG ou WebP · 5 Mo maximum · plusieurs à la fois",
+    "slidesHint": "PDF, PNG, JPEG ou WebP · un PDF devient une diapositive par page",
     "slidesNone": "L’enseignant n’a pas encore partagé de diapositives.",
     "slidesNoneHost": "Aucune diapositive pour le moment.",
     "slidesUploading": "{count, plural, one {Envoi…} other {Envoi de # images…}}",
@@ -866,6 +873,7 @@
     "unmuteThem": "Réactiver le micro",
     "unreachableBody": "Le serveur du cours en direct n’a pas répondu. Vérifiez que NEXT_PUBLIC_LIVEKIT_URL commence par wss:// et que le serveur tourne, puis réessayez.",
     "unreachableTitle": "Impossible de joindre la salle",
-    "you": "vous"
+    "you": "vous",
+    "slidesConverting": "Conversion du PDF — page {page} sur {pages}…"
   }
 }

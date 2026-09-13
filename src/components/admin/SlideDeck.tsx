@@ -1,10 +1,11 @@
 'use client';
 
-import { useActionState, useRef, useState, useTransition } from 'react';
+import { useActionState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, ImageOff, Trash2, Upload } from 'lucide-react';
-import { confirmSlide, deleteSlide, moveSlide, requestSlideUpload } from '@/app/actions/slides';
-import { MAX_IMAGE_BYTES } from '@/lib/media/image';
+import { useRouter } from 'next/navigation';
+import { deleteSlide, moveSlide } from '@/app/actions/slides';
+import { useSlideUpload } from '@/components/live/useSlideUpload';
 import type { AdminState } from '@/app/actions/admin';
 import type { SlideView } from '@/lib/data/live';
 
@@ -37,60 +38,17 @@ export function SlideDeck({
 }) {
   const t = useTranslations('admin');
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [busy, startTransition] = useTransition();
-  const [uploading, setUploading] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { busy, converting, error, upload } = useSlideUpload(sessionId, () => router.refresh());
 
   const [, remove] = useActionState(deleteSlide, EMPTY);
   const [, move] = useActionState(moveSlide, EMPTY);
 
-  async function upload(files: FileList) {
-    setError(null);
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_IMAGE_BYTES) {
-        setError('tooLarge');
-        continue;
-      }
-      setUploading((list) => [...list, file.name]);
-      try {
-        const ticket = await requestSlideUpload({
-          sessionId,
-          contentType: file.type,
-          byteSize: file.size,
-        });
-        if (!ticket.ok || !ticket.url || !ticket.key) {
-          setError(ticket.error ?? 'uploadFailed');
-          continue;
-        }
-
-        const put = await fetch(ticket.url, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': ticket.contentType ?? file.type },
-        });
-        if (!put.ok) {
-          setError('uploadFailed');
-          continue;
-        }
-
-        const confirmed = await confirmSlide({
-          sessionId,
-          key: ticket.key,
-          filename: file.name,
-        });
-        if (!confirmed.ok) setError(confirmed.error ?? 'uploadFailed');
-      } catch {
-        // A dropped connection mid-upload. The object, if any, has no row and
-        // is unreachable; saying so plainly beats a silent half-success.
-        setError('uploadFailed');
-      } finally {
-        setUploading((list) => list.filter((n) => n !== file.name));
-      }
-    }
-    startTransition(() => {
+  const choose = (files: FileList | File[]) => {
+    void upload(files).then(() => {
       if (inputRef.current) inputRef.current.value = '';
     });
-  }
+  };
 
   if (!storageReady) {
     return (
@@ -112,25 +70,26 @@ export function SlideDeck({
     <div>
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-6 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40">
         <Upload className="size-5 text-ink-muted" aria-hidden="true" />
-        <span className="text-[13px] font-medium text-ink">{t('slidesAdd')}</span>
+        <span className="text-[13px] font-medium text-ink">
+          {converting
+            ? t('slidesConverting', { page: converting.page, pages: converting.pages })
+            : busy > 0
+              ? t('slidesUploading', { count: busy })
+              : t('slidesAdd')}
+        </span>
         <span className="text-[11px] text-ink-muted">{t('slidesHint')}</span>
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/png,image/jpeg,image/webp,application/pdf"
           multiple
           className="sr-only"
           onChange={(event) => {
-            if (event.target.files?.length) void upload(event.target.files);
+            if (event.target.files?.length) choose(event.target.files);
           }}
         />
       </label>
 
-      {uploading.length > 0 && (
-        <p role="status" className="mt-3 text-[12px] text-ink-muted">
-          {t('slidesUploading', { count: uploading.length })}
-        </p>
-      )}
       {error && (
         <p role="alert" className="mt-3 text-[12px] text-red-600">
           {t(`errors.${error}` as 'errors.uploadFailed')}
@@ -182,7 +141,7 @@ export function SlideDeck({
                   <input type="hidden" name="direction" value="up" />
                   <button
                     type="submit"
-                    disabled={index === 0 || busy}
+                    disabled={index === 0 || busy > 0}
                     title={t('slidesMoveUp')}
                     className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600 disabled:opacity-30"
                   >
@@ -197,7 +156,7 @@ export function SlideDeck({
                   <input type="hidden" name="direction" value="down" />
                   <button
                     type="submit"
-                    disabled={index === slides.length - 1 || busy}
+                    disabled={index === slides.length - 1 || busy > 0}
                     title={t('slidesMoveDown')}
                     className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600 disabled:opacity-30"
                   >
