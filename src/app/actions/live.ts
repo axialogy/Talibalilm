@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireStaff } from '@/lib/auth/guards';
 import type { AdminState } from '@/app/actions/admin';
+import { reportError } from '@/lib/observability/report';
+import { applyPermissions, evictParticipant } from '@/lib/live/server';
 
 /**
  * Running a live class.
@@ -215,4 +217,146 @@ export async function leaveRoom(sessionId: string): Promise<void> {
   if (!supabaseConfigured) return;
   const supabase = await createClient();
   await supabase.rpc('live_leave', { session_id: sessionId });
+}
+
+// ---------------------------------------------------------------------------
+// Host controls
+//
+// The teacher's decision lands in two places, and both matter.
+//
+// The database is the record: a student muted by the teacher who reloads must
+// come back muted, so it is a column rather than a message that was shouted
+// once. `live_set_participant` is a security-definer RPC gated on `is_staff()`,
+// so the refusal is the database's and the audit names the real teacher.
+//
+// LiveKit is the enforcement, now: rewriting the live permission means the
+// microphone stops being accepted by the media server during the lesson that is
+// happening, rather than at the student's next join. Without that half, "mute"
+// would be a note for later.
+//
+// The order is deliberate. The database write happens first and is the one that
+// must succeed; the LiveKit call is best-effort, because if it fails the
+// decision is still recorded and takes effect when they reconnect.
+// ---------------------------------------------------------------------------
+
+const controlSchema = z.object({
+  sessionId: z.string().uuid(),
+  userId: z.string().uuid(),
+  action: z.enum([
+    'mute',
+    'unmute',
+    'allow-camera',
+    'deny-camera',
+    'allow-screen',
+    'deny-screen',
+    'remove',
+    'restore',
+  ]),
+});
+
+export async function controlParticipant(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = controlSchema.safeParse({
+    sessionId: formData.get('sessionId'),
+    userId: formData.get('userId'),
+    action: formData.get('action'),
+  });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const { sessionId, userId, action } = parsed.data;
+
+  const supabase = await staffClient();
+
+  // Nothing is derived from the form beyond which button was pressed: what the
+  // action means is decided here, and whether the caller may do it at all is
+  // decided inside the RPC.
+  const args = {
+    target_session: sessionId,
+    target_user: userId,
+    set_muted: action === 'mute' ? true : action === 'unmute' ? false : null,
+    set_camera: action === 'allow-camera' ? true : action === 'deny-camera' ? false : null,
+    set_screen: action === 'allow-screen' ? true : action === 'deny-screen' ? false : null,
+    set_banned: action === 'remove' ? true : action === 'restore' ? false : null,
+  };
+
+  const { error } = await supabase.rpc('live_set_participant', args);
+  if (error) {
+    reportError('live.control', error, { sessionId, action });
+    return { ok: false, error: error.code === '42501' ? 'notAdmin' : 'saveFailed' };
+  }
+
+  // Read back what the database now says rather than assuming the write did
+  // what the form asked — the RPC may have refused part of it, and the live
+  // permission must reflect the record, not the request.
+  const [{ data: session }, { data: participant }] = await Promise.all([
+    supabase.from('live_sessions').select('room_token, student_camera, student_screen').eq('id', sessionId).maybeSingle(),
+    supabase
+      .from('live_participants')
+      .select('muted, camera_allowed, screen_allowed, banned_at')
+      .eq('session_id', sessionId)
+      .eq('user_id', userId)
+      .is('left_at', null)
+      .maybeSingle(),
+  ]);
+
+  if (session && participant) {
+    if (participant.banned_at) {
+      // Disconnect them now rather than waiting for the token to lapse.
+      await evictParticipant(session.room_token, userId);
+    } else {
+      await applyPermissions(session.room_token, userId, {
+        isHost: false,
+        muted: participant.muted,
+        cameraAllowed: session.student_camera || participant.camera_allowed,
+        screenAllowed: session.student_screen || participant.screen_allowed,
+      });
+    }
+  }
+
+  revalidatePath('/[locale]/admin/live/[id]', 'page');
+  return OK;
+}
+
+/** Room-wide switches: the chat, and whether students may use a camera unasked. */
+const roomPolicySchema = z.object({
+  sessionId: z.string().uuid(),
+  chatEnabled: z.boolean().optional(),
+  studentCamera: z.boolean().optional(),
+  studentScreen: z.boolean().optional(),
+  requireApproval: z.boolean().optional(),
+});
+
+export async function setRoomPolicy(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const bool = (name: string) => {
+    const raw = formData.get(name);
+    return raw === null ? undefined : raw === 'yes';
+  };
+
+  const parsed = roomPolicySchema.safeParse({
+    sessionId: formData.get('sessionId'),
+    chatEnabled: bool('chatEnabled'),
+    studentCamera: bool('studentCamera'),
+    studentScreen: bool('studentScreen'),
+    requireApproval: bool('requireApproval'),
+  });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const { sessionId, ...flags } = parsed.data;
+  // Only the switches the form actually carried are written, so one toggle
+  // cannot silently reset the others to their defaults.
+  const row = {
+    ...(flags.chatEnabled !== undefined && { chat_enabled: flags.chatEnabled }),
+    ...(flags.studentCamera !== undefined && { student_camera: flags.studentCamera }),
+    ...(flags.studentScreen !== undefined && { student_screen: flags.studentScreen }),
+    ...(flags.requireApproval !== undefined && { require_approval: flags.requireApproval }),
+  };
+  if (Object.keys(row).length === 0) return OK;
+
+  const supabase = await staffClient();
+  const { error } = await supabase.from('live_sessions').update(row).eq('id', sessionId);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/live/[id]', 'page');
+  return OK;
 }
