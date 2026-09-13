@@ -141,7 +141,7 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
   if (!supabaseConfigured) return notConfigured();
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -153,6 +153,14 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
     },
   });
   if (error) return { ok: false, message: await authErrorMessage(error.message) };
+
+  // Whether a confirmation email is required is a Supabase setting, not
+  // something this code gets to assume. With confirmation off — which is how a
+  // school runs before it has its own mail domain — Supabase signs the person
+  // in there and then and hands back a session. Sending them to "check your
+  // inbox" would strand an account that is already open, waiting for a message
+  // nobody sent.
+  if (data.session) redirect('/dashboard');
 
   redirect(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
 }

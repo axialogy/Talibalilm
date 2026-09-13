@@ -119,11 +119,22 @@ export async function runDiagnostics(): Promise<Check[]> {
 
   checks.push({
     group: 'Configuration',
-    name: 'Envoi d’e-mails (Resend)',
+    name: 'Reçus par e-mail (Resend)',
     state: process.env.RESEND_API_KEY ? 'ok' : 'unset',
     detail: process.env.RESEND_API_KEY
-      ? 'clé lue'
-      : 'RESEND_API_KEY — les reçus ne sont pas envoyés',
+      ? 'clé lue — les reçus partent après un paiement'
+      : 'facultatif : sans lui, l’élève obtient son accès sans reçu',
+  });
+
+  // Auth e-mail is Supabase's own sender, never Resend, and it is the one that
+  // decides whether somebody can register at all. Worth saying out loud,
+  // because the two are easy to confuse and only one of them blocks a sign-up.
+  checks.push({
+    group: 'Configuration',
+    name: 'E-mails d’inscription',
+    state: 'unset',
+    detail:
+      'envoyés par Supabase, pas par Resend. Sans SMTP personnalisé, le service intégré est limité à quelques messages par heure — désactivez « Confirm email » dans Supabase tant que l’institut n’a pas son domaine.',
   });
 
   checks.push({
