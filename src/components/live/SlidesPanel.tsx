@@ -32,6 +32,7 @@ export function SlidesPanel({
   const t = useTranslations('live');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /**
@@ -83,14 +84,43 @@ export function SlidesPanel({
     window.location.reload();
   }
 
+  /**
+   * The same dropzone as the preparation screen, in the room's own colours.
+   *
+   * A thin bar was easy to miss in a panel a teacher is glancing at between
+   * questions. This is the target they already know from before the lesson, so
+   * there is nothing new to learn at the worst possible moment — and it takes a
+   * drag as well as a click, because with a folder open on the other half of
+   * the screen that is the shorter path.
+   */
   const uploader = canPresent ? (
-    <label className="flex cursor-pointer items-center justify-center gap-2 border-b border-white/10 p-2.5 text-[12px] text-white/70 transition-colors hover:bg-white/5 hover:text-white">
-      {busy > 0 ? (
-        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <Upload className="size-4" aria-hidden="true" />
+    <label
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        if (event.dataTransfer.files?.length) void upload(event.dataTransfer.files);
+      }}
+      className={cn(
+        'm-2 flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-5 text-center transition-colors',
+        dragging
+          ? 'border-brand-400 bg-brand-500/10'
+          : 'border-white/20 hover:border-brand-400/70 hover:bg-white/5',
       )}
-      {busy > 0 ? t('slidesUploading', { count: busy }) : t('slidesAdd')}
+    >
+      {busy > 0 ? (
+        <Loader2 className="size-5 animate-spin text-white/60" aria-hidden="true" />
+      ) : (
+        <Upload className="size-5 text-white/50" aria-hidden="true" />
+      )}
+      <span className="text-[13px] font-medium text-white">
+        {busy > 0 ? t('slidesUploading', { count: busy }) : t('slidesAdd')}
+      </span>
+      <span className="text-[11px] leading-relaxed text-white/40">{t('slidesHint')}</span>
       <input
         ref={inputRef}
         type="file"
@@ -118,7 +148,11 @@ export function SlidesPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {uploader}
-      {error && <p className="px-3 py-1.5 text-[11px] text-red-300">{error}</p>}
+      {error && (
+        <p role="alert" className="px-3 pb-1.5 text-center text-[11px] text-red-300">
+          {t(`errors.${error}` as 'errors.uploadFailed')}
+        </p>
+      )}
       {canPresent && (
         <div className="flex items-center gap-2 border-b border-white/10 p-2">
           <button
