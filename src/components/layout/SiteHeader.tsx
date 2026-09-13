@@ -115,8 +115,13 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
                 >
                   {t('login')}
                 </Link>
+                {/* An account, not a basket. "Inscrivez-vous" is read as
+                    "create my account" — and it was opening the checkout, which
+                    asks a visitor who has chosen nothing yet which cursus they
+                    want. Accounts come first; paying happens under the module's
+                    own page, once there is something to pay for. */}
                 <Button asChild size="sm" className="hidden sm:inline-flex">
-                  <Link href="/checkout">{t('startLearning')}</Link>
+                  <Link href="/register">{t('startLearning')}</Link>
                 </Button>
               </>
             )}
@@ -187,7 +192,7 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
                 {t('dashboard')}
               </Link>
             ) : (
-              <Link href="/checkout" onClick={() => setOpen(false)}>
+              <Link href="/register" onClick={() => setOpen(false)}>
                 {t('startLearning')}
               </Link>
             )}
