@@ -86,6 +86,42 @@
       "eyebrow": "Vos retours",
       "title": "Approuvé par nos étudiantes et nos enseignants",
       "ratingLabel": "{count, plural, =1 {# évaluation} other {# évaluations}}"
+    },
+    "heroTitleAr": "معهد طالب علم",
+    "brief": {
+      "title": "L’institut en bref",
+      "body": "L’Institut Talib Alim enseigne les sciences islamiques et la langue arabe à Montereau-Fault-Yonne et en visioconférence. Les cours sont ouverts aux débutants comme aux étudiants confirmés, avec un programme progressif et des enseignants qui suivent chacun individuellement.",
+      "body2": "Chaque module peut être suivi seul ou à l’intérieur d’un cursus complet. Vous choisissez le rythme, le mode et la formule ; l’accès s’ouvre dès le paiement.",
+      "statModules": "modules enseignés",
+      "statChapters": "chapitres",
+      "statLessons": "séances",
+      "statCursus": "cursus",
+      "statModes": "modes d’étude"
+    },
+    "formations": {
+      "title": "Découvrez nos formations",
+      "titleAr": "اكتشف تكويناتنا",
+      "lead": "Les disciplines enseignées à l’institut. Chacune rassemble les modules ouverts aux inscriptions.",
+      "cta": "Voir les modules",
+      "count": "{count, plural, =0 {Bientôt} =1 {# module} other {# modules}}"
+    },
+    "events": {
+      "title": "Actualités & événements",
+      "titleAr": "الأخبار والفعاليات",
+      "lead": "Les prochaines séances en direct de l’institut.",
+      "cta": "Voir la séance",
+      "empty": "Aucune séance n’est programmée pour le moment."
+    },
+    "previews": {
+      "title": "Assistez à une leçon",
+      "lead": "Des leçons d’essai, en accès libre, pour se faire une idée avant de s’inscrire.",
+      "cta": "Regarder"
+    },
+    "closing": {
+      "title": "Prêt à commencer votre parcours ?",
+      "body": "Créez votre compte, choisissez votre module ou votre cursus, et commencez à étudier.",
+      "primary": "Inscrivez-vous",
+      "secondary": "Découvrir nos formations"
     }
   },
   "courses": {
@@ -105,7 +141,8 @@
       "by": "Par {name}",
       "viewCourse": "Voir le module",
       "lessons": "{count, plural, =1 {# leçon} other {# leçons}}",
-      "duration": "{count, plural, =1 {# semaine} other {# semaines}}"
+      "duration": "{count, plural, =1 {# semaine} other {# semaines}}",
+      "years": "{count, plural, =1 {# année} other {# années}}"
     },
     "level": {
       "all": "Tous niveaux",
@@ -167,6 +204,24 @@
       "slidePrevious": "Image précédente",
       "slideNext": "Image suivante",
       "slideGoTo": "Aller à l’image"
+    },
+    "categoryAr": {
+      "aqida": "العقيدة",
+      "fiqh": "الفقه",
+      "coran": "علوم القرآن",
+      "hadith": "الحديث",
+      "tafsir": "التفسير",
+      "langue": "اللغة العربية",
+      "histoire": "التاريخ الإسلامي"
+    },
+    "categoryBody": {
+      "aqida": "Les fondements de la foi, expliqués à partir des sources et des grandes références.",
+      "fiqh": "Les règles pratiques du culte et des transactions, avec leurs preuves.",
+      "coran": "Lecture, règles de récitation et sciences du texte coranique.",
+      "hadith": "L’étude des traditions prophétiques, de leur chaîne et de leur sens.",
+      "tafsir": "L’exégèse du Coran, verset par verset, appuyée sur les commentateurs reconnus.",
+      "langue": "Grammaire, conjugaison et expression, pour accéder aux textes dans leur langue.",
+      "histoire": "La biographie prophétique et l’histoire des premiers siècles de l’islam."
     }
   },
   "pricing": {
