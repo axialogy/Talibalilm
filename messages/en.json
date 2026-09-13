@@ -314,15 +314,17 @@
     "termsRequired": "You must accept the terms to continue."
   },
   "authErrors": {
-    "invalidCredentials": "Wrong email address or password.",
+    "databaseError": "Your account could not be created. The institute has been notified; try again later.",
+    "emailInvalid": "That email address was refused. Check the spelling, or try another address.",
     "emailNotConfirmed": "Your email address has not been confirmed yet. Open the link we sent you.",
+    "emailSendFailed": "The confirmation email could not be sent. This is not your account: the institute’s mail service is temporarily over its limit. Try again in an hour, or contact us and we will open your access by hand.",
     "emailTaken": "An account already exists for this address.",
-    "rateLimited": "Too many attempts. Try again in a few minutes.",
     "expiredLink": "This link has expired or has already been used. Ask for a new one.",
-    "unexpected": "We cannot sign you in at the moment. Try again in a moment.",
-    "weakPassword": "That password is too weak. Choose a longer one.",
+    "invalidCredentials": "Wrong email address or password.",
+    "rateLimited": "Too many attempts. Try again in a few minutes.",
     "signupsDisabled": "Registration is closed at the moment.",
-    "databaseError": "Your account could not be created. The institute has been notified; try again later."
+    "unexpected": "We cannot sign you in at the moment. Try again in a moment.",
+    "weakPassword": "That password is too weak. Choose a longer one."
   },
   "footer": {
     "tagline": "Learn and train",

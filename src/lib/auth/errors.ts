@@ -16,6 +16,8 @@ export type AuthErrorKey =
   | 'weakPassword'
   | 'signupsDisabled'
   | 'databaseError'
+  | 'emailSendFailed'
+  | 'emailInvalid'
   | 'unexpected';
 
 /** Longest, most specific patterns first — several of these overlap. */
@@ -39,6 +41,18 @@ const PATTERNS: [RegExp, AuthErrorKey][] = [
   // Without its own branch it reads as a generic outage and nobody looks at
   // the trigger.
   [/database error|unexpected_failure|error saving new user/i, 'databaseError'],
+  // The one that stops a school taking registrations without anybody
+  // understanding why. Supabase's built-in mail sender allows a handful of
+  // messages an hour on the free plan; past that every sign-up fails here, and
+  // the message says nothing about email. It is not a code problem and no
+  // amount of retrying fixes it — the project needs its own SMTP.
+  [
+    /error sending (confirmation|recovery|magic|invite)?\s*(e-?mail|link)|smtp|failed to send/i,
+    'emailSendFailed',
+  ],
+  // Some addresses are refused outright by the provider, which reads to the
+  // visitor as a broken site rather than a typo in their own address.
+  [/invalid(_|\s)?email|email address.*invalid|unable to validate email/i, 'emailInvalid'],
 ];
 
 export function classifyAuthError(raw: string): AuthErrorKey {

@@ -314,15 +314,17 @@
     "termsRequired": "Vous devez accepter les conditions pour continuer."
   },
   "authErrors": {
-    "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
+    "databaseError": "Votre compte n’a pas pu être créé. L’institut a été prévenu ; réessayez plus tard.",
+    "emailInvalid": "Cette adresse e-mail a été refusée. Vérifiez l’orthographe, ou essayez une autre adresse.",
     "emailNotConfirmed": "Votre adresse e-mail n’est pas encore confirmée. Ouvrez le lien que nous vous avons envoyé.",
+    "emailSendFailed": "L’e-mail de confirmation n’a pas pu être envoyé. Ce n’est pas votre compte : le service d’envoi de l’institut est momentanément saturé. Réessayez dans une heure, ou contactez-nous et nous activerons votre accès à la main.",
     "emailTaken": "Un compte existe déjà pour cette adresse.",
-    "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
     "expiredLink": "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.",
-    "unexpected": "Connexion impossible pour le moment. Réessayez dans un instant.",
-    "weakPassword": "Ce mot de passe est trop faible. Choisissez-en un plus long.",
+    "invalidCredentials": "Adresse e-mail ou mot de passe incorrect.",
+    "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
     "signupsDisabled": "Les inscriptions sont fermées pour le moment.",
-    "databaseError": "Votre compte n’a pas pu être créé. L’institut a été prévenu ; réessayez plus tard."
+    "unexpected": "Connexion impossible pour le moment. Réessayez dans un instant.",
+    "weakPassword": "Ce mot de passe est trop faible. Choisissez-en un plus long."
   },
   "footer": {
     "tagline": "Apprendre et se former",

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { envProblem, supabaseConfigured, siteUrl } from '@/lib/env';
 import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
+import { reportError } from '@/lib/observability/report';
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -65,13 +66,22 @@ async function notConfigured(): Promise<ActionState> {
  */
 async function authErrorMessage(raw: string): Promise<string> {
   const key = classifyAuthError(raw);
-  if (key === 'unexpected') console.error('[auth] unmapped Supabase error:', raw);
+
+  // Everything that stops someone getting an account is reported, not just
+  // logged: these are the failures nobody discovers until a student says the
+  // site is broken, and by then the Vercel log has rolled over.
+  if (key === 'unexpected') {
+    reportError('auth.unmapped', new Error(raw), { note: 'no pattern matched; add one' });
+  }
   if (key === 'databaseError') {
-    console.error(
-      '[auth] Supabase rejected the write:',
-      raw,
-      '— usually handle_new_user failing, which means the migrations are missing or partial.',
-    );
+    reportError('auth.databaseError', new Error(raw), {
+      note: 'usually handle_new_user failing — migrations missing or partial',
+    });
+  }
+  if (key === 'emailSendFailed') {
+    reportError('auth.emailSendFailed', new Error(raw), {
+      note: "Supabase's built-in sender is over its limit; configure custom SMTP",
+    });
   }
   const t = await getTranslations('authErrors');
   return t(key);

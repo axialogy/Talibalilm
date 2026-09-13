@@ -40,3 +40,34 @@ describe('classifying Supabase auth errors', () => {
     expect(classifyAuthError('database error saving new user')).toBe('databaseError');
   });
 });
+
+describe('the failures that stop a school taking registrations', () => {
+  it('recognises Supabase failing to send the confirmation email', () => {
+    // The free plan's built-in sender allows a handful of messages an hour.
+    // Past that every sign-up fails here, and the raw message says nothing
+    // about email — so without this it reads as a generic outage and the real
+    // cause (no custom SMTP configured) is never looked at.
+    expect(classifyAuthError('Error sending confirmation email')).toBe('emailSendFailed');
+    expect(classifyAuthError('Error sending recovery email')).toBe('emailSendFailed');
+    expect(classifyAuthError('Error sending magic link email')).toBe('emailSendFailed');
+    expect(classifyAuthError('failed to send email: smtp: dial tcp: timeout')).toBe(
+      'emailSendFailed',
+    );
+  });
+
+  it('recognises an address the provider refuses', () => {
+    expect(classifyAuthError('Unable to validate email address: invalid format')).toBe(
+      'emailInvalid',
+    );
+    expect(classifyAuthError('invalid_email')).toBe('emailInvalid');
+  });
+
+  it('still tells a send failure apart from a rate limit', () => {
+    // Both mean "wait", but only one is fixed by configuring SMTP, and the
+    // person reading the logs needs to know which they are looking at.
+    expect(classifyAuthError('email rate limit exceeded')).toBe('rateLimited');
+    expect(
+      classifyAuthError('For security purposes, you can only request this after 51 seconds'),
+    ).toBe('rateLimited');
+  });
+});
