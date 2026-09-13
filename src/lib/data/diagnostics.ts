@@ -48,7 +48,6 @@ const TABLES = [
   'order_items',
   'entitlements',
   'coupons',
-  'payment_settings',
   'live_sessions',
   'live_participants',
   'live_join_requests',
@@ -68,7 +67,14 @@ const FUNCTIONS: [RpcName, Record<string, unknown>][] = [
   ['is_staff', {}],
   ['is_admin', {}],
   ['has_any_entitlement', {}],
-  ['has_course_access', { course: '00000000-0000-4000-8000-000000000000' }],
+  // The parameter is `cid`, not `course` — getting this wrong here reported a
+  // fault in an application that was calling it correctly all along.
+  ['has_course_access', { cid: '00000000-0000-4000-8000-000000000000' }],
+  // `payment_settings` carries no grant for `authenticated` at all, so that a
+  // stolen admin session cannot read the PayPal secret back out. It is checked
+  // through the status function, which reports whether a secret is stored
+  // without ever returning one.
+  ['payment_settings_status', {}],
   ['can_join_live', { session_id: '00000000-0000-4000-8000-000000000000' }],
   ['live_room_state', { session_id: '00000000-0000-4000-8000-000000000000' }],
   ['can_read_slide', { key: 'live/none/none.png' }],
@@ -83,11 +89,32 @@ export async function runDiagnostics(): Promise<Check[]> {
   const checks: Check[] = [];
 
   // --- configuration -------------------------------------------------------
+  const projectHost = (() => {
+    try {
+      return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').host;
+    } catch {
+      return '';
+    }
+  })();
+
   checks.push({
     group: 'Configuration',
     name: 'Supabase',
     state: supabaseConfigured ? 'ok' : 'unset',
-    detail: supabaseConfigured ? siteUrl() : 'NEXT_PUBLIC_SUPABASE_URL / ANON_KEY',
+    detail: supabaseConfigured ? projectHost : 'NEXT_PUBLIC_SUPABASE_URL / ANON_KEY',
+  });
+
+  // Worth its own line. This value is what auth links, PayPal returns and the
+  // sitemap are built from, and a deployment reachable at one address while
+  // announcing another sends students to a site that is not the one they are
+  // using. Comparing it against the address in the browser is the check.
+  checks.push({
+    group: 'Configuration',
+    name: 'Adresse publique du site',
+    state: process.env.NEXT_PUBLIC_SITE_URL ? 'ok' : 'unset',
+    detail: process.env.NEXT_PUBLIC_SITE_URL
+      ? `${siteUrl()} — doit correspondre à l’adresse dans la barre du navigateur`
+      : `déduite de Vercel : ${siteUrl()}`,
   });
 
   const missingR2 = r2Missing();
