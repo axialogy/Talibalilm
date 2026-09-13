@@ -9,6 +9,7 @@ import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { liveKitConfigured } from '@/lib/live/server';
+import { reportError } from '@/lib/observability/report';
 import type { LiveRoomState } from '@/lib/supabase/database.types';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -46,9 +47,30 @@ export default async function LiveRoomPage({
   if (!session) notFound();
 
   const supabase = await createClient();
-  const { data } = await supabase.rpc('live_room_state', { session_id: session.id });
+  const { data, error } = await supabase.rpc('live_room_state', { session_id: session.id });
 
   const t = await getTranslations('live');
+
+  // An error is not a closed door, and conflating the two sent a teacher
+  // looking at their own class wondering who had cancelled it. The commonest
+  // cause by far is the migration that defines this function not having been
+  // run on the project, so that case is named rather than guessed at.
+  if (error) {
+    reportError('live.roomState', error, { sessionId: session.id });
+    const missing = error.code === 'PGRST202' || error.code === '42883';
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-ink px-6 text-center">
+        <div className="max-w-md">
+          <h1 className="font-display text-xl font-semibold text-white">
+            {missing ? t('migrationTitle') : t('errorTitle')}
+          </h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-white/60">
+            {missing ? t('migrationBody') : t('errorBody')}
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   // Null covers not entitled, removed from the class, and class over — all
   // answered the same, because which one it is, is not a student's to learn.
@@ -57,7 +79,11 @@ export default async function LiveRoomPage({
       <main className="flex min-h-dvh items-center justify-center bg-ink px-6 text-center">
         <div className="max-w-sm">
           <h1 className="font-display text-xl font-semibold text-white">{t('closedTitle')}</h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-white/60">{t('closedBody')}</p>
+          <p className="mt-2 text-[13px] leading-relaxed text-white/60">
+            {viewer.role === 'admin' || viewer.role === 'instructor'
+              ? t('closedBodyStaff')
+              : t('closedBody')}
+          </p>
         </div>
       </main>
     );
