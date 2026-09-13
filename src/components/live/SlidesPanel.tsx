@@ -31,7 +31,7 @@ export function SlidesPanel({
   const t = useTranslations('live');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState(false);
-  const { busy, converting, error, upload } = useSlideUpload(sessionId, () =>
+  const { busy, converting, error, detail, upload } = useSlideUpload(sessionId, () =>
     window.location.reload(),
   );
 
@@ -101,9 +101,14 @@ export function SlidesPanel({
     <div className="flex min-h-0 flex-1 flex-col">
       {uploader}
       {error && (
-        <p role="alert" className="px-3 pb-1.5 text-center text-[11px] text-red-300">
-          {t(`errors.${error}` as 'errors.uploadFailed')}
-        </p>
+        <div role="alert" className="px-3 pb-1.5 text-center">
+          <p className="text-[11px] leading-relaxed text-red-300">
+            {t(`errors.${error}` as 'errors.uploadFailed')}
+          </p>
+          {canPresent && detail && (
+            <p className="mt-1 font-mono text-[10px] break-words text-white/35">{detail}</p>
+          )}
+        </div>
       )}
       {canPresent && (
         <div className="flex items-center gap-2 border-b border-white/10 p-2">

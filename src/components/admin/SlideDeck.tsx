@@ -39,7 +39,9 @@ export function SlideDeck({
   const t = useTranslations('admin');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
-  const { busy, converting, error, upload } = useSlideUpload(sessionId, () => router.refresh());
+  const { busy, converting, error, detail, upload } = useSlideUpload(sessionId, () =>
+    router.refresh(),
+  );
 
   const [, remove] = useActionState(deleteSlide, EMPTY);
   const [, move] = useActionState(moveSlide, EMPTY);
@@ -91,9 +93,14 @@ export function SlideDeck({
       </label>
 
       {error && (
-        <p role="alert" className="mt-3 text-[12px] text-red-600">
-          {t(`errors.${error}` as 'errors.uploadFailed')}
-        </p>
+        <div role="alert" className="mt-3">
+          <p className="text-[12px] leading-relaxed text-red-600">
+            {t(`errors.${error}` as 'errors.uploadFailed')}
+          </p>
+          {detail && (
+            <p className="mt-1 font-mono text-[11px] break-words text-ink-muted">{detail}</p>
+          )}
+        </div>
       )}
 
       {slides.length === 0 ? (

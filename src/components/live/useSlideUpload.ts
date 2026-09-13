@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { confirmSlide, requestSlideUpload } from '@/app/actions/slides';
 import { MAX_IMAGE_BYTES } from '@/lib/media/image';
 import { classifyUpload } from '@/lib/media/upload-kind';
+import { PdfError } from '@/lib/media/pdf';
 
 /**
  * Adding slides, from either the preparation screen or the room.
@@ -22,6 +23,14 @@ export interface SlideUploadState {
   busy: number;
   converting: { page: number; pages: number } | null;
   error: string | null;
+  /**
+   * The underlying exception, when there is one.
+   *
+   * Shown to the teacher because the alternative has cost several rounds: a
+   * single "could not be read" stood for a password, a corrupt file and a
+   * worker that would not start, and only one of those was ever true.
+   */
+  detail: string | null;
   clearError: () => void;
   upload: (files: FileList | File[]) => Promise<void>;
 }
@@ -30,6 +39,7 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
   const [busy, setBusy] = useState(0);
   const [converting, setConverting] = useState<{ page: number; pages: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
   const addedRef = useRef(false);
 
   const putOne = useCallback(
@@ -68,6 +78,7 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
   const upload = useCallback(
     async (input: FileList | File[]) => {
       setError(null);
+      setDetail(null);
       addedRef.current = false;
       const chosen = Array.from(input);
 
@@ -103,9 +114,27 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
           } else {
             await putOne(file);
           }
-        } catch {
+        } catch (thrown) {
           setConverting(null);
-          setError(kind === 'pdf' ? 'pdfFailed' : 'uploadFailed');
+          if (thrown instanceof PdfError) {
+            // Three different problems with three different things to do about
+            // them; saying "could not be read" for all three helps nobody.
+            setError(
+              thrown.reason === 'password'
+                ? 'pdfPassword'
+                : thrown.reason === 'corrupt'
+                  ? 'pdfCorrupt'
+                  : thrown.reason === 'empty'
+                    ? 'pdfEmpty'
+                    : 'pdfEngine',
+            );
+            setDetail(thrown.detail);
+          } else {
+            setError(kind === 'pdf' ? 'pdfEngine' : 'uploadFailed');
+            setDetail(
+              thrown instanceof Error ? `${thrown.name}: ${thrown.message}` : String(thrown),
+            );
+          }
         } finally {
           setBusy((n) => n - 1);
         }
@@ -118,5 +147,15 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
     [onDone, putOne],
   );
 
-  return { busy, converting, error, clearError: () => setError(null), upload };
+  return {
+    busy,
+    converting,
+    error,
+    detail,
+    clearError: () => {
+      setError(null);
+      setDetail(null);
+    },
+    upload,
+  };
 }
