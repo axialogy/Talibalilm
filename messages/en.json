@@ -558,7 +558,7 @@
       "bonusDeliveryMismatch": "Both modules must be the same mode — both online, or both on site.",
       "bonusSameProduct": "The free module must be different from the one they buy.",
       "convertToPdf": "PowerPoint cannot be read directly. In PowerPoint: File → Save As → choose PDF, then drop the PDF here. Each page becomes a slide.",
-      "couponFunctionMissing": "The generator function is missing from the database. supabase/migrations/20260912160000_coupon_prefix_optional.sql has not been run on this Supabase project.",
+      "couponFunctionMissing": "The database cannot find the generator function. Two possible causes: either supabase/migrations/20260912160000_coupon_prefix_optional.sql was never run on THIS Supabase project, or it was and PostgREST has not reloaded its schema yet. Run « notify pgrst, 'reload schema'; » in the SQL editor, wait a few seconds and try again; if the message comes back, the migration really is missing.",
       "couponFunctionOutdated": "The database still has the old generator, the one that fails without a prefix. Run supabase/migrations/20260912160000_coupon_prefix_optional.sql in the Supabase SQL editor.",
       "courseGranted": "Students hold access to this module. Archive it instead — deleting would erase what they are entitled to.",
       "courseInBonus": "This module is part of a bonus offer. Remove it from the offer first, or archive the module.",
@@ -882,7 +882,10 @@
     "standingPartial": "Partial",
     "standingPending": "Pending",
     "paymentsNobody": "No payments yet.",
-    "paymentsAllOrders": "See every order"
+    "paymentsAllOrders": "See every order",
+    "diagErrors": "Recent server errors",
+    "diagErrorsLead": "The real message behind a code shown on screen. Held in memory, on this instance only: an empty list is not proof that nothing failed.",
+    "diagErrorsEmpty": "No errors recorded on this instance."
   },
   "live": {
     "allow": "Allow",

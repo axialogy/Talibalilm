@@ -23,6 +23,8 @@ export interface RecordedError {
   message: string;
   /** The first frames only. Enough to name a file, not enough to be a dump. */
   where: string;
+  /** What the browser was shown, so a reported code can be matched to a cause. */
+  digest: string;
 }
 
 const LIMIT = 15;
@@ -44,10 +46,13 @@ export function recordError(route: string, error: unknown): void {
 
   const err = error instanceof Error ? error : new Error(String(error));
 
+  const digest = (error as { digest?: unknown } | null)?.digest;
+
   recent.unshift({
     at: Date.now(),
     route,
     message: `${err.name}: ${err.message}`,
+    digest: typeof digest === 'string' ? digest : '',
     where: (err.stack ?? '')
       .split('\n')
       .slice(1, 4)

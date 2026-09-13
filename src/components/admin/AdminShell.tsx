@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   BookOpen,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -12,7 +11,6 @@ import {
   Radio,
   Menu,
   Receipt,
-  Stethoscope,
   Ticket,
   Users,
   Wallet,
@@ -49,8 +47,11 @@ const NAV = [
     items: [
       { href: '/admin/courses', icon: BookOpen, key: 'courses', admin: false },
       { href: '/admin/live', icon: Radio, key: 'liveNav', admin: false },
-      { href: '/admin/cursus', icon: GraduationCap, key: 'cursusNav', admin: false },
-      { href: '/admin/diagnostics', icon: Stethoscope, key: 'navDiagnostics', admin: true },
+      // Cursus and Diagnostic are deliberately absent from this list, not
+      // deleted. A module's own page is where its cursus is set, so a second
+      // door to the same setting was one more thing to scan past; and the
+      // diagnostic is for the two minutes after a deploy, not for every day.
+      // Both remain reachable at /admin/cursus and /admin/diagnostics.
     ],
   },
 ] as const;

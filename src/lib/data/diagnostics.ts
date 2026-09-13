@@ -58,6 +58,20 @@ const TABLES = [
 ] as const;
 
 /**
+ * Columns added by a later migration, which a table-level probe cannot see.
+ *
+ * `select('*')` succeeds against a table that is missing half its columns, so
+ * "the table is there" was never the question worth asking. These are named
+ * explicitly: a page that selects them gets nothing back when they are absent,
+ * and nothing back reads as "this course does not exist".
+ */
+const COLUMNS: [string, string][] = [
+  ['courses', 'department, department_body, requirements, highlights, gallery'],
+  ['live_sessions', 'require_approval, chat_enabled, student_camera, student_screen'],
+  ['live_participants', 'muted, camera_allowed, screen_allowed, banned_at'],
+];
+
+/**
  * Read-only functions, and the arguments that make them answer without doing
  * anything. Nothing that writes is called — a diagnostic that mutates is not a
  * diagnostic.
@@ -81,9 +95,35 @@ const FUNCTIONS: [RpcName, Record<string, unknown>][] = [
   ['can_read_slide', { key: 'live/none/none.png' }],
 ];
 
-/** PostgREST's way of saying "there is no such table or function here". */
+/** PostgREST's way of saying "there is no such table, column or function here". */
 function isMissing(code: string | undefined): boolean {
-  return code === 'PGRST202' || code === 'PGRST205' || code === '42P01' || code === '42883';
+  return (
+    code === 'PGRST202' ||
+    code === 'PGRST204' ||
+    code === 'PGRST205' ||
+    code === '42P01' ||
+    code === '42703' ||
+    code === '42883'
+  );
+}
+
+/**
+ * PostgREST answers from a cached picture of the schema, and running DDL in
+ * the SQL editor does not always refresh it.
+ *
+ * So "not found" has TWO causes and they need different fixes: the migration
+ * was never run here, or it was run and PostgREST has not noticed yet. Saying
+ * only the first sent someone to re-run a file they had already run correctly.
+ */
+const RELOAD_HINT =
+  ' — soit la migration n’a pas été exécutée sur ce projet, soit PostgREST n’a pas encore ' +
+  "rechargé son schéma : exécutez « notify pgrst, 'reload schema'; » dans l’éditeur SQL, " +
+  'puis rouvrez cette page.';
+
+function detailFor(error: { code?: string; message: string } | null, whenOk: string): string {
+  if (!error) return whenOk;
+  const base = `${error.code ?? ''} ${error.message}`.trim();
+  return isMissing(error.code) ? base + RELOAD_HINT : base;
 }
 
 /**
@@ -381,7 +421,7 @@ export async function runDiagnostics(): Promise<Check[]> {
         group: 'Tables',
         name: table,
         state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
-        detail: error ? `${error.code ?? ''} ${error.message}`.trim() : 'lisible',
+        detail: detailFor(error, 'lisible'),
       });
     }),
   );
@@ -394,7 +434,23 @@ export async function runDiagnostics(): Promise<Check[]> {
         group: 'Fonctions',
         name: fn,
         state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
-        detail: error ? `${error.code ?? ''} ${error.message}`.trim() : 'répond',
+        detail: detailFor(error, 'répond'),
+      });
+    }),
+  );
+
+  // --- columns -------------------------------------------------------------
+  await Promise.all(
+    COLUMNS.map(async ([table, columns]) => {
+      const { error } = await supabase
+        .from(table as (typeof TABLES)[number])
+        .select(columns)
+        .limit(1);
+      checks.push({
+        group: 'Colonnes',
+        name: table,
+        state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
+        detail: detailFor(error, columns),
       });
     }),
   );

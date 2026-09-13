@@ -323,8 +323,12 @@ export async function generateCoupons(
 
     const code = error?.code ?? '';
     if (code === 'PGRST202' || code === '42883') {
-      // PostgREST cannot find the function: the migration was never applied to
-      // this project, or was applied to a different one.
+      // PostgREST cannot find the function. That has TWO causes and they need
+      // different fixes: the migration was never applied here, or it was and
+      // PostgREST is still answering from a cached picture of the schema —
+      // which is ordinary right after running DDL in the SQL editor. Saying
+      // only the first sent someone to re-run a file they had already run.
+      // The message names both and gives the reload command.
       return { ok: false, error: 'couponFunctionMissing' };
     }
     if (code === '23502') {
