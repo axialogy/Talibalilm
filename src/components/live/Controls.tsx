@@ -77,7 +77,7 @@ export function Controls({
   const danger = 'bg-red-600 text-white hover:bg-red-700';
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 border-t border-white/10 bg-ink-900/80 px-3 py-3">
+    <div className="flex flex-wrap items-center justify-center gap-2 border-t border-white/10 bg-ink/90 px-3 py-3">
       {canMic && (
         <button type="button" onClick={onMic} className={cn(base, micOn ? quiet : danger)}>
           {micOn ? (

@@ -78,7 +78,7 @@ export function SlidesPanel({
                 !canPresent && 'cursor-default',
               )}
             >
-              <span className="relative block aspect-video bg-ink-900">
+              <span className="relative block aspect-video bg-ink">
                 {slide.url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

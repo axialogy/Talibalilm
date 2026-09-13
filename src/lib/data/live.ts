@@ -246,16 +246,27 @@ export async function listBoardOps(sessionId: string): Promise<BoardOp[]> {
   return (data ?? []).map((row) => row.op as unknown as BoardOp);
 }
 
-/** The chat so far. Read through the same policy that guards the room. */
+/**
+ * The chat so far.
+ *
+ * Two queries rather than an embedded join, because `live_messages.user_id`
+ * points at `auth.users` and not at `profiles` — PostgREST cannot infer a
+ * relationship that is not there, and the embed silently returned nothing, so
+ * a late joiner saw an empty chat with no error anywhere.
+ *
+ * Both reads go through RLS: the messages are visible only to someone who can
+ * enter the room, and `profiles` is already governed by its own policies.
+ */
 export async function listMessages(
   sessionId: string,
   limit = 200,
 ): Promise<{ id: string; name: string; isHost: boolean; body: string; at: number }[]> {
   if (!supabaseConfigured) return [];
   const supabase = await createClient();
+
   const { data, error } = await supabase
     .from('live_messages')
-    .select('id, body, created_at, user_id, profiles ( full_name, role )')
+    .select('id, body, created_at, user_id')
     .eq('session_id', sessionId)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -263,16 +274,31 @@ export async function listMessages(
     reportError('live.messages', error, { sessionId });
     return [];
   }
-  return (data ?? [])
-    .map((row) => {
-      const profile = row.profiles as unknown as { full_name?: string; role?: string } | null;
-      return {
-        id: row.id,
-        name: profile?.full_name ?? '',
-        isHost: profile?.role === 'admin' || profile?.role === 'instructor',
-        body: row.body,
-        at: new Date(row.created_at).getTime(),
-      };
-    })
+
+  const rows = data ?? [];
+  const authorIds = [...new Set(rows.map((r) => r.user_id))];
+  const authors = new Map<string, { name: string; isHost: boolean }>();
+
+  if (authorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .in('id', authorIds);
+    for (const profile of profiles ?? []) {
+      authors.set(profile.id, {
+        name: profile.full_name,
+        isHost: profile.role === 'admin' || profile.role === 'instructor',
+      });
+    }
+  }
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      name: authors.get(row.user_id)?.name ?? '',
+      isHost: authors.get(row.user_id)?.isHost ?? false,
+      body: row.body,
+      at: new Date(row.created_at).getTime(),
+    }))
     .reverse();
 }

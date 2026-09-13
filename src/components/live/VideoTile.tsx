@@ -72,7 +72,7 @@ export function VideoTile({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl bg-ink-900/60 ring-1 ring-white/10',
+        'relative overflow-hidden rounded-xl bg-black/40 ring-1 ring-white/10',
         person.speaking && 'ring-2 ring-brand-400',
         className,
       )}

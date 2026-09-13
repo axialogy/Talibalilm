@@ -2,7 +2,6 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Classroom } from '@/components/live/Classroom';
-import { LiveRoomActions } from '@/components/live/LiveRoomActions';
 import { getLiveSessionByToken, listSlides, listBoardOps, listMessages } from '@/lib/data/live';
 import { joinRoom } from '@/app/actions/live';
 import { currentViewer } from '@/lib/auth/guards';
@@ -120,19 +119,15 @@ export default async function LiveRoomPage({
     .slice(0, 60);
 
   return (
-    <LiveRoomActions sessionId={session.id}>
-      {(actions) => (
-        <Classroom
-          roomToken={session.roomToken}
-          title={session.title}
-          room={room}
-          slides={slides.map((s) => ({ id: s.id, url: s.url, filename: s.filename }))}
-          boardHistory={boardHistory}
-          chatHistory={chatHistory}
-          recordingBaseName={`${safeTitle || 'cours'}-${stamp}`}
-          {...actions}
-        />
-      )}
-    </LiveRoomActions>
+    <Classroom
+      roomToken={session.roomToken}
+      sessionId={session.id}
+      title={session.title}
+      room={room}
+      slides={slides.map((s) => ({ id: s.id, url: s.url, filename: s.filename }))}
+      boardHistory={boardHistory}
+      chatHistory={chatHistory}
+      recordingBaseName={`${safeTitle || 'cours'}-${stamp}`}
+    />
   );
 }

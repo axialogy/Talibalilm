@@ -12,6 +12,13 @@ import { ParticipantsPanel, type HostAction } from './ParticipantsPanel';
 import { Whiteboard } from './Whiteboard';
 import { SlidesPanel } from './SlidesPanel';
 import { useRecorder } from './useRecorder';
+import {
+  clearBoard as clearBoardAction,
+  controlParticipant,
+  endLiveSessionById,
+  saveBoardOp,
+  saveMessage,
+} from '@/app/actions/live';
 import type { BoardOp, RoomMessage } from '@/lib/live/protocol';
 import type { LiveRoomState } from '@/lib/supabase/database.types';
 
@@ -33,19 +40,16 @@ type Tab = 'chat' | 'people' | 'board' | 'slides';
  */
 export function Classroom({
   roomToken,
+  sessionId,
   title,
   room: initial,
   slides,
   boardHistory,
   chatHistory,
   recordingBaseName,
-  onHostAction,
-  onBoardOp,
-  onBoardClear,
-  onChatSave,
-  onEnd,
 }: {
   roomToken: string;
+  sessionId: string;
   title: string;
   /** What the server says this viewer may do. The UI never infers it. */
   room: LiveRoomState;
@@ -53,11 +57,6 @@ export function Classroom({
   boardHistory: BoardOp[];
   chatHistory: { id: string; name: string; isHost: boolean; body: string; at: number }[];
   recordingBaseName: string;
-  onHostAction: (userId: string, action: HostAction) => Promise<void>;
-  onBoardOp: (op: BoardOp) => Promise<void>;
-  onBoardClear: () => Promise<void>;
-  onChatSave: (body: string) => Promise<void>;
-  onEnd: () => Promise<void>;
 }) {
   const t = useTranslations('live');
   const isHost = initial.is_host;
@@ -117,28 +116,38 @@ export function Classroom({
   const drawOp = (op: BoardOp) => {
     setBoard((b) => ({ ...b, ops: [...b.ops, op] }));
     live.send({ t: 'board', op });
-    void onBoardOp(op); // Persisted, so somebody joining late still sees it.
+    // Persisted, so somebody joining late still sees it. The write is refused
+    // by policy for anyone but staff, so nothing here needs to check.
+    void saveBoardOp(sessionId, op);
   };
 
   const clearBoard = () => {
     setBoard({ ops: [], clearedAt: Date.now() });
     live.send({ t: 'board-clear' });
-    void onBoardClear();
+    void clearBoardAction(sessionId);
   };
 
   const sendChat = (body: string) => {
     live.sendChat(body);
-    void onChatSave(body);
+    // Delivery and the record are separate jobs: the room has already shown the
+    // line, and a failed insert must not take it back off the screen.
+    void saveMessage(sessionId, body);
   };
 
   const hostAction = async (identity: string, action: HostAction) => {
-    await onHostAction(identity, action);
+    const form = new FormData();
+    form.set('sessionId', sessionId);
+    form.set('userId', identity);
+    form.set('action', action);
+    // Authorised inside the database, not here: `live_set_participant` refuses
+    // anyone who is not staff, whatever this page believes about itself.
+    await controlParticipant({ ok: true }, form);
   };
 
   const endClass = async () => {
     if (!window.confirm(t('endConfirm'))) return;
     live.send({ t: 'ended' });
-    await onEnd();
+    await endLiveSessionById(sessionId);
     window.location.assign('/admin/live');
   };
 
@@ -245,7 +254,7 @@ export function Classroom({
 
         <aside
           className={cn(
-            'flex w-full max-w-sm shrink-0 flex-col border-s border-white/10 bg-ink-900/50',
+            'flex w-full max-w-sm shrink-0 flex-col border-s border-white/10 bg-black/25',
             panelOpen ? 'fixed inset-y-0 end-0 z-40 max-w-xs' : 'hidden',
             'lg:static lg:flex lg:w-80 lg:max-w-none',
           )}

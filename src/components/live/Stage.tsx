@@ -48,7 +48,7 @@ export function Stage({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-ink-900/40">
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-black/30">
         {slide && !focusIsShare ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={slide} alt="" className="size-full object-contain" />

@@ -267,7 +267,7 @@ export function Whiteboard({
         onPointerUp={up}
         onPointerCancel={up}
         className={cn(
-          'min-h-0 flex-1 bg-ink-900',
+          'min-h-0 flex-1 bg-ink',
           canDraw ? 'cursor-crosshair touch-none' : 'cursor-default',
         )}
       />
