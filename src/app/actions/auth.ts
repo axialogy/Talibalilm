@@ -9,7 +9,7 @@ import { envProblem, supabaseConfigured, siteUrl } from '@/lib/env';
 import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { reportError } from '@/lib/observability/report';
-import { notifyOfficeOfRegistration } from '@/lib/auth/registrations';
+import { notifyOfficeOfRegistration, sendWelcomeEmail } from '@/lib/auth/registrations';
 import { notifyStaffOfRegistration } from '@/lib/push/server';
 import {
   forgotPasswordSchema,
@@ -228,8 +228,9 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
   });
   console.info(`[auth] signUp took ${Date.now() - startedAt}ms`);
 
-  // The office is told somebody has registered — by e-mail, and as a push
-  // notification on whatever device the school has subscribed.
+  // Three side effects, all after the response: the student is welcomed, and
+  // the office is told — by e-mail and as a push notification on whatever
+  // device the school has subscribed.
   //
   // Both run in `after()`, which is the point: they are side effects, and the
   // student has no reason to wait for either. Before this, the sign-up held the
@@ -243,9 +244,16 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
       email: parsed.data.email,
       userId: data.user?.id ?? '',
     };
+    const student = {
+      fullName: parsed.data.fullName,
+      email: parsed.data.email,
+      locale: parsed.data.locale,
+    };
     after(async () => {
       const alertsAt = Date.now();
+      // allSettled, not all: one failing send must not skip the other two.
       await Promise.allSettled([
+        sendWelcomeEmail(student),
         notifyOfficeOfRegistration(notify),
         notifyStaffOfRegistration(notify),
       ]);

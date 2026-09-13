@@ -100,6 +100,53 @@ export function orderConfirmation(data: OrderConfirmationData): Mail {
   };
 }
 
+export interface WelcomeData {
+  to: string;
+  locale: 'fr' | 'en';
+  fullName: string;
+  signInUrl: string;
+}
+
+/**
+ * The first thing a new student hears from the school.
+ *
+ * Sent by US, through our own mailbox, AFTER the response — never by Supabase
+ * and never on the sign-up's critical path. That distinction is the whole
+ * point: Supabase sends its mail inside `signUp()` and makes the student wait
+ * for the mail server, which is how registering came to take fifty seconds.
+ * This one cannot delay anything, and cannot fail anything either.
+ *
+ * It deliberately claims nothing about confirming an address. Whether a
+ * confirmation step exists at all is a Supabase setting the school can change
+ * either way, and a welcome message that tells somebody to click a link that
+ * was never sent is worse than no welcome message.
+ */
+export function welcomeStudent(data: WelcomeData): Mail {
+  const fr = data.locale === 'fr';
+  const name = data.fullName.trim();
+  const shell: Shell = {
+    heading: fr ? 'Bienvenue à l’Institut Talib Alim' : 'Welcome to Institut Talib Alim',
+    intro: fr
+      ? `${name ? `${name}, v` : 'V'}otre compte est créé. Vous pouvez dès maintenant parcourir les modules, choisir ceux qui vous intéressent et suivre vos cours depuis votre espace.`
+      : `${name ? `${name}, y` : 'Y'}our account is open. You can browse the modules, choose the ones you want and follow your classes from your own space.`,
+    lines: [
+      {
+        title: fr ? 'Votre espace' : 'Your space',
+        detail: data.signInUrl,
+      },
+    ],
+    outro: fr
+      ? 'Une question sur un module ou un cursus ? Répondez simplement à cet e-mail, nous vous répondrons.'
+      : 'A question about a module or a programme? Just reply to this email and we will answer.',
+  };
+  return {
+    to: data.to,
+    subject: fr ? 'Bienvenue à l’Institut Talib Alim' : 'Welcome to Institut Talib Alim',
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
 export interface NewRegistrationData {
   to: string;
   fullName: string;
