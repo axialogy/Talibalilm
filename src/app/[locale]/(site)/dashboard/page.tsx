@@ -126,36 +126,55 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
           </div>
 
           <aside className="space-y-4">
-            <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck
-                  className={hasAccess ? 'size-4 text-brand-500' : 'size-4 text-ink-muted'}
-                  aria-hidden="true"
-                />
-                <p className="text-[13px] font-medium text-ink">
-                  {hasAccess ? t('membershipActive') : t('membershipNone')}
-                </p>
-              </div>
-              {remaining !== null && (
-                <p className="mt-1 text-[11px] text-ink-muted">
-                  {t('expiresIn', { days: remaining })}
-                </p>
-              )}
-              <Button asChild size="sm" variant={hasAccess ? 'ghost' : 'primary'} className="mt-4">
-                <Link href="/checkout">
-                  {hasAccess ? t('renew') : tCourses('detail.enrollCta')}
-                </Link>
-              </Button>
-            </div>
+            {/*
+              Staff do not hold a subscription and are never asked to renew one.
+              Their access comes from `is_staff()` in the policies, not from an
+              entitlement, so a card offering the teacher a subscription to their
+              own school was offering something that buys them nothing.
 
-            {isStaff && (
+              It is the staff card OR the membership card, never both: two boxes
+              disagreeing about why you can read a lesson is worse than either.
+            */}
+            {isStaff ? (
               <div className="rounded-[var(--radius-card)] border border-brand-200 bg-brand-50 p-5">
                 <div className="flex items-center gap-2">
                   <Wrench className="size-4 text-brand-600" aria-hidden="true" />
-                  <p className="text-[13px] font-medium text-brand-700">{viewer.role}</p>
+                  <p className="text-[13px] font-medium text-brand-700">
+                    {viewer.role === 'admin' ? t('roleAdmin') : t('roleInstructor')}
+                  </p>
                 </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-brand-700/80">
+                  {t('staffCardBody')}
+                </p>
                 <Button asChild size="sm" className="mt-4">
-                  <Link href="/admin/courses">{tCourses('title')}</Link>
+                  <Link href="/admin">{t('staffCardCta')}</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck
+                    className={hasAccess ? 'size-4 text-brand-500' : 'size-4 text-ink-muted'}
+                    aria-hidden="true"
+                  />
+                  <p className="text-[13px] font-medium text-ink">
+                    {hasAccess ? t('membershipActive') : t('membershipNone')}
+                  </p>
+                </div>
+                {remaining !== null && (
+                  <p className="mt-1 text-[11px] text-ink-muted">
+                    {t('expiresIn', { days: remaining })}
+                  </p>
+                )}
+                <Button
+                  asChild
+                  size="sm"
+                  variant={hasAccess ? 'ghost' : 'primary'}
+                  className="mt-4"
+                >
+                  <Link href="/checkout">
+                    {hasAccess ? t('renew') : tCourses('detail.enrollCta')}
+                  </Link>
                 </Button>
               </div>
             )}

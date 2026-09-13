@@ -447,7 +447,12 @@
     "membershipActive": "Abonnement actif",
     "membershipNone": "Aucun abonnement actif",
     "expiresIn": "{days} jours restants",
-    "renew": "Renouveler"
+    "renew": "Renouveler",
+    "staffCardTitle": "Compte du personnel",
+    "staffCardBody": "Vous accédez à tous les modules sans abonnement. Les inscriptions et les paiements se gèrent depuis l’administration.",
+    "staffCardCta": "Administration",
+    "roleAdmin": "Administration",
+    "roleInstructor": "Enseignant"
   },
   "admin": {
     "title": "Administration",

@@ -447,7 +447,12 @@
     "membershipActive": "Membership active",
     "membershipNone": "No active membership",
     "expiresIn": "{days} days left",
-    "renew": "Renew"
+    "renew": "Renew",
+    "staffCardTitle": "Staff account",
+    "staffCardBody": "You reach every module without a subscription. Enrolments and payments are handled from the admin panel.",
+    "staffCardCta": "Admin panel",
+    "roleAdmin": "Administrator",
+    "roleInstructor": "Teacher"
   },
   "admin": {
     "title": "Administration",
