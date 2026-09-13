@@ -868,7 +868,20 @@
     "gallery": "Images « Informations »",
     "galleryHint": "Elles défilent dans le carrousel de la page du module.",
     "galleryAdd": "Ajouter une image",
-    "galleryRemove": "Retirer cette image"
+    "galleryRemove": "Retirer cette image",
+    "paymentsTabHistory": "Historique des paiements",
+    "paymentsTabConfig": "Configuration PayPal",
+    "paymentsByStudent": "Par étudiant",
+    "paymentsByStudentLead": "Ce que chaque étudiant a réglé, et ce qui reste ouvert.",
+    "colPaid": "Réglé",
+    "colOutstanding": "Reste à régler",
+    "colStanding": "État",
+    "colLastPayment": "Dernier paiement",
+    "standingPaid": "Payé",
+    "standingPartial": "Partiel",
+    "standingPending": "En attente",
+    "paymentsNobody": "Aucun paiement pour l’instant.",
+    "paymentsAllOrders": "Voir toutes les commandes"
   },
   "live": {
     "allow": "Autoriser",

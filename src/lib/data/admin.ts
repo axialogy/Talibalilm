@@ -126,22 +126,24 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
   // Fetched beside the order rather than joined: the coupon and pack links are
   // nullable and the embedded form would need a declared relationship for a
   // reference that is usually absent.
-  const [[withEmail], { data: entitlements }, { data: coupon }, { data: pack }] = await Promise.all([
-    attachEmails(supabase, [{ userId: o.user_id, id: o.id }]),
-    // What the order opened. Reading it back rather than inferring it from the
-    // line items means the screen shows what the student actually holds, even
-    // if a grant was later revoked or wound back by a refund.
-    supabase
-      .from('entitlements')
-      .select('scope, year_index, status, expires_at, courses ( title ), cursus ( title )')
-      .eq('source_order_id', orderId),
-    o.coupon_id
-      ? supabase.from('coupons').select('code').eq('id', o.coupon_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    o.pack_id
-      ? supabase.from('packs').select('title').eq('id', o.pack_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [[withEmail], { data: entitlements }, { data: coupon }, { data: pack }] = await Promise.all(
+    [
+      attachEmails(supabase, [{ userId: o.user_id, id: o.id }]),
+      // What the order opened. Reading it back rather than inferring it from the
+      // line items means the screen shows what the student actually holds, even
+      // if a grant was later revoked or wound back by a refund.
+      supabase
+        .from('entitlements')
+        .select('scope, year_index, status, expires_at, courses ( title ), cursus ( title )')
+        .eq('source_order_id', orderId),
+      o.coupon_id
+        ? supabase.from('coupons').select('code').eq('id', o.coupon_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      o.pack_id
+        ? supabase.from('packs').select('title').eq('id', o.pack_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ],
+  );
 
   return {
     id: o.id,
@@ -165,8 +167,7 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     discountCents: o.discount_cents,
     granted: (entitlements ?? []).map((e) => ({
       label:
-        e.courses?.title ??
-        (e.cursus?.title ? `${e.cursus.title} — ${e.year_index}` : 'Institut'),
+        e.courses?.title ?? (e.cursus?.title ? `${e.cursus.title} — ${e.year_index}` : 'Institut'),
       expiresAt: e.expires_at,
       status: e.status,
     })),
@@ -384,4 +385,108 @@ export async function couponBatches(): Promise<string[]> {
   const supabase = await createClient();
   const { data } = await supabase.from('coupons').select('batch').neq('batch', '').limit(1000);
   return [...new Set((data ?? []).map((c) => c.batch))].sort();
+}
+
+// ---------------------------------------------------------------------------
+// Who has paid, and who has not finished paying
+// ---------------------------------------------------------------------------
+
+/** Where one student stands with the school's till. */
+export type PaymentStanding = 'paid' | 'partial' | 'pending';
+
+export interface StudentPayment {
+  userId: string;
+  email: string | null;
+  fullName: string;
+  /** Settled, in cents. Refunds are not deducted — they show as their own row. */
+  paidCents: number;
+  /** Opened and not settled: a checkout left half-way, or an instalment due. */
+  outstandingCents: number;
+  currency: string;
+  orders: number;
+  lastPaidAt: string | null;
+  standing: PaymentStanding;
+}
+
+/**
+ * The payments screen, by student rather than by order.
+ *
+ * "Who has paid me?" is a question about people, and the orders table answers a
+ * question about transactions. This folds one into the other: every order a
+ * student has opened, settled ones summed as paid and open ones as
+ * outstanding.
+ *
+ * `standing` is derived rather than stored: a student with money settled and
+ * nothing open has PAID; one with both has paid PART of what they started; one
+ * with only open orders has not paid yet. When instalments land, a plan that is
+ * one third settled is exactly the middle case and will read as partial here
+ * without this function changing.
+ *
+ * Refunded and cancelled orders count as neither. A refund is not a debt the
+ * student owes, and a cancelled checkout is not a sale — showing either as
+ * outstanding would put the office on the phone to someone who owes nothing.
+ */
+export async function studentPayments(): Promise<StudentPayment[]> {
+  if (!supabaseConfigured) return [];
+  const supabase = await createClient();
+
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('user_id, status, total_cents, currency, paid_at')
+    .in('status', ['paid', 'pending'])
+    .order('created_at', { ascending: false })
+    .limit(2000);
+
+  const byUser = new Map<string, StudentPayment>();
+  for (const order of orders ?? []) {
+    const current = byUser.get(order.user_id) ?? {
+      userId: order.user_id,
+      email: null,
+      fullName: '',
+      paidCents: 0,
+      outstandingCents: 0,
+      currency: order.currency,
+      orders: 0,
+      lastPaidAt: null,
+      standing: 'pending' as PaymentStanding,
+    };
+
+    current.orders += 1;
+    if (order.status === 'paid') {
+      current.paidCents += order.total_cents;
+      // The list is newest first, so the first settled row seen is the latest.
+      current.lastPaidAt ??= order.paid_at;
+    } else {
+      current.outstandingCents += order.total_cents;
+    }
+    byUser.set(order.user_id, current);
+  }
+
+  const rows = [...byUser.values()].map((row) => ({
+    ...row,
+    standing:
+      row.paidCents > 0 && row.outstandingCents > 0
+        ? ('partial' as const)
+        : row.paidCents > 0
+          ? ('paid' as const)
+          : ('pending' as const),
+  }));
+
+  if (rows.length === 0) return [];
+
+  // Names come from `profiles` and emails from the staff-gated function; both
+  // are reads the office is entitled to and neither is guessed from the other.
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in(
+      'id',
+      rows.map((r) => r.userId),
+    );
+  const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? '']));
+
+  const withEmails = await attachEmails(supabase, rows);
+  return withEmails
+    .map((row) => ({ ...row, fullName: names.get(row.userId) ?? '' }))
+    .sort((a, b) => b.paidCents + b.outstandingCents - (a.paidCents + a.outstandingCents));
 }

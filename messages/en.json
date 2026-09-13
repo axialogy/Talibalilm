@@ -868,7 +868,20 @@
     "gallery": "Information images",
     "galleryHint": "They rotate in the carousel on the module page.",
     "galleryAdd": "Add an image",
-    "galleryRemove": "Remove this image"
+    "galleryRemove": "Remove this image",
+    "paymentsTabHistory": "Payment history",
+    "paymentsTabConfig": "PayPal configuration",
+    "paymentsByStudent": "By student",
+    "paymentsByStudentLead": "What each student has settled, and what is still open.",
+    "colPaid": "Settled",
+    "colOutstanding": "Outstanding",
+    "colStanding": "Standing",
+    "colLastPayment": "Last payment",
+    "standingPaid": "Paid",
+    "standingPartial": "Partial",
+    "standingPending": "Pending",
+    "paymentsNobody": "No payments yet.",
+    "paymentsAllOrders": "See every order"
   },
   "live": {
     "allow": "Allow",

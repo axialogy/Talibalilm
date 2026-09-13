@@ -397,7 +397,11 @@ export default async function CoursePage({
           on-site / online toggle. */}
       {entries.length > 0 && <PlanningTarifs entries={entries} locale={locale} />}
 
-      {/* Live sessions belonging to this module */}
+      {/* The live sessions scheduled against this module.
+          `live_sessions` is readable only by staff and by a student who holds
+          the module, so this section simply is not here for a visitor who has
+          not enrolled — the list is empty because the database answered empty,
+          not because the page decided to hide it. */}
       {upcoming.length > 0 && (
         <section className="bg-surface/60 py-14 sm:py-16">
           <div className="shell max-w-3xl">
@@ -440,8 +444,8 @@ export default async function CoursePage({
                           : t('detail.liveScheduled')}
                     </p>
                   </div>
-                  {/* The link is shown to everyone; entry is decided by
-                      `can_join_live` in the database, not by this markup. */}
+                  {/* Entry is decided again at the door by `can_join_live`,
+                      which also refuses a banned student and an ended room. */}
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/live/${session.roomToken}`}>{tLive('joinNow')}</Link>
                   </Button>
