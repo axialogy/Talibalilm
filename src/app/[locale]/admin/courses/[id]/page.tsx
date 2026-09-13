@@ -16,6 +16,7 @@ import { LiveSessionControls } from '@/components/admin/LiveSessionControls';
 import { Badge } from '@/components/ui/badge';
 import { listLiveSessions } from '@/lib/data/live';
 import { createClient } from '@/lib/supabase/server';
+import { reportError } from '@/lib/observability/report';
 import type { LiveStatus } from '@/lib/supabase/database.types';
 
 /**
@@ -36,7 +37,7 @@ export default async function CourseBuilderPage({
   const t = await getTranslations('admin');
   const supabase = await createClient();
 
-  const { data: course } = await supabase
+  const { data: course, error: courseError } = await supabase
     .from('courses')
     .select(
       `id, slug, title, subtitle, description, title_ar, category, level, format, tone,
@@ -47,6 +48,33 @@ export default async function CourseBuilderPage({
     )
     .eq('id', id)
     .maybeSingle();
+
+  // A refused query and a course that does not exist are NOT the same thing,
+  // and treating them alike is what turned "PostgREST cannot see this column
+  // yet" into a blank error page. A select naming a column the API has not
+  // reloaded fails whole; the row is there and perfectly readable by hand.
+  // Staff get the database's own words, which name the fix.
+  if (courseError) {
+    reportError('admin.course.load', courseError, { id });
+    return (
+      <div className="max-w-2xl">
+        <Link
+          href="/admin/courses"
+          className="inline-flex items-center gap-2 text-xs text-ink-muted transition-colors hover:text-brand-600"
+        >
+          <ArrowLeft className="size-3.5" aria-hidden="true" />
+          {t('backToCourses')}
+        </Link>
+        <div className="mt-6 rounded-[var(--radius-card)] border border-red-200 bg-red-50/50 p-5">
+          <p className="text-[13px] font-medium text-red-700">{t('courseLoadFailed')}</p>
+          <p className="mt-2 font-mono text-[12px] break-words text-red-700">
+            {`${courseError.code ?? ''} ${courseError.message}`.trim()}
+          </p>
+          <p className="mt-3 text-[12px] leading-relaxed text-ink-muted">{t('courseLoadHint')}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!course) notFound();
 
@@ -62,7 +90,10 @@ export default async function CourseBuilderPage({
     : { data: [] };
 
   const contentByLesson = Object.fromEntries(
-    (contentRows ?? []).map((row) => [row.lesson_id, { content: row.content, videoId: row.video_id }]),
+    (contentRows ?? []).map((row) => [
+      row.lesson_id,
+      { content: row.content, videoId: row.video_id },
+    ]),
   );
 
   // Everything else this course needs, in parallel: what it costs, which
@@ -71,7 +102,9 @@ export default async function CourseBuilderPage({
     await Promise.all([
       supabase
         .from('products')
-        .select('id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week')
+        .select(
+          'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
+        )
         .eq('kind', 'module')
         .eq('course_id', id)
         .order('delivery'),
@@ -174,7 +207,9 @@ export default async function CourseBuilderPage({
               label: t('tabFees'),
               content: (
                 <div className="max-w-3xl">
-                  <p className="mb-4 text-[13px] leading-relaxed text-ink-muted">{t('tabFeesLead')}</p>
+                  <p className="mb-4 text-[13px] leading-relaxed text-ink-muted">
+                    {t('tabFeesLead')}
+                  </p>
                   <CourseFees courseId={course.id} fees={fees} />
                 </div>
               ),

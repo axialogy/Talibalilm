@@ -885,7 +885,9 @@
     "paymentsAllOrders": "See every order",
     "diagErrors": "Recent server errors",
     "diagErrorsLead": "The real message behind a code shown on screen. Held in memory, on this instance only: an empty list is not proof that nothing failed.",
-    "diagErrorsEmpty": "No errors recorded on this instance."
+    "diagErrorsEmpty": "No errors recorded on this instance.",
+    "courseLoadFailed": "The database refused to read this module.",
+    "courseLoadHint": "If the message names a column it cannot find, the migration ran but PostgREST has not reloaded its schema: run « notify pgrst, 'reload schema'; » in the Supabase SQL editor, then reopen this page."
   },
   "live": {
     "allow": "Allow",

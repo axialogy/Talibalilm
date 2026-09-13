@@ -885,7 +885,9 @@
     "paymentsAllOrders": "Voir toutes les commandes",
     "diagErrors": "Dernières erreurs serveur",
     "diagErrorsLead": "Le message réel derrière un code affiché à l’écran. Gardé en mémoire, sur cette instance seulement : une liste vide ne prouve pas que rien n’a échoué.",
-    "diagErrorsEmpty": "Aucune erreur enregistrée sur cette instance."
+    "diagErrorsEmpty": "Aucune erreur enregistrée sur cette instance.",
+    "courseLoadFailed": "La base de données a refusé la lecture de ce module.",
+    "courseLoadHint": "Si le message parle d’une colonne introuvable, la migration a été exécutée mais PostgREST n’a pas rechargé son schéma : exécutez « notify pgrst, 'reload schema'; » dans l’éditeur SQL de Supabase, puis rouvrez cette page."
   },
   "live": {
     "allow": "Autoriser",
