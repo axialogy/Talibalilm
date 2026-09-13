@@ -14,7 +14,7 @@
     "login": "Connexion",
     "register": "Créer un compte",
     "logout": "Déconnexion",
-    "startLearning": "Commencer",
+    "startLearning": "Inscrivez-vous",
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
     "skipToContent": "Aller au contenu",
@@ -41,8 +41,7 @@
       "eyebrow": "L’Institut Talib Alim",
       "title": "Cours de sciences islamiques et de langue arabe",
       "body": "L’éducation religieuse constitue un pilier essentiel pour la construction d’une communauté consciente, équilibrée et attachée à ses valeurs spirituelles.",
-      "cta": "Commencer le cours",
-      "ctaSecondary": "Voir les tarifs"
+      "cta": "DÉCOUVRIR NOS FORMATIONS"
     },
     "featured": {
       "eyebrow": "Notre catalogue",
@@ -140,7 +139,6 @@
       "lockedHint": "Cette leçon fait partie de l’abonnement annuel.",
       "enrollCta": "S’abonner pour accéder",
       "continueCta": "Continuer le module",
-      "membershipNote": "Un seul abonnement ouvre tous les modules de l’institut.",
       "facts": {
         "duration": "Durée",
         "lessons": "Séances",

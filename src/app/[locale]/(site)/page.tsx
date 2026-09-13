@@ -65,14 +65,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <h1 className="mt-5 font-display text-[clamp(2rem,5.2vw,3.125rem)] leading-[1.14] font-semibold tracking-[-0.03em] text-ink">
               {t('hero.title')}
             </h1>
-            <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-ink-muted">{t('hero.body')}</p>
+            <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-ink-muted">
+              {t('hero.body')}
+            </p>
 
-            <div className="mt-9 flex flex-wrap gap-3">
+            {/* One call to action. Two side by side made the visitor choose
+                before they knew anything, and "see the prices" is a question
+                the catalogue answers better than a separate page. */}
+            <div className="mt-9">
               <Button asChild size="lg">
                 <Link href="/courses">{t('hero.cta')}</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/pricing">{t('hero.ctaSecondary')}</Link>
               </Button>
             </div>
           </div>
@@ -125,7 +127,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <h3 className="mt-2 font-display text-[15px] font-semibold text-ink">
                   {t(`how.step${n}Title`)}
                 </h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">{t(`how.step${n}Body`)}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                  {t(`how.step${n}Body`)}
+                </p>
               </li>
             ))}
           </ol>
@@ -203,8 +207,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   <Icon className="size-4" />
                 </span>
                 <div>
-                  <h3 className="font-display text-[15px] font-semibold text-ink">{t(`why.${key}Title`)}</h3>
-                  <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">{t(`why.${key}Body`)}</p>
+                  <h3 className="font-display text-[15px] font-semibold text-ink">
+                    {t(`why.${key}Title`)}
+                  </h3>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
+                    {t(`why.${key}Body`)}
+                  </p>
                 </div>
               </li>
             ))}
@@ -217,7 +225,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <div className="shell flex flex-col items-start gap-6 rounded-[var(--radius-card)] border border-line bg-white p-8 sm:p-10 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-display text-2xl font-semibold text-ink">{tPricing('title')}</h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted">{tPricing('lead')}</p>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted">
+              {tPricing('lead')}
+            </p>
           </div>
           <Button asChild size="lg" className="shrink-0">
             <Link href="/checkout">{tPricing('cta')}</Link>

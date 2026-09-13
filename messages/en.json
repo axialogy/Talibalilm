@@ -14,7 +14,7 @@
     "login": "Log in",
     "register": "Create an account",
     "logout": "Log out",
-    "startLearning": "Get started",
+    "startLearning": "Sign up",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "skipToContent": "Skip to content",
@@ -41,8 +41,7 @@
       "eyebrow": "Institut Talib Alim",
       "title": "Courses in the Islamic sciences and the Arabic language",
       "body": "Religious education is a cornerstone in building a community that is aware, balanced and attached to its spiritual values.",
-      "cta": "Start the course",
-      "ctaSecondary": "See pricing"
+      "cta": "DISCOVER OUR COURSES"
     },
     "featured": {
       "eyebrow": "Our catalogue",
@@ -140,7 +139,6 @@
       "lockedHint": "This lesson is part of the annual membership.",
       "enrollCta": "Subscribe to get access",
       "continueCta": "Continue the module",
-      "membershipNote": "One membership opens every module at the institute.",
       "facts": {
         "duration": "Length",
         "lessons": "Sessions",
