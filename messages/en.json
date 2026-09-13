@@ -342,7 +342,8 @@
     "rateLimited": "Too many attempts. Try again in a few minutes.",
     "claimFree": "Get this course free",
     "claimFreeNote": "Nothing to pay. Access opens straight away and lasts the usual period.",
-    "notFree": "This basket is not free. Please continue to payment."
+    "notFree": "This basket is not free. Please continue to payment.",
+    "notApproved": "Your account is still waiting for the institute to approve it. You will be able to enrol as soon as it is open — we will let you know by e-mail."
   },
   "auth": {
     "loginTitle": "Log in",
@@ -459,7 +460,9 @@
     "staffCardBody": "You reach every module without a subscription. Enrolments and payments are handled from the admin panel.",
     "staffCardCta": "Admin panel",
     "roleAdmin": "Administrator",
-    "roleInstructor": "Teacher"
+    "roleInstructor": "Teacher",
+    "pendingTitle": "Your account is waiting for approval",
+    "pendingBody": "The institute checks new registrations before opening them. You can already browse the catalogue; enrolling on a module becomes possible as soon as your account is open, and we will let you know by e-mail."
   },
   "admin": {
     "title": "Administration",
@@ -943,7 +946,15 @@
     "studentActivate": "Activate the account",
     "studentActivateNote": "Confirms the e-mail address on the student’s behalf, when the confirmation message never arrived. No effect on an account that is already active.",
     "studentActivateCta": "Confirm the address",
-    "studentActivated": "The account is active: the student can sign in."
+    "studentActivated": "The account is active: the student can sign in.",
+    "studentApproval": "Account approval",
+    "studentApproved": "Approved",
+    "studentPending": "Pending",
+    "studentApprove": "Approve this account",
+    "studentUnapprove": "Put back as pending",
+    "studentPendingNote": "This account is waiting for you. While pending, the student can sign in and browse the catalogue but cannot enrol on a module. Approving sends them a welcome e-mail.",
+    "studentApprovedNote": "This account is open. The student can enrol and pay for modules.",
+    "pendingStudents": "{count, plural, =1 {# registration waiting} other {# registrations waiting}}"
   },
   "live": {
     "allow": "Allow",

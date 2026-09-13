@@ -2,10 +2,16 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { MailCheck, Trash2 } from 'lucide-react';
+import { MailCheck, ShieldCheck, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { confirmStudentEmail, deleteStudent, updateStudent } from '@/app/actions/office';
+import { Badge } from '@/components/ui/badge';
+import {
+  confirmStudentEmail,
+  deleteStudent,
+  setStudentApproval,
+  updateStudent,
+} from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
 const EMPTY: AdminState = { ok: true };
@@ -34,17 +40,21 @@ export function StudentAccount({
   phone,
   locale,
   hasOrders,
+  approved,
 }: {
   userId: string;
   fullName: string;
   phone: string;
   locale: string;
   hasOrders: boolean;
+  /** Has an admin let this account in yet? */
+  approved: boolean;
 }) {
   const t = useTranslations('admin');
   const [saveState, save] = useActionState(updateStudent, EMPTY);
   const [removeState, remove] = useActionState(deleteStudent, EMPTY);
   const [confirmState, confirmEmail] = useActionState(confirmStudentEmail, IDLE);
+  const [approvalState, setApproval] = useActionState(setStudentApproval, IDLE);
 
   return (
     <div className="space-y-4">
@@ -90,6 +100,46 @@ export function StudentAccount({
         </div>
 
         <p className="text-[11px] leading-relaxed text-ink-muted">{t('studentEmailNote')}</p>
+      </form>
+
+      {/*
+        Letting the account in. Approving sends the student the welcome
+        message; the database returns an address only on a real change, so
+        pressing this twice cannot send it twice.
+      */}
+      <form
+        action={setApproval}
+        className={`rounded-[var(--radius-card)] border p-5 ${
+          approved ? 'border-line bg-white' : 'border-gold-300 bg-gold-50/60'
+        }`}
+      >
+        <input type="hidden" name="userId" value={userId} />
+        <input type="hidden" name="approve" value={approved ? 'no' : 'yes'} />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[13px] font-medium text-ink">{t('studentApproval')}</p>
+          <Badge variant={approved ? 'success' : 'warn'}>
+            {approved ? t('studentApproved') : t('studentPending')}
+          </Badge>
+        </div>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+          {approved ? t('studentApprovedNote') : t('studentPendingNote')}
+        </p>
+
+        <Button type="submit" size="sm" variant={approved ? 'ghost' : 'primary'} className="mt-3">
+          {approved ? (
+            <Undo2 className="size-3.5" aria-hidden="true" />
+          ) : (
+            <ShieldCheck className="size-3.5" aria-hidden="true" />
+          )}
+          {approved ? t('studentUnapprove') : t('studentApprove')}
+        </Button>
+
+        {approvalState.error && (
+          <p role="alert" className="mt-2 text-[12px] text-red-600">
+            {t(`errors.${approvalState.error}` as 'errors.saveFailed')}
+          </p>
+        )}
       </form>
 
       {/*

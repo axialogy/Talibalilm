@@ -84,12 +84,15 @@ export default async function AdminStudentDetailPage({
               phone={account.phone}
               locale={account.locale}
               hasOrders={account.hasOrders}
+              approved={student.approvedAt !== null}
             />
           </div>
         </section>
       )}
 
-      <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">{t('entitlementsHeld')}</h2>
+      <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">
+        {t('entitlementsHeld')}
+      </h2>
       {entitlements.length === 0 ? (
         <p className="mt-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6 text-center text-sm text-ink-muted">
           {t('entNone')}

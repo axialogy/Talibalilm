@@ -8,6 +8,7 @@ import { envProblem, supabaseConfigured, siteUrl } from '@/lib/env';
 import { classifyAuthError } from '@/lib/auth/errors';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { reportError } from '@/lib/observability/report';
+import { notifyOfficeOfRegistration } from '@/lib/auth/approval';
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -214,6 +215,17 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
       emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/dashboard')}`,
     },
   });
+
+  // The office is told there is somebody to let in. Never allowed to fail the
+  // sign-up: a student who has just created an account must not see an error
+  // because the school's mail server was slow.
+  if (!error) {
+    await notifyOfficeOfRegistration({
+      fullName: parsed.data.fullName,
+      email: parsed.data.email,
+      userId: data.user?.id ?? '',
+    });
+  }
 
   if (error) {
     // The one failure that is not about this person and cannot be retried away:

@@ -92,7 +92,84 @@ export function orderConfirmation(data: OrderConfirmationData): Mail {
   };
   return {
     to: data.to,
-    subject: fr ? 'Inscription confirmée — Institut Talib Alim' : 'Enrolment confirmed — Institut Talib Alim',
+    subject: fr
+      ? 'Inscription confirmée — Institut Talib Alim'
+      : 'Enrolment confirmed — Institut Talib Alim',
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
+export interface AccountApprovedData {
+  to: string;
+  locale: 'fr' | 'en';
+  fullName: string;
+  signInUrl: string;
+}
+
+/**
+ * The message a student has been waiting for.
+ *
+ * Sent only when an account actually crosses from pending to approved —
+ * `admin_set_approval` returns an address only on a real change, so pressing
+ * the button twice cannot send this twice.
+ */
+export function accountApproved(data: AccountApprovedData): Mail {
+  const fr = data.locale === 'fr';
+  const name = data.fullName.trim();
+  const shell: Shell = {
+    heading: fr ? 'Votre compte est activé' : 'Your account is open',
+    intro: fr
+      ? `${name ? `${name}, v` : 'V'}otre inscription à l’Institut Talib Alim a été validée. Vous pouvez désormais vous connecter et choisir vos modules.`
+      : `${name ? `${name}, y` : 'Y'}our registration at Institut Talib Alim has been approved. You can now sign in and choose your modules.`,
+    lines: [
+      {
+        title: fr ? 'Se connecter' : 'Sign in',
+        detail: data.signInUrl,
+      },
+    ],
+    outro: fr
+      ? 'Une question sur un module ou un cursus ? Répondez simplement à cet e-mail.'
+      : 'A question about a module or a programme? Just reply to this email.',
+  };
+  return {
+    to: data.to,
+    subject: fr
+      ? 'Votre compte est activé — Institut Talib Alim'
+      : 'Your account is open — Institut Talib Alim',
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
+export interface NewRegistrationData {
+  to: string;
+  fullName: string;
+  email: string;
+  reviewUrl: string;
+}
+
+/**
+ * What the office is told when somebody registers.
+ *
+ * Always in French: this one goes to the school, not to a student, and the
+ * school reads French. It carries the link to the person's page so approving
+ * is one tap from the phone rather than a hunt through a list.
+ */
+export function newRegistration(data: NewRegistrationData): Mail {
+  const shell: Shell = {
+    heading: 'Nouvelle inscription à valider',
+    intro:
+      'Quelqu’un vient de créer un compte. Il reste en attente tant que vous ne l’avez pas validé.',
+    lines: [
+      { title: data.fullName || '—', detail: data.email },
+      { title: 'Ouvrir la fiche', detail: data.reviewUrl },
+    ],
+    outro: 'Vous pouvez aussi valider depuis Administration → Étudiants.',
+  };
+  return {
+    to: data.to,
+    subject: `Nouvelle inscription : ${data.fullName || data.email}`,
     html: render(shell),
     text: plain(shell),
   };

@@ -195,6 +195,8 @@ export interface StudentSummary {
   role: string;
   createdAt: string;
   anonymisedAt: string | null;
+  /** When an admin let this account in. Null means still waiting. */
+  approvedAt: string | null;
   activeEntitlements: number;
 }
 
@@ -214,7 +216,7 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
   // wrong in the count, and one careless click away from the erase button.
   let query = supabase
     .from('profiles')
-    .select('id, full_name, role, created_at, anonymised_at')
+    .select('id, full_name, role, created_at, anonymised_at, approved_at')
     .eq('role', 'student')
     .order('created_at', { ascending: false })
     .limit(200);
@@ -230,6 +232,7 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
     role: p.role,
     createdAt: p.created_at,
     anonymisedAt: p.anonymised_at,
+    approvedAt: p.approved_at,
   }));
 
   const withEmail = await attachEmails(supabase, rows);
@@ -273,7 +276,7 @@ export async function getStudent(userId: string): Promise<{
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, role, created_at, anonymised_at, phone, locale')
+    .select('id, full_name, role, created_at, anonymised_at, approved_at, phone, locale')
     .eq('id', userId)
     .maybeSingle();
   if (!profile) return null;
@@ -309,6 +312,7 @@ export async function getStudent(userId: string): Promise<{
       role: profile.role,
       createdAt: profile.created_at,
       anonymisedAt: profile.anonymised_at,
+      approvedAt: profile.approved_at,
       activeEntitlements: (ents ?? []).filter(
         (e) => e.status === 'active' && new Date(e.expires_at).getTime() > now,
       ).length,

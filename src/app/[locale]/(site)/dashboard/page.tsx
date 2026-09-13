@@ -1,12 +1,13 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { Metadata } from 'next';
-import { BookOpen, ShieldCheck, Wrench } from 'lucide-react';
+import { BookOpen, Hourglass, ShieldCheck, Wrench } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/marketing/PageHero';
 import { UpcomingClasses } from '@/components/live/UpcomingClasses';
 import { requireViewer } from '@/lib/auth/guards';
 import { daysRemaining, getEntitlements } from '@/lib/data/learning';
+import { viewerIsApproved } from '@/lib/auth/approval';
 import { listCourses } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
@@ -27,6 +28,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const tNav = await getTranslations('nav');
   const tCourses = await getTranslations('courses');
 
+  const approved = await viewerIsApproved();
   const entitlements = await getEntitlements();
   const hasAccess = entitlements.length > 0;
   const remaining = daysRemaining(entitlements);
@@ -57,6 +59,24 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       <section className="py-12">
         <div className="shell grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div>
+            {/* A registration the school has not let in yet. Said plainly and
+                once, at the top: everything below still works, so the student
+                can look around while they wait. */}
+            {!approved && !isStaff && (
+              <div
+                role="status"
+                className="mb-8 flex items-start gap-3 rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/70 p-5"
+              >
+                <Hourglass className="mt-0.5 size-5 shrink-0 text-gold-600" aria-hidden="true" />
+                <div>
+                  <p className="text-[14px] font-medium text-ink">{t('pendingTitle')}</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
+                    {t('pendingBody')}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Live classes first when there are any: a room that is open now
                 is the one thing on this page that is time-sensitive. */}
             <div className="mb-10 empty:mb-0">

@@ -200,4 +200,103 @@ begin
   reset role;
 end $$;
 
+
+
+-- ---------------------------------------------------------------------------
+-- Account approval
+--
+-- The gate the school asked for: a new account is pending until an admin lets
+-- it in. What is asserted here is that the ANSWER lives in the database — a
+-- client cannot claim to be approved — and that approving is idempotent, so a
+-- second press cannot send a second welcome message.
+-- ---------------------------------------------------------------------------
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('a0000000-0000-0000-0000-000000000003', 'pending@test.fr', '{"full_name":"En attente"}'::jsonb);
+
+-- `handle_new_user` approves nobody, so every fixture account above is pending
+-- exactly as a real new registration is. The migration's back-fill cannot be
+-- observed from here — it ran before any of these rows existed — so an already
+-- admitted account is set up explicitly instead of pretended into existence.
+update public.profiles set approved_at = now()
+where id = 'a0000000-0000-0000-0000-000000000001';
+
+do $$
+begin
+  raise notice 'approval — who may buy';
+
+  perform public.assert(
+    not public.is_approved('a0000000-0000-0000-0000-000000000003'),
+    'a fresh student account is pending');
+  perform public.assert(
+    public.is_approved('a0000000-0000-0000-0000-000000000001'),
+    'an account with a date in approved_at is let in');
+  perform public.assert(
+    public.is_approved('a0000000-0000-0000-0000-000000000002'),
+    'staff are never pending — the teacher does not approve themselves');
+end $$;
+
+do $$
+declare
+  refused boolean := false;
+begin
+  raise notice 'approval — only an admin decides';
+  call auth.login_as('a0000000-0000-0000-0000-000000000003');
+  begin
+    perform public.admin_set_approval('a0000000-0000-0000-0000-000000000003', true);
+  exception when insufficient_privilege then
+    refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'a student cannot approve themselves');
+  perform public.assert(
+    not public.is_approved('a0000000-0000-0000-0000-000000000003'),
+    'and is still pending afterwards');
+end $$;
+
+do $$
+declare
+  address text;
+begin
+  raise notice 'approval — the admin lets them in, once';
+  call auth.login_as('a0000000-0000-0000-0000-000000000002');
+
+  address := public.admin_set_approval('a0000000-0000-0000-0000-000000000003', true);
+  perform public.assert(address = 'pending@test.fr',
+    'approving hands back the address to write to');
+  perform public.assert(
+    public.is_approved('a0000000-0000-0000-0000-000000000003'),
+    'the account is now let in');
+
+  -- The idempotence that stops a second welcome e-mail going out.
+  address := public.admin_set_approval('a0000000-0000-0000-0000-000000000003', true);
+  perform public.assert(address is null,
+    'approving an approved account is not an event — no address, so no second e-mail');
+
+  perform public.assert(
+    exists (select 1 from public.admin_audit
+            where action = 'student.approve'
+              and target_id = 'a0000000-0000-0000-0000-000000000003'),
+    'and who approved it is on the record');
+
+  address := public.admin_set_approval('a0000000-0000-0000-0000-000000000003', false);
+  perform public.assert(address = 'pending@test.fr', 'putting them back is an event too');
+  perform public.assert(
+    not public.is_approved('a0000000-0000-0000-0000-000000000003'),
+    'and they are pending again');
+
+  perform public.assert(public.pending_student_count() = 1,
+    'the queue the office sees counts exactly the pending students');
+
+  reset role;
+end $$;
+
+do $$
+begin
+  raise notice 'approval — the count is staff-only';
+  call auth.login_as('a0000000-0000-0000-0000-000000000003');
+  perform public.assert(public.pending_student_count() = 0,
+    'a student cannot use the queue to count the school''s registrations');
+  reset role;
+end $$;
 \echo 'ALL SITE CONTENT TESTS PASSED'

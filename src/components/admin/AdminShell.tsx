@@ -76,12 +76,19 @@ export function AdminShell({
   isAdmin,
   title,
   logoSrc,
+  pendingStudents = 0,
 }: {
   children: React.ReactNode;
   name: string;
   role: string;
   isAdmin: boolean;
   title: string;
+  /**
+   * How many registrations are waiting. Drawn beside Étudiants so a new
+   * sign-up is visible from whichever admin page the office happens to be on,
+   * rather than only from the one screen that lists them.
+   */
+  pendingStudents?: number;
   /**
    * Resolved by the layout through `@/lib/artwork`. It cannot be resolved here:
    * that module reads the filesystem, and this is a Client Component. Passing
@@ -162,6 +169,9 @@ export function AdminShell({
             ))}
           {group.items.map(({ href, icon: Icon, key }) => {
             const active = isActive(href);
+            // Only Étudiants carries a count today; written this way so the
+            // next one is a line rather than a refactor.
+            const badge = key === 'navStudents' ? pendingStudents : 0;
             return (
               <Link
                 key={href}
@@ -170,7 +180,7 @@ export function AdminShell({
                 aria-current={active ? 'page' : undefined}
                 title={compact ? t(key) : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors',
+                  'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors',
                   compact && 'justify-center px-0',
                   active
                     ? 'bg-brand-500 font-medium text-white'
@@ -178,7 +188,21 @@ export function AdminShell({
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden="true" />
-                <span className={cn(compact && 'sr-only')}>{t(key)}</span>
+                <span className={cn('flex-1', compact && 'sr-only')}>{t(key)}</span>
+                {badge > 0 && (
+                  <span
+                    aria-label={t('pendingStudents', { count: badge })}
+                    className={cn(
+                      'flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                      active ? 'bg-white text-brand-700' : 'bg-gold-500 text-white',
+                      // In the icon rail there is no room for a number beside
+                      // the label, so it becomes a dot on the icon itself.
+                      compact && 'absolute end-1.5 top-1.5 min-w-0 px-1 py-0 text-[9px]',
+                    )}
+                  >
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}

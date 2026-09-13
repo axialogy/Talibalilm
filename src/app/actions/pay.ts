@@ -7,6 +7,7 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
+import { viewerIsApproved } from '@/lib/auth/approval';
 import { loadBasket } from '@/lib/commerce/basket';
 import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
 import { clearSelection } from '@/lib/commerce/selection';
@@ -38,9 +39,27 @@ export type PayState = { error?: string };
  * to spread the attempts out.
  */
 async function throttle(scope: string, limit: number, userId?: string): Promise<boolean> {
-  const key = userId ? `${clientKey(await headers(), scope)}:${userId}` : clientKey(await headers(), scope);
+  const key = userId
+    ? `${clientKey(await headers(), scope)}:${userId}`
+    : clientKey(await headers(), scope);
   const { ok } = await rateLimit(key, { limit, windowMs: 15 * 60 * 1000 });
   return ok;
+}
+
+/**
+ * Refuse a purchase from an account the school has not let in yet.
+ *
+ * The answer comes from `is_approved()` in the database — see
+ * `supabase/migrations/20260913180000_account_approval.sql` for why this is a
+ * check in the action rather than an RLS policy: orders are opened through the
+ * service role, which bypasses policies by definition, so a policy here would
+ * be decoration that reads like a gate.
+ *
+ * Before the money, never after. Refusing at the grant instead would take a
+ * student's payment and hand them nothing.
+ */
+async function requireApproved(): Promise<PayState | null> {
+  return (await viewerIsApproved()) ? null : { error: 'notApproved' };
 }
 
 async function requireUser(): Promise<{ id: string }> {
@@ -71,7 +90,10 @@ async function releaseCoupon(couponId: string): Promise<void> {
 
 async function markOrderFailed(orderId: string, reason: string): Promise<void> {
   const supabase = createAdminClient();
-  await supabase.from('orders').update({ status: 'failed', status_reason: reason }).eq('id', orderId);
+  await supabase
+    .from('orders')
+    .update({ status: 'failed', status_reason: reason })
+    .eq('id', orderId);
 }
 
 async function claimCoupon(
@@ -122,6 +144,9 @@ export async function startPayPalCheckout(
   // Opening a PayPal order claims a coupon and a pack seat; cap how fast one
   // caller can churn through those holds.
   if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+
+  const pending = await requireApproved();
+  if (pending) return pending;
 
   const { selection, quote } = await loadBasket();
 
@@ -218,6 +243,9 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
 
   if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
 
+  const pending = await requireApproved();
+  if (pending) return pending;
+
   const { selection, quote } = await loadBasket();
   if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
 
@@ -268,16 +296,16 @@ const codeSchema = z
  * as a card payment, through the same `grant_order_entitlements` — which is the
  * requirement, not an implementation detail.
  */
-export async function redeemOfficeCode(
-  _previous: PayState,
-  formData: FormData,
-): Promise<PayState> {
+export async function redeemOfficeCode(_previous: PayState, formData: FormData): Promise<PayState> {
   const locale = await getLocale();
   const user = await requireUser();
 
   // The one path where guessing pays: a valid office code is a year of access
   // for free. A shared, durable counter is what makes brute force uneconomical.
   if (!(await throttle('office-code', 10, user.id))) return { error: 'rateLimited' };
+
+  const pending = await requireApproved();
+  if (pending) return pending;
 
   const parsed = codeSchema.safeParse(formData.get('code') ?? '');
   if (!parsed.success) return { error: 'codeInvalid' };

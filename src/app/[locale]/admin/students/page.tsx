@@ -25,11 +25,16 @@ export default async function AdminStudentsPage({
     <div>
       <BackLink href="/admin" label={t('navOverview')} />
       <h1 className="font-display text-2xl font-semibold text-ink">{t('studentsTitle')}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-muted">{t('studentsLead')}</p>
+      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-muted">
+        {t('studentsLead')}
+      </p>
 
       <form className="mt-6 flex items-center gap-2">
         <div className="relative flex-1 sm:max-w-sm">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
+            aria-hidden="true"
+          />
           <input
             name="q"
             defaultValue={q ?? ''}
@@ -59,12 +64,22 @@ export default async function AdminStudentsPage({
               {students.map((s) => (
                 <tr key={s.userId} className="transition-colors hover:bg-brand-50/40">
                   <td className="p-3">
-                    <Link href={`/admin/students/${s.userId}`} className="font-medium text-ink hover:text-brand-600">
+                    <Link
+                      href={`/admin/students/${s.userId}`}
+                      className="font-medium text-ink hover:text-brand-600"
+                    >
                       {s.fullName || '—'}
                     </Link>
                     {s.role !== 'student' && (
                       <Badge variant="soft" className="ml-2">
                         {s.role}
+                      </Badge>
+                    )}
+                    {/* The reason to open this row. Staff are never pending, so
+                        the badge is drawn for students only. */}
+                    {s.role === 'student' && s.approvedAt === null && (
+                      <Badge variant="warn" className="ml-2">
+                        {t('studentPending')}
                       </Badge>
                     )}
                   </td>

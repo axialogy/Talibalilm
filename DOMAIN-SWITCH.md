@@ -63,25 +63,31 @@ confirmation emails are still in flight. There is no cost to leaving both.
 
 ### While you are on this screen: custom SMTP
 
-Supabase's built-in sender is capped at a few messages an hour. That cap is
-what produced `Error sending confirmation email` during testing, and with
-"Confirm email" on it stops registration dead.
+Supabase's built-in sender is capped at a few messages an hour, and that cap is
+what produced `Error sending confirmation email` during testing.
 
-Now that Resend has the domain (step 7), point Supabase at it:
+The school has its own mailbox, which is better than any third party here: one
+password, no free-tier limit, and the same address the site sends everything
+else from. Point Supabase at it.
 
 Authentication → Emails → SMTP Settings → Enable custom SMTP
 
 ```
-Host      smtp.resend.com
-Port      465
-Username  resend
-Password  <your Resend API key>
-Sender    contact@t.talibalim.com   (or whatever address you verified)
+Host      mail.talibalim.com
+Port      465            (implicit TLS; try 587 if the host prefers STARTTLS)
+Username  contact@talibalim.com
+Password  the mailbox password
+Sender    contact@talibalim.com
 ```
 
-Then turn **Confirm email** back **on**. Until custom SMTP is saved and tested,
-leave it **off** — the code handles both, and an account that cannot be created
-is worse than one created without a confirmation step.
+Send the test from that screen **before** turning "Confirm email" back on. Until
+it passes, leave confirmation **off** — the code handles both, and an account
+that cannot be created is worse than one created without a confirmation step.
+
+Note that this is separate from step 7: Supabase sends the confirmation and
+password-reset messages, the app sends receipts and notifications, and they are
+two different senders pointed at the same mailbox. When a message does not
+arrive, which of the two sent it is the first thing to establish.
 
 ## 4. Cloudflare R2 — the CORS policy
 
@@ -127,21 +133,27 @@ Repo → Settings → Secrets and variables → Actions → `SWEEP_URL` →
 `CRON_SECRET` does not change. Verify with Actions → Sweep → Run workflow: a
 green run printing `HTTP 200` and a small JSON body.
 
-## 7. Resend — receipts
+## 7. The app's own e-mail — receipts, alerts, approvals
 
-With the domain verified in Resend, set both in Vercel:
+Same mailbox as step 3. In Vercel:
 
 ```
-RESEND_API_KEY = <the key>          (Secret)
-EMAIL_FROM     = Institut Talib Alim <contact@t.talibalim.com>
+SMTP_HOST     = mail.talibalim.com
+SMTP_PORT     = 465
+SMTP_USER     = contact@talibalim.com
+SMTP_PASSWORD = the mailbox password           (Secret)
+EMAIL_FROM    = Institut Talib Alim <contact@talibalim.com>
 ```
 
-Receipts are optional by design: unset, a student still gets their access and
-the failure is a log line, never a lost sale. Set, they arrive from the school's
-own domain instead of `onboarding@resend.dev`, which lands in spam.
+This sends the order receipts, the alert when somebody uses the contact form,
+the alert when somebody registers, and the welcome message when you approve an
+account.
 
-The same key doubles as the SMTP password in step 3 — one Resend account sends
-both the receipts and the auth emails.
+Optional by design: unset, every send is a logged no-op. A student still gets
+their access and the failure is a line in the log, never a lost sale.
+
+**Resend is gone.** Delete `RESEND_API_KEY` and any old `EMAIL_FROM` pointing
+at it — nothing reads them.
 
 ---
 

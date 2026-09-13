@@ -342,7 +342,8 @@
     "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
     "claimFree": "Obtenir ce cours gratuitement",
     "claimFreeNote": "Rien à régler. L’accès s’ouvre immédiatement, pour la durée habituelle.",
-    "notFree": "Ce panier n’est pas gratuit. Veuillez poursuivre vers le paiement."
+    "notFree": "Ce panier n’est pas gratuit. Veuillez poursuivre vers le paiement.",
+    "notApproved": "Votre compte est encore en attente de validation par l’institut. Vous pourrez vous inscrire dès qu’il sera activé — nous vous préviendrons par e-mail."
   },
   "auth": {
     "loginTitle": "Connexion",
@@ -459,7 +460,9 @@
     "staffCardBody": "Vous accédez à tous les modules sans abonnement. Les inscriptions et les paiements se gèrent depuis l’administration.",
     "staffCardCta": "Administration",
     "roleAdmin": "Administration",
-    "roleInstructor": "Enseignant"
+    "roleInstructor": "Enseignant",
+    "pendingTitle": "Votre compte est en attente de validation",
+    "pendingBody": "L’institut vérifie les nouvelles inscriptions avant de les ouvrir. Vous pouvez déjà parcourir le catalogue ; l’inscription à un module sera possible dès que votre compte sera activé, et nous vous préviendrons par e-mail."
   },
   "admin": {
     "title": "Administration",
@@ -943,7 +946,15 @@
     "studentActivate": "Activer le compte",
     "studentActivateNote": "Confirme l’adresse e-mail à la place de l’étudiant, quand le message de confirmation n’est jamais arrivé. Sans effet sur un compte déjà actif.",
     "studentActivateCta": "Confirmer l’adresse",
-    "studentActivated": "Le compte est actif : l’étudiant peut se connecter."
+    "studentActivated": "Le compte est actif : l’étudiant peut se connecter.",
+    "studentApproval": "Validation du compte",
+    "studentApproved": "Validé",
+    "studentPending": "En attente",
+    "studentApprove": "Valider ce compte",
+    "studentUnapprove": "Remettre en attente",
+    "studentPendingNote": "Ce compte attend votre validation. Tant qu’il est en attente, l’étudiant peut se connecter et parcourir le catalogue, mais pas s’inscrire à un module. En validant, vous lui envoyez un e-mail de bienvenue.",
+    "studentApprovedNote": "Ce compte est actif. L’étudiant peut s’inscrire et régler ses modules.",
+    "pendingStudents": "{count, plural, =1 {# inscription en attente} other {# inscriptions en attente}}"
   },
   "live": {
     "allow": "Autoriser",

@@ -26,6 +26,7 @@ const MESSAGE: Record<
   | 'mixedCurrency'
   | 'rateLimited'
   | 'notFree'
+  | 'notApproved'
 > = {
   unavailable: 'payUnavailable',
   paypalRefused: 'payRefused',
@@ -36,6 +37,7 @@ const MESSAGE: Record<
   mixedCurrency: 'mixedCurrency',
   rateLimited: 'rateLimited',
   notFree: 'notFree',
+  notApproved: 'notApproved',
 };
 
 /**

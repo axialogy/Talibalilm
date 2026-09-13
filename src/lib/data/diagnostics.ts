@@ -508,15 +508,16 @@ export async function runDiagnostics(): Promise<Check[]> {
       : 'absentes — la configuration vient alors de l’écran Paiements',
   });
 
+  const smtpHost = process.env.SMTP_HOST?.trim();
   checks.push({
     group: 'Configuration',
-    name: 'Reçus par e-mail (Resend)',
-    state: process.env.RESEND_API_KEY ? 'ok' : 'unset',
-    detail: process.env.RESEND_API_KEY
-      ? process.env.EMAIL_FROM
-        ? `clé lue, expéditeur : ${process.env.EMAIL_FROM}`
-        : 'clé lue, mais EMAIL_FROM est absente : les reçus partent de onboarding@resend.dev, qui finit souvent en indésirables'
-      : 'facultatif : sans lui, l’élève obtient son accès sans reçu',
+    name: 'Envoi d’e-mails (SMTP)',
+    state: smtpHost && process.env.SMTP_USER && process.env.SMTP_PASSWORD ? 'ok' : 'unset',
+    detail:
+      smtpHost && process.env.SMTP_USER && process.env.SMTP_PASSWORD
+        ? `${smtpHost}:${process.env.SMTP_PORT ?? '465'} en tant que ${process.env.SMTP_USER}` +
+          (process.env.EMAIL_FROM ? ` — expéditeur : ${process.env.EMAIL_FROM}` : '')
+        : 'SMTP_HOST / SMTP_USER / SMTP_PASSWORD — facultatif : sans eux, l’élève obtient son accès sans reçu',
   });
 
   // Auth e-mail is Supabase's own sender, never Resend, and it is the one that
@@ -527,9 +528,9 @@ export async function runDiagnostics(): Promise<Check[]> {
     name: 'E-mails d’inscription',
     state: 'unset',
     detail:
-      'envoyés par Supabase, jamais par Resend — ce sont deux expéditeurs différents et un seul empêche de s’inscrire. ' +
-      'Le service intégré de Supabase est limité à quelques messages par heure : renseignez le SMTP personnalisé ' +
-      '(smtp.resend.com, port 465, utilisateur « resend », mot de passe = la clé Resend) avant de réactiver « Confirm email ». ' +
+      'envoyés par Supabase, pas par cette application — ce sont deux expéditeurs différents et un seul ' +
+      'empêche de s’inscrire. Pointez Supabase sur la même boîte : Authentication → Emails → SMTP Settings, ' +
+      'serveur mail.talibalim.com, port 465, utilisateur contact@talibalim.com. ' +
       'Voir DOMAIN-SWITCH.md, étape 3.',
   });
 
