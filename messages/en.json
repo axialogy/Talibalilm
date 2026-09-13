@@ -152,7 +152,21 @@
       "notFoundCta": "See all modules",
       "online": "Online",
       "onSite": "On site",
-      "notOnSale": "This module is not open for enrolment yet. Write to us to hear about the next session."
+      "notOnSale": "This module is not open for enrolment yet. Write to us to hear about the next session.",
+      "departmentFallback": "Department and subjects taught",
+      "requirements": "Entry requirements",
+      "requirementsEmpty": "This module is open to everyone, with no prerequisites.",
+      "information": "Information",
+      "enrolment": "Enrolment & payment",
+      "enrolmentLead": "Create your account, choose your option, then pay online or at the desk.",
+      "liveTitle": "Live sessions",
+      "liveLead": "This module’s sessions take place in the institute’s online room.",
+      "liveScheduled": "Scheduled",
+      "liveNow": "Live now",
+      "quickEnrol": "Enrol on this module",
+      "slidePrevious": "Previous image",
+      "slideNext": "Next image",
+      "slideGoTo": "Go to image"
     }
   },
   "pricing": {
@@ -501,6 +515,7 @@
       "deckFull": "This class already has the maximum number of slides.",
       "duplicate": "A module already has this title. Change the title, or open the existing module.",
       "duplicateSlot": "A price already exists for this subject, mode and time slot.",
+      "galleryFull": "This module already has the maximum number of images.",
       "invalid": "The form is incomplete.",
       "liveStillOpen": "End or cancel the class before deleting it.",
       "noFile": "No file selected.",
@@ -787,7 +802,18 @@
     "diagProblems": "{count, plural, one {# problem found} other {# problems found}}",
     "diagHint": "A “missing” table or function almost always means a file in supabase/migrations/ was never run against this project. An “unset” variable means it is absent, misspelled, or was added after the deployment that is serving — in that last case a redeploy is enough.",
     "diagAllGood": "Everything the application needs is in place.",
-    "navDiagnostics": "Diagnostics"
+    "navDiagnostics": "Diagnostics",
+    "presentation": "Public presentation",
+    "department": "Department",
+    "departmentBody": "Department text",
+    "requirements": "Entry requirements",
+    "requirementsHint": "One requirement per line.",
+    "highlights": "Highlights",
+    "highlightsHint": "One per line, as: Title | text.",
+    "gallery": "Information images",
+    "galleryHint": "They rotate in the carousel on the module page.",
+    "galleryAdd": "Add an image",
+    "galleryRemove": "Remove this image"
   },
   "live": {
     "allow": "Allow",

@@ -7,6 +7,7 @@ import {
   getInstructor as getFixtureInstructor,
   listCourses as listFixtureCourses,
 } from '@/lib/content/courses';
+import { readBullets, readGallery, readHighlights } from '@/lib/content/presentation';
 import type { ArtTone, Course, CourseCategory, CourseLevel, Instructor } from '@/lib/content/types';
 import type { CourseRow, LessonRow, ModuleRow } from '@/lib/supabase/database.types';
 
@@ -35,7 +36,8 @@ interface NestedCourse extends CourseRow {
 const COURSE_SELECT = `
   id, slug, title, subtitle, description, title_ar, cover_url, tone, category,
   level, format, language, instructor_id, status, published_at, display_order,
-  schedule, duration_weeks, objectives, created_at, updated_at,
+  schedule, duration_weeks, objectives, department, department_body,
+  requirements, highlights, gallery, created_at, updated_at,
   modules ( id, course_id, title, position, created_at, updated_at,
     lessons ( id, module_id, title, slug, type, position, duration_seconds,
               is_preview, created_at, updated_at ) )
@@ -66,6 +68,11 @@ function toCourse(row: NestedCourse): Course {
     schedule: row.schedule,
     duration_weeks: row.duration_weeks,
     objectives,
+    department: row.department ?? '',
+    department_body: row.department_body ?? '',
+    requirements: readBullets(row.requirements),
+    highlights: readHighlights(row.highlights),
+    gallery: readGallery(row.gallery),
     modules: (row.modules ?? [])
       .slice()
       .sort((a, b) => a.position - b.position)

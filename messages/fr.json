@@ -152,7 +152,21 @@
       "notFoundCta": "Voir tous les modules",
       "online": "En ligne",
       "onSite": "En présentiel",
-      "notOnSale": "Ce module n’est pas encore ouvert aux inscriptions. Écrivez-nous pour être prévenu de la prochaine session."
+      "notOnSale": "Ce module n’est pas encore ouvert aux inscriptions. Écrivez-nous pour être prévenu de la prochaine session.",
+      "departmentFallback": "Département et sciences enseignées",
+      "requirements": "Conditions d’accès",
+      "requirementsEmpty": "Ce module est ouvert à toutes et à tous, sans prérequis.",
+      "information": "Informations",
+      "enrolment": "Inscriptions & paiements",
+      "enrolmentLead": "Créez votre compte, choisissez votre formule, puis réglez en ligne ou à l’accueil.",
+      "liveTitle": "Séances en direct",
+      "liveLead": "Les séances de ce module se tiennent dans la salle en ligne de l’institut.",
+      "liveScheduled": "Programmée",
+      "liveNow": "En cours",
+      "quickEnrol": "S’inscrire à ce module",
+      "slidePrevious": "Image précédente",
+      "slideNext": "Image suivante",
+      "slideGoTo": "Aller à l’image"
     }
   },
   "pricing": {
@@ -501,6 +515,7 @@
       "deckFull": "Cette séance a déjà le nombre maximum de diapositives.",
       "duplicate": "Un module porte déjà ce titre. Modifiez le titre, ou ouvrez le module existant.",
       "duplicateSlot": "Un tarif existe déjà pour cette matière, ce mode et ce créneau.",
+      "galleryFull": "Ce module a déjà le nombre maximum d’images.",
       "invalid": "Formulaire incomplet.",
       "liveStillOpen": "Terminez ou annulez la séance avant de la supprimer.",
       "noFile": "Aucun fichier sélectionné.",
@@ -787,7 +802,18 @@
     "diagProblems": "{count, plural, one {# problème détecté} other {# problèmes détectés}}",
     "diagHint": "Une table ou une fonction « manquante » signifie presque toujours qu’un fichier de supabase/migrations/ n’a pas été exécuté sur ce projet. Une variable « non configurée » signifie qu’elle est absente, mal orthographiée, ou ajoutée après le déploiement en cours — dans ce dernier cas, un redéploiement suffit.",
     "diagAllGood": "Tout ce dont l’application a besoin est en place.",
-    "navDiagnostics": "Diagnostic"
+    "navDiagnostics": "Diagnostic",
+    "presentation": "Présentation publique",
+    "department": "Département",
+    "departmentBody": "Texte du département",
+    "requirements": "Conditions d’accès",
+    "requirementsHint": "Une condition par ligne.",
+    "highlights": "Points forts",
+    "highlightsHint": "Un par ligne, sous la forme : Titre | texte.",
+    "gallery": "Images « Informations »",
+    "galleryHint": "Elles défilent dans le carrousel de la page du module.",
+    "galleryAdd": "Ajouter une image",
+    "galleryRemove": "Retirer cette image"
   },
   "live": {
     "allow": "Autoriser",

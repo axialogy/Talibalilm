@@ -96,6 +96,11 @@ export interface Database {
           schedule: string;
           duration_weeks: number;
           objectives: Json;
+          department: string;
+          department_body: string;
+          requirements: Json;
+          highlights: Json;
+          gallery: Json;
           created_at: string;
           updated_at: string;
         };

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireStaff } from '@/lib/auth/guards';
 import { pickFreeSlug, slugify } from '@/lib/content/slug';
+import { highlightsToJson, parseBullets, parseHighlights } from '@/lib/content/presentation';
 
 /**
  * Course-builder mutations.
@@ -42,6 +43,14 @@ const courseSchema = z.object({
   tone: z.string().max(20).default('emerald'),
   schedule: z.string().max(200).default(''),
   duration_weeks: z.coerce.number().int().min(0).max(200).default(0),
+
+  // What the module's page says about itself. The office types these as lines
+  // in a textarea; the column stores JSON, and the parsers are pure and tested
+  // so a stray character in the box cannot reach a `.map()` on the public page.
+  department: z.string().max(200).default(''),
+  department_body: z.string().max(4000).default(''),
+  requirements: z.string().max(4000).default('').transform(parseBullets),
+  highlights: z.string().max(4000).default('').transform(parseHighlights),
 });
 
 export async function createCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
@@ -80,9 +89,12 @@ export async function updateCourse(_prev: AdminState, formData: FormData): Promi
 
   // `slug` is deliberately absent from the schema: the address is settled at
   // creation and kept, so renaming a course does not break the links to it.
-  const { id, ...fields } = parsed.data;
+  const { id, highlights, ...fields } = parsed.data;
   const supabase = await client();
-  const { error } = await supabase.from('courses').update(fields).eq('id', id);
+  const { error } = await supabase
+    .from('courses')
+    .update({ ...fields, highlights: highlightsToJson(highlights) })
+    .eq('id', id);
   if (error) return { ok: false, error: error.code === '23505' ? 'duplicate' : 'refused' };
 
   revalidatePath('/admin/courses', 'layout');

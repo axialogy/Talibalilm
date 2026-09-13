@@ -42,7 +42,12 @@ function lesson(
   };
 }
 
-function moduleOf(id: string, title: string, position: number, items: Omit<Lesson, 'position'>[]): CourseModule {
+function moduleOf(
+  id: string,
+  title: string,
+  position: number,
+  items: Omit<Lesson, 'position'>[],
+): CourseModule {
   return {
     id,
     title,
@@ -51,7 +56,21 @@ function moduleOf(id: string, title: string, position: number, items: Omit<Lesso
   };
 }
 
-export const courses: Course[] = [
+/**
+ * The demo catalogue, minus the fields a school fills in from the admin panel.
+ *
+ * The presentation fields (département, conditions d'accès, the three blocks,
+ * the gallery) are deliberately absent here and defaulted below. These
+ * fixtures exist to make the site demoable before the database does; inventing
+ * a department for a course that does not exist would put words in the
+ * school's mouth.
+ */
+type CourseSeed = Omit<
+  Course,
+  'department' | 'department_body' | 'requirements' | 'highlights' | 'gallery'
+>;
+
+const seeds: CourseSeed[] = [
   {
     id: 'c-fiqh',
     slug: 'fiqh-al-ibadat',
@@ -318,6 +337,15 @@ export const courses: Course[] = [
     ],
   },
 ];
+
+export const courses: Course[] = seeds.map((seed) => ({
+  department: '',
+  department_body: '',
+  requirements: [],
+  highlights: [],
+  gallery: [],
+  ...seed,
+}));
 
 /* ---- Accessors. Phase 2 swaps these bodies for Supabase queries. ---- */
 

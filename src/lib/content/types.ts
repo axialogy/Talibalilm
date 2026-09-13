@@ -1,3 +1,5 @@
+import type { GalleryImage, Highlight } from '@/lib/content/presentation';
+
 /**
  * Phase 1 renders the public catalogue from these fixtures.
  *
@@ -58,6 +60,13 @@ export interface Course {
   schedule: string;
   duration_weeks: number;
   objectives: string[];
+  /** Which department the module sits in, and the prose under that heading. */
+  department: string;
+  department_body: string;
+  /** Conditions d'accès, one bullet each. */
+  requirements: string[];
+  highlights: Highlight[];
+  gallery: GalleryImage[];
   modules: CourseModule[];
 }
 

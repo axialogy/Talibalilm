@@ -1,41 +1,39 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Check, Lock, PlayCircle } from 'lucide-react';
+import { BookOpen, Check, Clock, Lock, PlayCircle, Radio, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
-import { CourseArt } from '@/components/marketing/CourseArt';
-import { EnrolPanel } from '@/components/courses/EnrolPanel';
+import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/marketing/CourseCard';
-import {
-  buildTimeCourseSlugs,
-  coursePrices,
-  getCourse,
-  getInstructor,
-  relatedCourses,
-} from '@/lib/data/courses';
+import { PlanningTarifs } from '@/components/marketing/PlanningTarifs';
+import { InfoCarousel } from '@/components/courses/InfoCarousel';
+import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
+import { selectModuleProduct } from '@/app/actions/checkout';
+import { getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
+import { listCursus, listProducts } from '@/lib/data/commerce';
+import { listLiveSessions } from '@/lib/data/live';
+import { formatPrice } from '@/lib/commerce/quote';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
 import { routing } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
-/** Pre-render every course in every locale; ISR refreshes them hourly. */
 /**
- * Seeded from the fixtures because this runs at build time, when the request
- * context RLS needs does not exist. `revalidate` below plus `dynamicParams`
- * means a course created later is rendered on first request and then cached —
- * so the admin does not have to redeploy to publish.
+ * A module's page, in the order the school's own page says things.
+ *
+ * Which department it belongs to, who may enrol, what is worth knowing at a
+ * glance, photographs, the programme, the timetable and its prices, the live
+ * sessions — and then, at the bottom, the enrolment card itself. A student who
+ * has just read what is taught should be able to pay without going anywhere,
+ * which is why the whole checkout is here rather than behind a link.
+ *
+ * Rendered per request rather than cached. The enrolment card reads the
+ * visitor's own selection cookie, and a page that shows one person's basket is
+ * not a page that may be served to the next one.
  */
-export function generateStaticParams() {
-  return routing.locales.flatMap((locale) =>
-    buildTimeCourseSlugs().map((slug) => ({ locale, slug })),
-  );
-}
-
-export const dynamicParams = true;
-
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -53,14 +51,12 @@ export async function generateMetadata({
     alternates: {
       canonical:
         locale === routing.defaultLocale ? `/courses/${slug}` : `/${locale}/courses/${slug}`,
-      languages: { fr: `/courses/${slug}`, ar: `/ar/courses/${slug}` },
+      languages: { fr: `/courses/${slug}`, en: `/en/courses/${slug}` },
     },
     openGraph: {
       type: 'article',
       title: course.title,
       description: course.subtitle,
-      // Falls back to the site card until the school uploads cover art; the
-      // generated SVG cover is inline markup, not a shareable URL.
       images: [{ url: course.cover_url ?? '/branding/og.png' }],
     },
     other: { 'course:level': t(`level.${course.level}`) },
@@ -70,6 +66,9 @@ export async function generateMetadata({
 function formatMinutes(seconds: number): string {
   return `${Math.round(seconds / 60)} min`;
 }
+
+/** The three icons under the department block, in the order they are typed. */
+const HIGHLIGHT_ICONS = [BookOpen, Users, Clock] as const;
 
 export default async function CoursePage({
   params,
@@ -85,10 +84,32 @@ export default async function CoursePage({
   const t = await getTranslations('courses');
   const tMeta = await getTranslations('meta');
   const tNav = await getTranslations('nav');
-  const instructor = await getInstructor(course.instructor_id);
-  const related = await relatedCourses(course);
-  const prices = await coursePrices(course.id);
+  const tCheckout = await getTranslations('checkout');
+  const tLive = await getTranslations('live');
+
+  const [instructor, related, onSite, online, cursusList, liveSessions] = await Promise.all([
+    getInstructor(course.instructor_id),
+    relatedCourses(course),
+    listProducts('presentiel'),
+    listProducts('online'),
+    listCursus(),
+    listLiveSessions(course.id),
+  ]);
+
+  // This module's own price lines, in both modes, for the Planning & Tarifs
+  // block. Read from `products` like every other price: the page never invents
+  // a figure the checkout would then disagree with.
+  const entries = [...onSite, ...online].filter(
+    (entry) => entry.kind === 'module' && entry.courseId === course.id,
+  );
+
+  // Which cursus the "à la carte" route belongs to, so the enrolment card opens
+  // with step one already answered when a student enrols from here.
+  const moduleCursusId = cursusList.find((c) => c.kind === 'module')?.id ?? '';
+
+  const upcoming = liveSessions.filter((s) => s.status === 'scheduled' || s.status === 'live');
   const lessons = lessonCount(course);
+  const hasDepartment = course.department !== '' || course.department_body !== '';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -108,13 +129,15 @@ export default async function CoursePage({
       courseMode: course.format === 'presentiel' ? 'onsite' : 'blended',
       courseWorkload: `P${course.duration_weeks}W`,
     },
-    offers: {
-      '@type': 'Offer',
-      category: 'Subscription',
-      price: (institut.annualPriceCents / 100).toFixed(2),
-      priceCurrency: institut.currency,
-      availability: 'https://schema.org/InStock',
-    },
+    ...(entries.length > 0 && {
+      offers: entries.map((entry) => ({
+        '@type': 'Offer',
+        category: 'Subscription',
+        price: (entry.priceCents / 100).toFixed(2),
+        priceCurrency: entry.currency || institut.currency,
+        availability: 'https://schema.org/InStock',
+      })),
+    }),
   };
 
   return (
@@ -124,171 +147,229 @@ export default async function CoursePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="hero-wash relative isolate -mt-18 overflow-hidden rounded-br-[56px] pt-18 lg:rounded-br-[110px]">
-        <div className="shell relative py-14 sm:py-16">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start">
-            <div>
-              <nav
-                aria-label="fil d'ariane"
-                className="mb-5 flex flex-wrap items-center gap-1.5 text-xs"
-              >
-                <Link href="/" className="text-ink-muted transition-colors hover:text-brand-600">
-                  {tNav('home')}
-                </Link>
-                <span aria-hidden="true" className="text-ink-muted/60">
-                  /
-                </span>
-                <Link
-                  href="/courses"
-                  className="text-ink-muted transition-colors hover:text-brand-600"
-                >
-                  {tNav('courses')}
-                </Link>
-                <span aria-hidden="true" className="text-ink-muted/60">
-                  /
-                </span>
-                <span className="text-ink">{course.title}</span>
-              </nav>
+      {/* The title band. Dark, with the Arabic name under the French one —
+          the school's own page opens on exactly this. */}
+      <section className="relative isolate -mt-18 overflow-hidden bg-brand-900 pt-18">
+        {course.cover_url && (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-25 mix-blend-luminosity"
+            style={{ backgroundImage: `url('${course.cover_url}')` }}
+            aria-hidden="true"
+          />
+        )}
+        <div
+          className="absolute inset-0 bg-linear-to-r from-brand-900 via-brand-900/95 to-brand-800/80"
+          aria-hidden="true"
+        />
 
-              <p className="eyebrow">{t(`category.${course.category}`)}</p>
+        <div className="shell relative py-14 text-center sm:py-16 lg:py-20">
+          <nav
+            aria-label="fil d'ariane"
+            className="mb-6 flex flex-wrap items-center justify-center gap-1.5 text-xs text-white/60"
+          >
+            <Link href="/" className="transition-colors hover:text-gold-300">
+              {tNav('home')}
+            </Link>
+            <span aria-hidden="true">/</span>
+            <Link href="/courses" className="transition-colors hover:text-gold-300">
+              {tNav('courses')}
+            </Link>
+            <span aria-hidden="true">/</span>
+            <span className="text-white/90">{course.title}</span>
+          </nav>
 
-              <h1 className="mt-3 font-display text-[clamp(1.75rem,4.2vw,2.5rem)] leading-[1.15] font-semibold tracking-[-0.03em] text-ink">
-                {course.title}
-              </h1>
-              <p lang="ar" dir="rtl" className="mt-2 font-arabic text-2xl text-gold-600">
-                {course.title_ar}
-              </p>
+          <p className="text-[11px] font-medium tracking-[0.18em] text-gold-300 uppercase">
+            {t(`category.${course.category}`)}
+          </p>
+          <h1 className="mx-auto mt-4 max-w-3xl font-display text-[clamp(1.75rem,4.4vw,2.75rem)] leading-[1.14] font-semibold tracking-[-0.03em] text-white">
+            {course.title}
+          </h1>
+          {course.title_ar && (
+            <p lang="ar" dir="rtl" className="mt-3 font-arabic text-3xl text-gold-400">
+              {course.title_ar}
+            </p>
+          )}
+          {course.subtitle && (
+            <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-relaxed text-white/70">
+              {course.subtitle}
+            </p>
+          )}
 
-              <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink-muted">
-                {course.subtitle}
-              </p>
-
-              {instructor && (
-                <p className="mt-6 inline-flex items-center gap-2 text-xs text-ink-muted">
-                  <span
-                    className="flex size-6 items-center justify-center rounded-full bg-brand-500 text-[11px] font-semibold text-white"
-                    aria-hidden="true"
-                  >
-                    {instructor.full_name.charAt(0)}
-                  </span>
-                  {instructor.full_name} · {instructor.role}
-                </p>
-              )}
-            </div>
-
-            {/* The artwork sits beside the title rather than above a buy
-                box: what sells a module is what is taught in it, and that is
-                now the first thing below this. */}
-            <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-white shadow-card">
-              <div className="aspect-4/3">
-                <CourseArt
-                  titleAr={course.title_ar}
-                  title={course.title}
-                  kicker={t(`category.${course.category}`)}
-                  tone={course.tone}
-                />
-              </div>
-            </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            <Badge variant="soft">{t(`level.${course.level}`)}</Badge>
+            <Badge variant="soft">{t(`format.${course.format}`)}</Badge>
+            {lessons > 0 && <Badge variant="soft">{t('card.lessons', { count: lessons })}</Badge>}
+            {course.duration_weeks > 0 && (
+              <Badge variant="soft">{t('card.duration', { count: course.duration_weeks })}</Badge>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="py-14 sm:py-16">
-        <div className="shell">
-          {/* The programme leads. What someone is buying is what is taught,
-              so the chapters come first and the panel that takes their money
-              rides alongside instead of standing in front of them. */}
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-16">
+      {/* Département — Conditions d'accès */}
+      {(hasDepartment || course.requirements.length > 0 || course.description) && (
+        <section className="py-14 sm:py-16">
+          <div className="shell grid gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
-              <h2 className="font-display text-2xl font-semibold text-ink">
-                {t('detail.syllabus')}
+              <h2 className="font-display text-[22px] font-semibold text-gold-600 sm:text-[26px]">
+                {course.department || t('detail.departmentFallback')}
               </h2>
+              <div className="mt-4 space-y-3 text-sm leading-relaxed text-ink-muted">
+                {(course.department_body || course.description)
+                  .split('\n')
+                  .filter((p) => p.trim() !== '')
+                  .map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+              </div>
+            </div>
 
-              {/* The outline is public — it is the sales page. What is hidden
-                  is the lesson body and its video, which live behind RLS and
-                  are simply not in this payload. Nothing here is a disabled
-                  link over a real URL. */}
-              <ol className="mt-5 space-y-5">
-                {course.modules.map((module, i) => (
-                  <li
-                    key={module.id}
-                    className="rounded-[var(--radius-card)] border border-line bg-white p-6"
+            <div>
+              <h2 className="font-display text-[22px] font-semibold text-gold-600 sm:text-[26px]">
+                {t('detail.requirements')}
+              </h2>
+              {course.requirements.length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {course.requirements.map((requirement) => (
+                    <li
+                      key={requirement}
+                      className="flex items-start gap-3 text-sm leading-relaxed text-ink-muted"
+                    >
+                      <span
+                        className="mt-1 flex size-4 shrink-0 items-center justify-center rounded-full bg-gold-500 text-white"
+                        aria-hidden="true"
+                      >
+                        <Check className="size-2.5" />
+                      </span>
+                      {requirement}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm leading-relaxed text-ink-muted">
+                  {t('detail.requirementsEmpty')}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* The three blocks */}
+      {course.highlights.length > 0 && (
+        <section className="bg-surface/60 py-12 sm:py-14">
+          <div className="shell grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {course.highlights.slice(0, 6).map((highlight, index) => {
+              const Icon = HIGHLIGHT_ICONS[index % HIGHLIGHT_ICONS.length]!;
+              return (
+                <div key={highlight.title} className="text-center">
+                  <span
+                    className="mx-auto flex size-14 items-center justify-center rounded-full bg-gold-500 text-white"
+                    aria-hidden="true"
                   >
-                    <p className="text-[11px] tracking-[0.14em] text-brand-600 uppercase">
+                    <Icon className="size-6" />
+                  </span>
+                  <h3 className="mt-4 font-display text-[16px] font-semibold text-ink">
+                    {highlight.title}
+                  </h3>
+                  {highlight.body && (
+                    <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                      {highlight.body}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Informations */}
+      {course.gallery.length > 0 && (
+        <section className="py-14 sm:py-16">
+          <div className="shell max-w-4xl">
+            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+              {t('detail.information')}
+            </h2>
+            <div className="mt-8">
+              <InfoCarousel
+                images={course.gallery}
+                labels={{
+                  previous: t('detail.slidePrevious'),
+                  next: t('detail.slideNext'),
+                  goTo: t('detail.slideGoTo'),
+                }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Programme */}
+      {course.modules.length > 0 && (
+        <section className="bg-surface/60 py-14 sm:py-16">
+          <div className="shell">
+            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+              {t('detail.syllabus')}
+            </h2>
+
+            {/* The outline is public — it is the sales page. What is hidden is
+                the lesson body and its video, which live behind RLS and are
+                simply not in this payload. Nothing here is a disabled link
+                over a real URL. */}
+            <ol className="mx-auto mt-8 max-w-3xl space-y-4">
+              {course.modules.map((module, i) => (
+                <li
+                  key={module.id}
+                  className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-white"
+                >
+                  <div className="bg-ink px-5 py-4 text-white">
+                    <p className="text-[11px] tracking-[0.14em] text-gold-300 uppercase">
                       {t('detail.module', { number: i + 1 })}
                     </p>
-                    <h3 className="mt-1.5 font-display text-base font-semibold text-ink">
-                      {module.title}
-                    </h3>
+                    <h3 className="mt-1 font-display text-[16px] font-semibold">{module.title}</h3>
+                  </div>
 
-                    <ul className="mt-4 divide-y divide-line">
-                      {module.lessons.map((lesson) => (
-                        <li key={lesson.id} className="flex items-center gap-3 py-2.5">
-                          {lesson.is_preview ? (
-                            <PlayCircle
-                              className="size-4 shrink-0 text-brand-500"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Lock
-                              className="size-4 shrink-0 text-ink-muted/50"
-                              aria-hidden="true"
-                            />
+                  <ul className="divide-y divide-line px-5">
+                    {module.lessons.map((lesson) => (
+                      <li key={lesson.id} className="flex items-center gap-3 py-3">
+                        {lesson.is_preview ? (
+                          <PlayCircle
+                            className="size-4 shrink-0 text-brand-500"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Lock className="size-4 shrink-0 text-ink-muted/50" aria-hidden="true" />
+                        )}
+                        <span
+                          className={cn(
+                            'flex-1 text-[13px]',
+                            lesson.is_preview ? 'text-ink' : 'text-ink-muted',
                           )}
-                          <span
-                            className={cn(
-                              'flex-1 text-[13px]',
-                              lesson.is_preview ? 'text-ink' : 'text-ink-muted',
-                            )}
-                          >
-                            {lesson.title}
-                          </span>
-                          {lesson.is_preview ? (
-                            <Badge variant="soft">{t('detail.previewBadge')}</Badge>
-                          ) : (
-                            <span className="sr-only">{t('detail.lockedLabel')}</span>
-                          )}
-                          <span className="text-[11px] text-ink-muted tabular-nums">
-                            {formatMinutes(lesson.duration_seconds)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ol>
+                        >
+                          {lesson.title}
+                        </span>
+                        {lesson.is_preview ? (
+                          <Badge variant="soft">{t('detail.previewBadge')}</Badge>
+                        ) : (
+                          <span className="sr-only">{t('detail.lockedLabel')}</span>
+                        )}
+                        <span className="text-[11px] text-ink-muted tabular-nums">
+                          {formatMinutes(lesson.duration_seconds)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
 
-              <p className="mt-5 text-xs text-ink-muted">{t('detail.lockedHint')}</p>
-            </div>
-
-            <aside className="lg:sticky lg:top-24 lg:self-start">
-              <EnrolPanel
-                locale={locale}
-                prices={prices}
-                lessons={lessons}
-                durationWeeks={course.duration_weeks}
-                format={course.format}
-                level={course.level}
-                schedule={course.schedule}
-              />
-            </aside>
-          </div>
-
-          {/* Everything that explains rather than sells sits below what is
-              taught: the description, what a student will be able to do, and
-              who is teaching it. */}
-          <div className="mt-16 grid gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-16">
-            <div>
-              <h2 className="font-display text-2xl font-semibold text-ink">{t('detail.about')}</h2>
-              <p className="mt-4 text-sm leading-relaxed text-ink-muted">{course.description}</p>
-            </div>
-
-            <div className="space-y-10">
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-ink">
+            {course.objectives.length > 0 && (
+              <div className="mx-auto mt-10 max-w-3xl rounded-[var(--radius-card)] border border-line bg-white p-6">
+                <h3 className="font-display text-lg font-semibold text-ink">
                   {t('detail.objectives')}
-                </h2>
-                <ul className="mt-5 space-y-3">
+                </h3>
+                <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                   {course.objectives.map((objective) => (
                     <li
                       key={objective}
@@ -305,36 +386,142 @@ export default async function CoursePage({
                   ))}
                 </ul>
               </div>
+            )}
 
-              {instructor && (
-                <div className="rounded-[var(--radius-card)] border border-line bg-surface/50 p-6">
-                  <h2 className="font-display text-lg font-semibold text-ink">
-                    {t('detail.instructor')}
-                  </h2>
-                  <p className="mt-3 text-[13px] font-medium text-ink">{instructor.full_name}</p>
-                  <p className="text-[11px] text-ink-muted">{instructor.role}</p>
+            <p className="mt-6 text-center text-xs text-ink-muted">{t('detail.lockedHint')}</p>
+          </div>
+        </section>
+      )}
+
+      {/* Planning & Tarifs — the school's own timetable, priced, with the
+          on-site / online toggle. */}
+      {entries.length > 0 && <PlanningTarifs entries={entries} locale={locale} />}
+
+      {/* Live sessions belonging to this module */}
+      {upcoming.length > 0 && (
+        <section className="bg-surface/60 py-14 sm:py-16">
+          <div className="shell max-w-3xl">
+            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+              {t('detail.liveTitle')}
+            </h2>
+            <p className="mt-3 text-center text-[13px] leading-relaxed text-ink-muted">
+              {t('detail.liveLead')}
+            </p>
+
+            <ul className="mt-8 space-y-3">
+              {upcoming.map((session) => (
+                <li
+                  key={session.id}
+                  className="flex flex-wrap items-center gap-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
+                >
+                  <span
+                    className={cn(
+                      'flex size-10 shrink-0 items-center justify-center rounded-full',
+                      session.status === 'live'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gold-50 text-gold-600',
+                    )}
+                    aria-hidden="true"
+                  >
+                    <Radio className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-[15px] font-semibold text-ink">
+                      {session.title}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-ink-muted">
+                      {session.status === 'live'
+                        ? t('detail.liveNow')
+                        : session.scheduledAt
+                          ? new Intl.DateTimeFormat(locale, {
+                              dateStyle: 'full',
+                              timeStyle: 'short',
+                            }).format(new Date(session.scheduledAt))
+                          : t('detail.liveScheduled')}
+                    </p>
+                  </div>
+                  {/* The link is shown to everyone; entry is decided by
+                      `can_join_live` in the database, not by this markup. */}
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/live/${session.roomToken}`}>{tLive('joinNow')}</Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Inscriptions & paiements — the whole enrolment, in one card, here. */}
+      <section id="inscription" className="scroll-mt-24 py-14 sm:py-16">
+        <div className="shell max-w-3xl">
+          <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+            {t('detail.enrolment')}
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-[13px] leading-relaxed text-ink-muted">
+            {t('detail.enrolmentLead')}
+          </p>
+
+          {/* One click to enrol on the module whose page this is, rather than
+              finding it again in a list. The form posts ids only; the product
+              is re-checked against the published price list server-side. */}
+          {entries.length > 0 && (
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {entries.map((entry) => (
+                <form key={entry.id} action={selectModuleProduct}>
+                  <input type="hidden" name="productId" value={entry.id} />
+                  <input type="hidden" name="delivery" value={entry.delivery} />
+                  <input type="hidden" name="cursusId" value={moduleCursusId} />
+                  <Button type="submit" size="md" variant="outline">
+                    {t('detail.quickEnrol')} —{' '}
+                    {tCheckout(entry.delivery === 'presentiel' ? 'modePresentiel' : 'modeOnline')} ·{' '}
+                    {formatPrice(entry.priceCents, locale)}
+                  </Button>
+                </form>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-8">
+            <CheckoutFlow locale={locale} />
+          </div>
+        </div>
+      </section>
+
+      {/* Who teaches it, and what to read next */}
+      {(instructor || related.length > 0) && (
+        <section className="bg-surface/60 py-14 sm:py-16">
+          <div className="shell">
+            {instructor && (
+              <div className="mx-auto max-w-2xl rounded-[var(--radius-card)] border border-line bg-white p-6 text-center">
+                <h2 className="font-display text-lg font-semibold text-ink">
+                  {t('detail.instructor')}
+                </h2>
+                <p className="mt-3 text-[14px] font-medium text-ink">{instructor.full_name}</p>
+                <p className="text-[11px] text-ink-muted">{instructor.role}</p>
+                {instructor.bio && (
                   <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
                     {instructor.bio}
                   </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {related.length > 0 && (
-            <div className="mt-16">
-              <h2 className="font-display text-2xl font-semibold text-ink">
-                {t('detail.related')}
-              </h2>
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {related.map((c) => (
-                  <CourseCard key={c.id} course={c} />
-                ))}
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      </section>
+            )}
+
+            {related.length > 0 && (
+              <div className="mt-12">
+                <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+                  {t('detail.related')}
+                </h2>
+                <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {related.map((c) => (
+                    <CourseCard key={c.id} course={c} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </>
   );
 }

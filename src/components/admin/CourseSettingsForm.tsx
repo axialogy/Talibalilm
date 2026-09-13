@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Field } from '@/components/ui/field';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { updateCourse, type AdminState } from '@/app/actions/admin';
+import { formatBullets, formatHighlights, type Highlight } from '@/lib/content/presentation';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -26,6 +27,11 @@ export interface CourseSettings {
   tone: string;
   schedule: string;
   duration_weeks: number;
+  /** What the module's public page says about itself. */
+  department: string;
+  department_body: string;
+  requirements: string[];
+  highlights: Highlight[];
 }
 
 export function CourseSettingsForm({ course }: { course: CourseSettings }) {
@@ -85,6 +91,37 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
         defaultValue={course.duration_weeks}
       />
 
+      {/* Everything below appears on the module's public page, in this order.
+          Left empty, the section is simply not rendered — a module that has
+          nothing extra to say does not show an empty heading. */}
+      <fieldset className="space-y-3 border-t border-line pt-4">
+        <legend className="text-[11px] tracking-[0.14em] text-ink-muted uppercase">
+          {t('presentation')}
+        </legend>
+
+        <Field label={t('department')} name="department" defaultValue={course.department} />
+        <Area
+          label={t('departmentBody')}
+          name="department_body"
+          rows={4}
+          defaultValue={course.department_body}
+        />
+        <Area
+          label={t('requirements')}
+          name="requirements"
+          rows={4}
+          hint={t('requirementsHint')}
+          defaultValue={formatBullets(course.requirements)}
+        />
+        <Area
+          label={t('highlights')}
+          name="highlights"
+          rows={3}
+          hint={t('highlightsHint')}
+          defaultValue={formatHighlights(course.highlights)}
+        />
+      </fieldset>
+
       {state.error && (
         <p role="alert" className="text-[11px] text-red-600">
           {t(`errors.${state.error}` as 'errors.saveFailed')}
@@ -126,6 +163,34 @@ function Select({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+/** A labelled textarea with an optional line of guidance under it. */
+function Area({
+  label,
+  name,
+  rows,
+  hint,
+  defaultValue,
+}: {
+  label: string;
+  name: string;
+  rows: number;
+  hint?: string;
+  defaultValue: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-medium text-ink">{label}</span>
+      <textarea
+        name={name}
+        rows={rows}
+        defaultValue={defaultValue}
+        className="w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition-colors focus:border-brand-400"
+      />
+      {hint && <span className="mt-1 block text-[11px] text-ink-muted">{hint}</span>}
     </label>
   );
 }
