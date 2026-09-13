@@ -38,15 +38,6 @@ const LOGO_MARK = resolveArtwork(
   '/branding/logo-mark.svg',
 );
 
-/**
- * The classroom runs in a cross-origin iframe, and a Permissions-Policy of
- * `camera=(self)` shuts the camera off inside it — the room would load and then
- * nobody could be seen. The Jitsi origin is named explicitly rather than opened
- * to `*`, and `display-capture` stays first-party because screen recording is
- * ours, not the iframe's.
- */
-const JITSI_ORIGIN = `https://${process.env.NEXT_PUBLIC_JITSI_DOMAIN?.trim() || 'meet.jit.si'}`;
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -67,7 +58,9 @@ const nextConfig: NextConfig = {
   // Supabase Storage serves avatars and course covers; nothing else is
   // remote yet. Each new host has to be added deliberately.
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' }],
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+    ],
   },
 
   async headers() {
@@ -81,9 +74,14 @@ const nextConfig: NextConfig = {
           {
             key: 'Permissions-Policy',
             value: [
-              `camera=(self "${JITSI_ORIGIN}")`,
-              `microphone=(self "${JITSI_ORIGIN}")`,
-              `display-capture=(self "${JITSI_ORIGIN}")`,
+              // The classroom is now our own page rather than a third-party
+              // iframe, so every capture it needs is first-party. Naming an
+              // outside origin here is exactly what is no longer required —
+              // and `self` is the tightest this can be while the camera,
+              // microphone and screen recording all work.
+              'camera=(self)',
+              'microphone=(self)',
+              'display-capture=(self)',
               'geolocation=()',
             ].join(', '),
           },

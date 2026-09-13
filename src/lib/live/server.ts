@@ -62,6 +62,10 @@ export async function mintRoomToken(
     const token = new AccessToken(KEY, SECRET, {
       identity: userId,
       name: displayName,
+      // Signed by us, readable by every other browser, forgeable by none. This
+      // is how a receiver knows a `slide` or `board-clear` really came from the
+      // teacher — a student's token simply cannot say `host` here.
+      metadata: JSON.stringify({ role: permissions.isHost ? 'host' : 'participant' }),
       ttl: '2h',
     });
     const grant = roomGrant(room, permissions);

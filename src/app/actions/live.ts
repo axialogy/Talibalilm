@@ -8,6 +8,7 @@ import { requireStaff } from '@/lib/auth/guards';
 import type { AdminState } from '@/app/actions/admin';
 import { reportError } from '@/lib/observability/report';
 import { applyPermissions, evictParticipant } from '@/lib/live/server';
+import { currentViewer } from '@/lib/auth/guards';
 
 /**
  * Running a live class.
@@ -36,7 +37,10 @@ const createSchema = z.object({
   maxParticipants: z.coerce.number().int().min(2).max(500).default(50),
 });
 
-export async function createLiveSession(_prev: AdminState, formData: FormData): Promise<AdminState> {
+export async function createLiveSession(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
   const parsed = createSchema.safeParse({
     courseId: formData.get('courseId'),
     title: formData.get('title'),
@@ -113,7 +117,10 @@ export async function endLiveSession(_prev: AdminState, formData: FormData): Pro
   return OK;
 }
 
-export async function cancelLiveSession(_prev: AdminState, formData: FormData): Promise<AdminState> {
+export async function cancelLiveSession(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
   const parsed = idSchema.safeParse({ id: formData.get('id') });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -137,7 +144,10 @@ export async function cancelLiveSession(_prev: AdminState, formData: FormData): 
  * Cancel first, then delete — which is also the order that leaves the students
  * a visible explanation rather than a hole.
  */
-export async function deleteLiveSession(_prev: AdminState, formData: FormData): Promise<AdminState> {
+export async function deleteLiveSession(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
   const parsed = idSchema.safeParse({ id: formData.get('id') });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -180,13 +190,14 @@ export async function noteRecording(_prev: AdminState, formData: FormData): Prom
 }
 
 /** Admit or refuse someone waiting at the door. The RPC re-checks staff itself. */
-export async function decideJoinRequest(_prev: AdminState, formData: FormData): Promise<AdminState> {
-  const parsed = z
-    .object({ requestId: z.string().uuid(), admit: z.coerce.boolean() })
-    .safeParse({
-      requestId: formData.get('requestId'),
-      admit: formData.get('admit') === 'yes',
-    });
+export async function decideJoinRequest(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = z.object({ requestId: z.string().uuid(), admit: z.coerce.boolean() }).safeParse({
+    requestId: formData.get('requestId'),
+    admit: formData.get('admit') === 'yes',
+  });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await staffClient();
@@ -290,7 +301,11 @@ export async function controlParticipant(
   // what the form asked — the RPC may have refused part of it, and the live
   // permission must reflect the record, not the request.
   const [{ data: session }, { data: participant }] = await Promise.all([
-    supabase.from('live_sessions').select('room_token, student_camera, student_screen').eq('id', sessionId).maybeSingle(),
+    supabase
+      .from('live_sessions')
+      .select('room_token, student_camera, student_screen')
+      .eq('id', sessionId)
+      .maybeSingle(),
     supabase
       .from('live_participants')
       .select('muted, camera_allowed, screen_allowed, banned_at')
@@ -358,5 +373,73 @@ export async function setRoomPolicy(_prev: AdminState, formData: FormData): Prom
   if (error) return { ok: false, error: 'saveFailed' };
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// The lesson's own record
+//
+// Ably — now LiveKit — delivers a message to the people in the room. These
+// write it down, so that somebody joining halfway through sees the chat and the
+// whiteboard as they stand, and so the school still has the class afterwards.
+// Delivery and persistence are separate jobs and neither substitutes for the
+// other: a failed insert must not swallow a message the room already showed.
+//
+// None of these check who is calling. They do not need to: `live_messages`
+// refuses a muted student and a closed chat by policy, and `live_board_ops`
+// admits staff only. The database is the gate, here as everywhere.
+// ---------------------------------------------------------------------------
+
+export async function saveMessage(sessionId: string, body: string): Promise<AdminState> {
+  const parsed = z
+    .object({ sessionId: z.string().uuid(), body: z.string().trim().min(1).max(2000) })
+    .safeParse({ sessionId, body });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  if (!supabaseConfigured) return { ok: false, error: 'unavailable' };
+  const viewer = await currentViewer();
+  if (!viewer) return { ok: false, error: 'notAdmin' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('live_messages').insert({
+    session_id: parsed.data.sessionId,
+    user_id: viewer.id,
+    body: parsed.data.body,
+  });
+  if (error) return { ok: false, error: 'saveFailed' };
+  return OK;
+}
+
+export async function saveBoardOp(sessionId: string, op: unknown): Promise<AdminState> {
+  if (!z.string().uuid().safeParse(sessionId).success) return { ok: false, error: 'invalid' };
+  const supabase = await staffClient();
+  const { error } = await supabase
+    .from('live_board_ops')
+    .insert({ session_id: sessionId, op: op as never });
+  if (error) return { ok: false, error: 'saveFailed' };
+  return OK;
+}
+
+export async function clearBoard(sessionId: string): Promise<AdminState> {
+  if (!z.string().uuid().safeParse(sessionId).success) return { ok: false, error: 'invalid' };
+  const supabase = await staffClient();
+  // Deleting rather than stamping a marker keeps a late joiner's replay bounded
+  // by what is still on the board, which is the whole point of storing ops.
+  const { error } = await supabase.from('live_board_ops').delete().eq('session_id', sessionId);
+  if (error) return { ok: false, error: 'saveFailed' };
+  return OK;
+}
+
+/** End the class from inside the room, where there is no form to submit. */
+export async function endLiveSessionById(sessionId: string): Promise<AdminState> {
+  if (!z.string().uuid().safeParse(sessionId).success) return { ok: false, error: 'invalid' };
+  const supabase = await staffClient();
+  const { error } = await supabase
+    .from('live_sessions')
+    .update({ status: 'ended', ended_at: new Date().toISOString() })
+    .eq('id', sessionId);
+  if (error) return { ok: false, error: 'saveFailed' };
+
+  revalidatePath('/[locale]/admin/live', 'page');
   return OK;
 }

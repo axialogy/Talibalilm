@@ -16,8 +16,7 @@ import type { LiveStatus } from '@/lib/supabase/database.types';
  * The deck lives here rather than in the room because a teacher builds it
  * before the class and the room is a full-screen surface with no space for
  * file management. During the class the slides are presented by sharing the
- * screen, which Jitsi already does well — so this page is preparation, and the
- * room is delivery.
+ * screen — so this page is preparation, and the room is delivery.
  */
 export default async function AdminLiveSessionPage({
   params,

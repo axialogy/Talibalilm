@@ -4,6 +4,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { reportError } from '@/lib/observability/report';
 import type { LiveStatus } from '@/lib/supabase/database.types';
 import { slideUrl } from '@/app/actions/slides';
+import type { BoardOp } from '@/lib/live/protocol';
 
 /**
  * Reads for the live classroom.
@@ -226,4 +227,52 @@ export async function upcomingLiveSessions(limit = 5): Promise<LiveSessionView[]
     return [];
   }
   return (data as unknown as Row[]).map(toView);
+}
+
+/** The whiteboard as it stands, for somebody arriving mid-lesson. */
+export async function listBoardOps(sessionId: string): Promise<BoardOp[]> {
+  if (!supabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('live_board_ops')
+    .select('op')
+    .eq('session_id', sessionId)
+    .order('id')
+    .limit(5000);
+  if (error) {
+    reportError('live.board', error, { sessionId });
+    return [];
+  }
+  return (data ?? []).map((row) => row.op as unknown as BoardOp);
+}
+
+/** The chat so far. Read through the same policy that guards the room. */
+export async function listMessages(
+  sessionId: string,
+  limit = 200,
+): Promise<{ id: string; name: string; isHost: boolean; body: string; at: number }[]> {
+  if (!supabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('live_messages')
+    .select('id, body, created_at, user_id, profiles ( full_name, role )')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    reportError('live.messages', error, { sessionId });
+    return [];
+  }
+  return (data ?? [])
+    .map((row) => {
+      const profile = row.profiles as unknown as { full_name?: string; role?: string } | null;
+      return {
+        id: row.id,
+        name: profile?.full_name ?? '',
+        isHost: profile?.role === 'admin' || profile?.role === 'instructor',
+        body: row.body,
+        at: new Date(row.created_at).getTime(),
+      };
+    })
+    .reverse();
 }

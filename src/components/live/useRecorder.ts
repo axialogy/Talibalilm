@@ -20,7 +20,7 @@ import { useCallback, useRef, useState } from 'react';
  * uploaded: the school puts it on YouTube or Drive themselves and pastes the
  * link onto the lesson, which is the workflow they already had.
  */
-export type RecorderState = 'idle' | 'recording' | 'saving';
+export type RecorderState = 'idle' | 'recording' | 'paused' | 'saving';
 
 interface Recorder {
   state: RecorderState;
@@ -28,6 +28,8 @@ interface Recorder {
   seconds: number;
   start: () => Promise<void>;
   stop: () => void;
+  /** Pause and resume the same file, for a break in the middle of a lesson. */
+  togglePause: () => void;
 }
 
 function pickMimeType(): string | undefined {
@@ -173,9 +175,39 @@ export function useRecorder(fileBaseName: string): Recorder {
   }, [cleanup, fileBaseName]);
 
   const stop = useCallback(() => {
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    const recorder = recorderRef.current;
+    // A paused recorder still has to be stopped to flush its file; only an
+    // inactive one has nothing to do.
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
     cleanup();
   }, [cleanup]);
 
-  return { state, error, seconds, start, stop };
+  /**
+   * Pause without ending the file.
+   *
+   * A break, a private word with a student, a moment the teacher would rather
+   * not keep — all of which previously meant stopping and starting a second
+   * recording, leaving the school with two files to join. `MediaRecorder`
+   * pauses natively, so the chunks either side end up in one file.
+   *
+   * The timer stops with it, so the duration on screen is the length of the
+   * recording rather than the time since it began.
+   */
+  const togglePause = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+
+    if (recorder.state === 'recording') {
+      recorder.pause();
+      if (tickRef.current) clearInterval(tickRef.current);
+      tickRef.current = null;
+      setState('paused');
+    } else if (recorder.state === 'paused') {
+      recorder.resume();
+      tickRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+      setState('recording');
+    }
+  }, []);
+
+  return { state, error, seconds, start, stop, togglePause };
 }

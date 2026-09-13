@@ -15,7 +15,12 @@ describe('roomGrant — the host', () => {
   it('keeps its powers even if the room muted them', () => {
     // A teacher muted by an earlier state must not lock themselves out of
     // their own class; host powers come from the role, not from a column.
-    const g = roomGrant(ROOM, { isHost: true, muted: true, cameraAllowed: false, screenAllowed: false });
+    const g = roomGrant(ROOM, {
+      isHost: true,
+      muted: true,
+      cameraAllowed: false,
+      screenAllowed: false,
+    });
     expect(g.roomAdmin).toBe(true);
     expect(g.canPublishSources).toContain('microphone');
   });
@@ -26,7 +31,9 @@ describe('roomGrant — a student', () => {
     // The single most important assertion here. roomAdmin would let them mute
     // and remove anyone, including the teacher.
     expect(roomGrant(ROOM, student).roomAdmin).toBe(false);
-    expect(roomGrant(ROOM, { ...student, cameraAllowed: true, screenAllowed: true }).roomAdmin).toBe(false);
+    expect(
+      roomGrant(ROOM, { ...student, cameraAllowed: true, screenAllowed: true }).roomAdmin,
+    ).toBe(false);
   });
 
   it('may speak and watch by default, but not show a camera', () => {
@@ -43,7 +50,9 @@ describe('roomGrant — a student', () => {
 
   it('gets a screen only once the teacher allows it', () => {
     expect(roomGrant(ROOM, student).canPublishSources).not.toContain('screen_share');
-    expect(roomGrant(ROOM, { ...student, screenAllowed: true }).canPublishSources).toContain('screen_share');
+    expect(roomGrant(ROOM, { ...student, screenAllowed: true }).canPublishSources).toContain(
+      'screen_share',
+    );
   });
 
   it('has nothing to publish once muted — not a flag, an empty list', () => {
