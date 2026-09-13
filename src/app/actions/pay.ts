@@ -125,7 +125,7 @@ export async function startPayPalCheckout(
 
   const { selection, quote } = await loadBasket();
 
-  if (!quote || !selection.delivery) redirect({ href: '/checkout/modules', locale });
+  if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
 
   // Checked after the basket is priced, not before: a basket that costs nothing
   // has no business being turned away because PayPal is unconfigured. The
@@ -219,7 +219,7 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
   if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
 
   const { selection, quote } = await loadBasket();
-  if (!quote || !selection.delivery) redirect({ href: '/checkout/modules', locale });
+  if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
 
   const afterOffers = quote.subtotalCents - quote.discountCents;
   const coupon = await claimCoupon(selection.couponCode, afterOffers);
@@ -283,7 +283,7 @@ export async function redeemOfficeCode(
   if (!parsed.success) return { error: 'codeInvalid' };
 
   const { selection, quote } = await loadBasket();
-  if (!quote || !selection.delivery) redirect({ href: '/checkout/modules', locale });
+  if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
 
   const afterOffers = quote.subtotalCents - quote.discountCents;
   const coupon = await claimCoupon(parsed.data, afterOffers);

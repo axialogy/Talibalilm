@@ -30,7 +30,7 @@ function refresh() {
   revalidatePath('/[locale]/admin/courses/[id]', 'page');
   revalidatePath('/[locale]/admin/cursus', 'page');
   revalidatePath('/[locale]/pricing', 'page');
-  revalidatePath('/[locale]/checkout/modules', 'page');
+  revalidatePath('/[locale]/checkout', 'page');
 }
 
 // ---------------------------------------------------------------------------

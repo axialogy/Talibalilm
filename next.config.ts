@@ -63,6 +63,25 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // The five enrolment steps became one card at /checkout. Old links — a
+  // student's bookmark, a PayPal return saved from before the change — land on
+  // the step they were on; send them to the card, which reopens at the step
+  // their selection cookie has reached.
+  async redirects() {
+    return [
+      {
+        source: '/en/checkout/:step(mode|modules|review|payment)',
+        destination: '/en/checkout',
+        permanent: false,
+      },
+      {
+        source: '/checkout/:step(mode|modules|review|payment)',
+        destination: '/checkout',
+        permanent: false,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {

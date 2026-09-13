@@ -22,5 +22,5 @@ export async function GET(request: NextRequest) {
     if (user) await cancelOrder(orderId, user.id);
   }
 
-  return NextResponse.redirect(`${base}/checkout/payment?error=cancelled`);
+  return NextResponse.redirect(`${base}/checkout?error=cancelled`);
 }

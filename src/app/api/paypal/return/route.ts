@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const paypalOrderId = request.nextUrl.searchParams.get('token');
 
   const fail = (reason: string) =>
-    NextResponse.redirect(`${base}/checkout/payment?error=${encodeURIComponent(reason)}`);
+    NextResponse.redirect(`${base}/checkout?error=${encodeURIComponent(reason)}`);
 
   if (!orderId || !paypalOrderId) return fail('unexpected');
 

@@ -240,6 +240,7 @@
     "emptyBasket": "Your selection is empty.",
     "loginRequired": "Log in to complete your enrolment.",
     "loginCta": "Log in",
+    "registerCta": "Create my account",
     "payTitle": "Payment",
     "payLead": "The amount is worked out by our servers from your selection; your browser never sends one.",
     "payWithPaypal": "Pay with PayPal",

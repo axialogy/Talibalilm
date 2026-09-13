@@ -240,6 +240,7 @@
     "emptyBasket": "Votre sélection est vide.",
     "loginRequired": "Connectez-vous pour finaliser votre inscription.",
     "loginCta": "Se connecter",
+    "registerCta": "Créer mon compte",
     "payTitle": "Paiement",
     "payLead": "Le montant est calculé par nos serveurs à partir de votre sélection ; il n’est jamais transmis par votre navigateur.",
     "payWithPaypal": "Payer avec PayPal",
