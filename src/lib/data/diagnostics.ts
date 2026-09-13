@@ -154,6 +154,111 @@ async function siteAddressCheck(): Promise<Check> {
   };
 }
 
+/**
+ * What Supabase Auth is actually set to do with a new sign-up.
+ *
+ * Two switches in the Supabase dashboard decide whether a student can register
+ * at all, and neither is visible from inside the app — which is how "students
+ * cannot create accounts" became a week of guessing. GoTrue publishes both on
+ * an unauthenticated settings endpoint, so ask it.
+ *
+ * `mailer_autoconfirm` is "Confirm email" INVERTED: true means confirmation is
+ * OFF and sign-up completes without any email leaving. That is the setting to
+ * reach for when the mail path is broken and registrations have to keep
+ * working; it is not a security hole in this app, because nothing is granted
+ * by an address alone.
+ */
+async function authSettingsChecks(): Promise<Check[]> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const name = 'Inscriptions (réglages Supabase)';
+  if (!base || !key) return [];
+
+  let settings: { disable_signup?: boolean; mailer_autoconfirm?: boolean };
+  try {
+    const response = await fetch(`${base.replace(/\/$/, '')}/auth/v1/settings`, {
+      headers: { apikey: key },
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      return [
+        {
+          group: 'Configuration',
+          name,
+          state: 'error',
+          detail: `Supabase a répondu ${response.status} à la lecture des réglages d’authentification.`,
+        },
+      ];
+    }
+    settings = (await response.json()) as typeof settings;
+  } catch (cause) {
+    return [
+      {
+        group: 'Configuration',
+        name,
+        state: 'error',
+        detail: `réglages d’authentification illisibles : ${(cause as Error).message}`,
+      },
+    ];
+  }
+
+  const checks: Check[] = [];
+
+  // A field that is not in the payload has not been read, and saying it is on
+  // or off would be inventing an answer. GoTrue has renamed things before.
+  if (
+    typeof settings.disable_signup !== 'boolean' ||
+    typeof settings.mailer_autoconfirm !== 'boolean'
+  ) {
+    return [
+      {
+        group: 'Configuration',
+        name,
+        state: 'error',
+        detail:
+          'Supabase a répondu, mais sans les champs attendus (disable_signup, mailer_autoconfirm). ' +
+          'Vérifiez ces réglages à la main dans Authentication → Sign In / Providers → Email.',
+      },
+    ];
+  }
+
+  if (settings.disable_signup) {
+    checks.push({
+      group: 'Configuration',
+      name,
+      state: 'error',
+      detail:
+        'les inscriptions sont DÉSACTIVÉES dans Supabase (Authentication → Sign In / Providers → Allow new users to sign up). ' +
+        'Aucun étudiant ne peut créer de compte tant que c’est le cas.',
+    });
+  } else {
+    checks.push({
+      group: 'Configuration',
+      name,
+      state: 'ok',
+      detail: 'les inscriptions sont ouvertes',
+    });
+  }
+
+  // The switch behind "Error sending confirmation email". With confirmation on,
+  // every single sign-up depends on a message leaving Supabase; the built-in
+  // sender allows a handful an hour, and a custom SMTP that rejects fails the
+  // same way. Neither is a fault in this code and neither is fixed by retrying.
+  checks.push({
+    group: 'Configuration',
+    name: 'Confirmation de l’adresse e-mail',
+    state: settings.mailer_autoconfirm ? 'ok' : 'unset',
+    detail: settings.mailer_autoconfirm
+      ? 'désactivée : le compte s’ouvre immédiatement, sans e-mail à envoyer. Rien ne peut échouer à l’envoi.'
+      : 'ACTIVÉE : chaque inscription dépend d’un e-mail envoyé par Supabase. Sans SMTP personnalisé valide ' +
+        '(smtp.resend.com, port 465, utilisateur « resend », mot de passe = clé Resend, expéditeur sur un domaine ' +
+        'vérifié chez Resend), l’inscription échoue avec « Error sending confirmation email ». ' +
+        'Pour débloquer tout de suite : Authentication → Sign In / Providers → Email → décochez « Confirm email ».',
+  });
+
+  return checks;
+}
+
 export async function runDiagnostics(): Promise<Check[]> {
   const checks: Check[] = [];
 
@@ -186,6 +291,7 @@ export async function runDiagnostics(): Promise<Check[]> {
   // So the answer is compared here against the host actually serving this
   // request, instead of being printed for a human to eyeball.
   checks.push(await siteAddressCheck());
+  checks.push(...(await authSettingsChecks()));
 
   const missingR2 = r2Missing();
   checks.push({

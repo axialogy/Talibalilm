@@ -390,7 +390,7 @@
     "databaseError": "Your account could not be created. The institute has been notified; try again later.",
     "emailInvalid": "That email address was refused. Check the spelling, or try another address.",
     "emailNotConfirmed": "Your email address has not been confirmed yet. Open the link we sent you.",
-    "emailSendFailed": "The confirmation email could not be sent. This is not your account: the institute’s mail service is temporarily over its limit. Try again in an hour, or contact us and we will open your access by hand.",
+    "emailSendFailed": "The confirmation email could not be sent, so your account could not be opened. The fault is with our mail service, not with your address. Write to us and we will open your access by hand.",
     "emailTaken": "An account already exists for this address.",
     "expiredLink": "This link has expired or has already been used. Ask for a new one.",
     "invalidCredentials": "Wrong email address or password.",
