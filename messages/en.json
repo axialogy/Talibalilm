@@ -780,7 +780,13 @@
     "liveDoorEmpty": "Nobody is waiting at the door.",
     "liveGuest": "Student",
     "slidesStorageHint": "Add them in Vercel → Settings → Environment Variables (type Secret, all environments), then redeploy: a variable added later does not reach a deployment that is already live.",
-    "slidesConverting": "Converting the PDF — page {page} of {pages}…"
+    "slidesConverting": "Converting the PDF — page {page} of {pages}…",
+    "diagTitle": "Diagnostics",
+    "diagLead": "What this installation can actually see: tables, functions and configured services. Read-only — nothing here creates or changes anything, and no secret value is shown, only names.",
+    "diagProblems": "{count, plural, one {# problem found} other {# problems found}}",
+    "diagHint": "A “missing” table or function almost always means a file in supabase/migrations/ was never run against this project. An “unset” variable means it is absent, misspelled, or was added after the deployment that is serving — in that last case a redeploy is enough.",
+    "diagAllGood": "Everything the application needs is in place.",
+    "navDiagnostics": "Diagnostics"
   },
   "live": {
     "allow": "Allow",

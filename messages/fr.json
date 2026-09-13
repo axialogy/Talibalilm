@@ -780,7 +780,13 @@
     "liveDoorEmpty": "Personne n’attend à la porte.",
     "liveGuest": "Élève",
     "slidesStorageHint": "Ajoutez-les dans Vercel → Settings → Environment Variables (type Secret, tous les environnements), puis redéployez : une variable ajoutée n’atteint pas un déploiement déjà en ligne.",
-    "slidesConverting": "Conversion du PDF — page {page} sur {pages}…"
+    "slidesConverting": "Conversion du PDF — page {page} sur {pages}…",
+    "diagTitle": "Diagnostic",
+    "diagLead": "Ce que cette installation voit réellement : les tables, les fonctions et les services configurés. Lecture seule — rien n’est créé ni modifié ici, et aucune valeur secrète n’est affichée, seulement des noms.",
+    "diagProblems": "{count, plural, one {# problème détecté} other {# problèmes détectés}}",
+    "diagHint": "Une table ou une fonction « manquante » signifie presque toujours qu’un fichier de supabase/migrations/ n’a pas été exécuté sur ce projet. Une variable « non configurée » signifie qu’elle est absente, mal orthographiée, ou ajoutée après le déploiement en cours — dans ce dernier cas, un redéploiement suffit.",
+    "diagAllGood": "Tout ce dont l’application a besoin est en place.",
+    "navDiagnostics": "Diagnostic"
   },
   "live": {
     "allow": "Autoriser",

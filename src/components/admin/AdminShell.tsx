@@ -12,6 +12,7 @@ import {
   Radio,
   Menu,
   Receipt,
+  Stethoscope,
   Ticket,
   Users,
   Wallet,
@@ -49,6 +50,7 @@ const NAV = [
       { href: '/admin/courses', icon: BookOpen, key: 'courses', admin: false },
       { href: '/admin/live', icon: Radio, key: 'liveNav', admin: false },
       { href: '/admin/cursus', icon: GraduationCap, key: 'cursusNav', admin: false },
+      { href: '/admin/diagnostics', icon: Stethoscope, key: 'navDiagnostics', admin: true },
     ],
   },
 ] as const;
