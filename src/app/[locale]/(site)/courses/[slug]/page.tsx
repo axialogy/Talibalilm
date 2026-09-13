@@ -1,13 +1,19 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Check, Clock, GraduationCap, Lock, MapPin, PlayCircle } from 'lucide-react';
+import { Check, Lock, PlayCircle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { CourseArt } from '@/components/marketing/CourseArt';
+import { EnrolPanel } from '@/components/courses/EnrolPanel';
 import { CourseCard } from '@/components/marketing/CourseCard';
-import { buildTimeCourseSlugs, getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
+import {
+  buildTimeCourseSlugs,
+  coursePrices,
+  getCourse,
+  getInstructor,
+  relatedCourses,
+} from '@/lib/data/courses';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
@@ -81,6 +87,7 @@ export default async function CoursePage({
   const tNav = await getTranslations('nav');
   const instructor = await getInstructor(course.instructor_id);
   const related = await relatedCourses(course);
+  const prices = await coursePrices(course.id);
   const lessons = lessonCount(course);
 
   const jsonLd = {
@@ -109,22 +116,6 @@ export default async function CoursePage({
       availability: 'https://schema.org/InStock',
     },
   };
-
-  const facts = [
-    {
-      Icon: Clock,
-      label: t('detail.facts.duration'),
-      value: t('card.duration', { count: course.duration_weeks }),
-    },
-    {
-      Icon: PlayCircle,
-      label: t('detail.facts.lessons'),
-      value: t('card.lessons', { count: lessons }),
-    },
-    { Icon: Clock, label: t('detail.facts.schedule'), value: course.schedule },
-    { Icon: MapPin, label: t('detail.facts.format'), value: t(`format.${course.format}`) },
-    { Icon: GraduationCap, label: t('detail.facts.level'), value: t(`level.${course.level}`) },
-  ];
 
   return (
     <>
@@ -185,6 +176,9 @@ export default async function CoursePage({
               )}
             </div>
 
+            {/* The artwork sits beside the title rather than above a buy
+                box: what sells a module is what is taught in it, and that is
+                now the first thing below this. */}
             <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-white shadow-card">
               <div className="aspect-4/3">
                 <CourseArt
@@ -194,17 +188,6 @@ export default async function CoursePage({
                   tone={course.tone}
                 />
               </div>
-
-              <div className="p-6">
-                {/* The line about one membership opening everything was left
-                    over from a model the school no longer sells: a module is
-                    bought on its own, or inside a cursus. Saying otherwise on
-                    the page where someone decides to pay was a promise nothing
-                    behind it would keep. */}
-                <Button asChild block size="lg">
-                  <Link href="/checkout">{t('detail.enrollCta')}</Link>
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -212,24 +195,12 @@ export default async function CoursePage({
 
       <section className="py-14 sm:py-16">
         <div className="shell">
-          <ul className="grid gap-4 rounded-[var(--radius-card)] border border-line bg-surface/50 p-6 sm:grid-cols-3 lg:grid-cols-5">
-            {facts.map(({ Icon, label, value }) => (
-              <li key={label} className="flex items-start gap-3">
-                <Icon className="mt-0.5 size-4 shrink-0 text-brand-500" aria-hidden="true" />
-                <div>
-                  <p className="text-[11px] tracking-[0.1em] text-ink-muted uppercase">{label}</p>
-                  <p className="text-[13px] font-medium text-ink">{value}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-16">
+          {/* The programme leads. What someone is buying is what is taught,
+              so the chapters come first and the panel that takes their money
+              rides alongside instead of standing in front of them. */}
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-16">
             <div>
-              <h2 className="font-display text-2xl font-semibold text-ink">{t('detail.about')}</h2>
-              <p className="mt-4 text-sm leading-relaxed text-ink-muted">{course.description}</p>
-
-              <h2 className="mt-12 font-display text-2xl font-semibold text-ink">
+              <h2 className="font-display text-2xl font-semibold text-ink">
                 {t('detail.syllabus')}
               </h2>
 
@@ -290,7 +261,29 @@ export default async function CoursePage({
               <p className="mt-5 text-xs text-ink-muted">{t('detail.lockedHint')}</p>
             </div>
 
-            <aside className="space-y-10">
+            <aside className="lg:sticky lg:top-24 lg:self-start">
+              <EnrolPanel
+                locale={locale}
+                prices={prices}
+                lessons={lessons}
+                durationWeeks={course.duration_weeks}
+                format={course.format}
+                level={course.level}
+                schedule={course.schedule}
+              />
+            </aside>
+          </div>
+
+          {/* Everything that explains rather than sells sits below what is
+              taught: the description, what a student will be able to do, and
+              who is teaching it. */}
+          <div className="mt-16 grid gap-12 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-16">
+            <div>
+              <h2 className="font-display text-2xl font-semibold text-ink">{t('detail.about')}</h2>
+              <p className="mt-4 text-sm leading-relaxed text-ink-muted">{course.description}</p>
+            </div>
+
+            <div className="space-y-10">
               <div>
                 <h2 className="font-display text-2xl font-semibold text-ink">
                   {t('detail.objectives')}
@@ -325,7 +318,7 @@ export default async function CoursePage({
                   </p>
                 </div>
               )}
-            </aside>
+            </div>
           </div>
 
           {related.length > 0 && (

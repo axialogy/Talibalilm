@@ -7,11 +7,15 @@ import { supabaseConfigured } from '@/lib/env';
 export interface HeaderViewer {
   /** null while still unknown — the first paint cannot know. */
   signedIn: boolean | null;
-  isStaff: boolean;
 }
 
 /**
  * Is anyone signed in, for the header only.
+ *
+ * Signed in, and nothing more. It used to read the profile's role as well, to
+ * decide whether to show an Administration link — a decision made in the
+ * browser, which is the wrong place for it. The dashboard carries that link
+ * instead, chosen on the server, so a student's page never contains it.
  *
  * Read in the browser rather than on the server, and that is a deliberate
  * trade. The header sits in the root layout, so asking the server would mean
@@ -28,31 +32,19 @@ export interface HeaderViewer {
  * whatever this hook believes.
  */
 export function useViewer(): HeaderViewer {
-  const [viewer, setViewer] = useState<HeaderViewer>({ signedIn: null, isStaff: false });
+  const [viewer, setViewer] = useState<HeaderViewer>({ signedIn: null });
 
   useEffect(() => {
     if (!supabaseConfigured) {
-      setViewer({ signedIn: false, isStaff: false });
+      setViewer({ signedIn: false });
       return;
     }
 
     const supabase = createClient();
     let alive = true;
 
-    const read = async (userId: string | undefined) => {
-      if (!userId) {
-        if (alive) setViewer({ signedIn: false, isStaff: false });
-        return;
-      }
-      // RLS lets a person read only their own profile, so this returns their
-      // row or nothing. A student cannot make it say 'admin'.
-      const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
-      if (alive) {
-        setViewer({
-          signedIn: true,
-          isStaff: data?.role === 'admin' || data?.role === 'instructor',
-        });
-      }
+    const read = (userId: string | undefined) => {
+      if (alive) setViewer({ signedIn: Boolean(userId) });
     };
 
     void supabase.auth.getUser().then(({ data }) => read(data.user?.id));

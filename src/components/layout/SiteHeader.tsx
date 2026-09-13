@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { LayoutDashboard, Menu, Wrench, X } from 'lucide-react';
+import { LayoutDashboard, Menu, X } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/navigation';
 import { Logo } from '@/components/layout/Logo';
 import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
@@ -22,7 +22,7 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { signedIn, isStaff } = useViewer();
+  const { signedIn } = useViewer();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -38,8 +38,7 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
     };
   }, [open]);
 
-  const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href);
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   return (
     <>
@@ -92,15 +91,15 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
               <span aria-hidden="true" className="hidden h-9 w-44 sm:inline-flex" />
             ) : signedIn ? (
               <>
-                {isStaff && (
-                  <Link
-                    href="/admin/courses"
-                    className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[13px] text-ink-muted transition-colors hover:bg-brand-50 hover:text-brand-600 sm:inline-flex"
-                  >
-                    <Wrench className="size-3.5" aria-hidden="true" />
-                    {t('admin')}
-                  </Link>
-                )}
+                {/* No Administration link here, deliberately.
+                
+                    This header renders in the browser so the marketing pages
+                    can stay statically generated — which means the role behind
+                    such a link would be a guess made client-side, and a wrong
+                    guess puts a door in front of a student that is not theirs.
+                    The dashboard carries the same link, decided on the server
+                    from the profile row, so a student's page never contains it
+                    at all. One place, and the right one. */}
                 <Button asChild size="sm" className="hidden sm:inline-flex">
                   <Link href="/dashboard">
                     <LayoutDashboard className="size-4" aria-hidden="true" />
@@ -138,7 +137,10 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
 
       <div
         id="mobile-nav"
-        className={cn('fixed inset-0 z-40 lg:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')}
+        className={cn(
+          'fixed inset-0 z-40 lg:hidden',
+          open ? 'pointer-events-auto' : 'pointer-events-none',
+        )}
         aria-hidden={!open}
       >
         <div
@@ -168,15 +170,6 @@ export function SiteHeader({ logoSrc }: { logoSrc: string }) {
                 {t(link.key)}
               </Link>
             ))}
-            {signedIn && isStaff && (
-              <Link
-                href="/admin/courses"
-                onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 font-display text-lg text-ink transition-colors hover:bg-brand-50"
-              >
-                {t('admin')}
-              </Link>
-            )}
             {!signedIn && (
               <Link
                 href="/login"

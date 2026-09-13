@@ -149,7 +149,10 @@
       "related": "Carry on with",
       "notFoundTitle": "That module does not exist",
       "notFoundBody": "It may have been renamed, or the link is incomplete.",
-      "notFoundCta": "See all modules"
+      "notFoundCta": "See all modules",
+      "online": "Online",
+      "onSite": "On site",
+      "notOnSale": "This module is not open for enrolment yet. Write to us to hear about the next session."
     }
   },
   "pricing": {

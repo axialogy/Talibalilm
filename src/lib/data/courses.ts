@@ -165,3 +165,46 @@ export async function relatedCourses(course: Course, limit = 3): Promise<Course[
 export function buildTimeCourseSlugs(): string[] {
   return fixtureCourses.filter((c) => c.status === 'published').map((c) => c.slug);
 }
+
+export interface CoursePrice {
+  delivery: 'presentiel' | 'online';
+  priceCents: number;
+  currency: string;
+  durationDays: number;
+}
+
+/**
+ * What this module costs, per mode.
+ *
+ * Read from `products` rather than from any constant: the currency belongs to
+ * what is being sold, and a price the sales page invents is a price the
+ * checkout will disagree with. Only published rows, so a draft tariff the
+ * office is still working on never appears in front of a buyer.
+ *
+ * An empty list is a real answer — a module with no published price is not on
+ * sale yet — and the panel says so instead of showing a confident zero.
+ */
+export async function coursePrices(courseId: string): Promise<CoursePrice[]> {
+  if (!supabaseConfigured) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('delivery, price_cents, currency, duration_days')
+    .eq('kind', 'module')
+    .eq('course_id', courseId)
+    .eq('status', 'published')
+    .order('delivery');
+
+  if (error) {
+    reportError('courses.prices', error, { courseId });
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    delivery: row.delivery,
+    priceCents: row.price_cents,
+    currency: row.currency,
+    durationDays: row.duration_days,
+  }));
+}

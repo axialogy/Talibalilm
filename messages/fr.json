@@ -149,7 +149,10 @@
       "related": "Poursuivre avec",
       "notFoundTitle": "Ce module n’existe pas",
       "notFoundBody": "Il a peut-être été renommé, ou le lien est incomplet.",
-      "notFoundCta": "Voir tous les modules"
+      "notFoundCta": "Voir tous les modules",
+      "online": "En ligne",
+      "onSite": "En présentiel",
+      "notOnSale": "Ce module n’est pas encore ouvert aux inscriptions. Écrivez-nous pour être prévenu de la prochaine session."
     }
   },
   "pricing": {
