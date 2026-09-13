@@ -35,6 +35,25 @@ const BUCKET = process.env.R2_BUCKET?.trim() ?? '';
 /** True once all four values are present. Screens check this and degrade. */
 export const r2Configured = Boolean(ACCOUNT && ACCESS_KEY && SECRET && BUCKET);
 
+/**
+ * Which of the four is missing, by name.
+ *
+ * Names only — never a value, not even a fragment. "Storage is not configured"
+ * is true and useless when all four look set in the dashboard: the one that is
+ * actually empty, or spelled differently, or attached to a different
+ * environment, is the whole of the answer.
+ */
+export function r2Missing(): string[] {
+  return [
+    ['R2_ACCOUNT_ID', ACCOUNT],
+    ['R2_ACCESS_KEY_ID', ACCESS_KEY],
+    ['R2_SECRET_ACCESS_KEY', SECRET],
+    ['R2_BUCKET', BUCKET],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name as string);
+}
+
 let client: S3Client | null = null;
 
 function s3(): S3Client {

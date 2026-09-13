@@ -770,7 +770,8 @@
     "slidesStorageMissing": "File storage is not set up yet. Add the R2 variables in Vercel to upload slides — the rest of the live session works without them.",
     "liveDoorTab": "{count, plural, =0 {At the door} one {At the door (#)} other {At the door (#)}}",
     "liveDoorEmpty": "Nobody is waiting at the door.",
-    "liveGuest": "Student"
+    "liveGuest": "Student",
+    "slidesStorageHint": "Add them in Vercel → Settings → Environment Variables (type Secret, all environments), then redeploy: a variable added later does not reach a deployment that is already live."
   },
   "live": {
     "allow": "Allow",

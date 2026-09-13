@@ -770,7 +770,8 @@
     "slidesStorageMissing": "L’espace de stockage n’est pas encore configuré. Ajoutez les variables R2 dans Vercel pour pouvoir envoyer des diapositives — le reste de la séance en direct fonctionne sans.",
     "liveDoorTab": "{count, plural, =0 {À la porte} one {À la porte (#)} other {À la porte (#)}}",
     "liveDoorEmpty": "Personne n’attend à la porte.",
-    "liveGuest": "Élève"
+    "liveGuest": "Élève",
+    "slidesStorageHint": "Ajoutez-les dans Vercel → Settings → Environment Variables (type Secret, tous les environnements), puis redéployez : une variable ajoutée n’atteint pas un déploiement déjà en ligne."
   },
   "live": {
     "allow": "Autoriser",

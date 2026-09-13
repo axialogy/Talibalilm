@@ -27,10 +27,13 @@ export function SlideDeck({
   sessionId,
   slides,
   storageReady,
+  missing = [],
 }: {
   sessionId: string;
   slides: SlideView[];
   storageReady: boolean;
+  /** Which R2 variables the server cannot see. Names only, never values. */
+  missing?: string[];
 }) {
   const t = useTranslations('admin');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -91,9 +94,17 @@ export function SlideDeck({
 
   if (!storageReady) {
     return (
-      <p className="rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6 text-[13px] text-ink-muted">
-        {t('slidesStorageMissing')}
-      </p>
+      <div className="rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6">
+        <p className="text-[13px] text-ink-muted">{t('slidesStorageMissing')}</p>
+        {missing.length > 0 && (
+          <ul className="mt-3 space-y-1 font-mono text-[12px] text-red-600">
+            {missing.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-[11px] text-ink-muted">{t('slidesStorageHint')}</p>
+      </div>
     );
   }
 

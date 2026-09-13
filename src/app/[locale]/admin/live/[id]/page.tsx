@@ -6,7 +6,7 @@ import { LiveSessionControls } from '@/components/admin/LiveSessionControls';
 import { SlideDeck } from '@/components/admin/SlideDeck';
 import { Tabs } from '@/components/ui/tabs';
 import { getLiveSession, listSlides, listJoinRequests } from '@/lib/data/live';
-import { r2Configured } from '@/lib/storage/r2';
+import { r2Configured, r2Missing } from '@/lib/storage/r2';
 import { requireStaff } from '@/lib/auth/guards';
 import type { LiveStatus } from '@/lib/supabase/database.types';
 
@@ -83,7 +83,12 @@ export default async function AdminLiveSessionPage({
                   <p className="mb-4 max-w-2xl text-[12px] leading-relaxed text-ink-muted">
                     {t('slidesLead')}
                   </p>
-                  <SlideDeck sessionId={session.id} slides={slides} storageReady={r2Configured} />
+                  <SlideDeck
+                    sessionId={session.id}
+                    slides={slides}
+                    storageReady={r2Configured}
+                    missing={r2Missing()}
+                  />
                 </>
               ),
             },
