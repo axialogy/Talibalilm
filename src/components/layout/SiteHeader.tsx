@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 const LINKS = [
   { href: '/', key: 'home' },
   { href: '/courses', key: 'courses' },
-  { href: '/pricing', key: 'pricing' },
+  { href: '/contact', key: 'contact' },
 ] as const;
 
 export function SiteHeader({ logoSrc }: { logoSrc: string }) {

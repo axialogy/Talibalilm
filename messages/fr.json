@@ -91,26 +91,20 @@
     "brief": {
       "title": "L’institut en bref",
       "body": "L’Institut Talib Alim enseigne les sciences islamiques et la langue arabe à Montereau-Fault-Yonne et en visioconférence. Les cours sont ouverts aux débutants comme aux étudiants confirmés, avec un programme progressif et des enseignants qui suivent chacun individuellement.",
-      "body2": "Chaque module peut être suivi seul ou à l’intérieur d’un cursus complet. Vous choisissez le rythme, le mode et la formule ; l’accès s’ouvre dès le paiement.",
-      "statModules": "modules enseignés",
-      "statChapters": "chapitres",
-      "statLessons": "séances",
-      "statCursus": "cursus",
-      "statModes": "modes d’étude"
+      "body2": "Chaque module peut être suivi seul ou à l’intérieur d’un cursus complet. Vous choisissez le rythme, le mode et la formule ; l’accès s’ouvre dès le paiement."
     },
     "formations": {
       "title": "Découvrez nos formations",
       "titleAr": "اكتشف تكويناتنا",
-      "lead": "Les disciplines enseignées à l’institut. Chacune rassemble les modules ouverts aux inscriptions.",
-      "cta": "Voir les modules",
-      "count": "{count, plural, =0 {Bientôt} =1 {# module} other {# modules}}"
+      "lead": "Les modules ouverts aux inscriptions à l’institut, en présentiel comme en visioconférence.",
+      "cta": "Voir tous les modules"
     },
     "events": {
       "title": "Actualités & événements",
       "titleAr": "الأخبار والفعاليات",
-      "lead": "Les prochaines séances en direct de l’institut.",
-      "cta": "Voir la séance",
-      "empty": "Aucune séance n’est programmée pour le moment."
+      "lead": "Les annonces et les rendez-vous de l’institut.",
+      "cta": "En savoir plus",
+      "empty": "Aucune actualité pour le moment."
     },
     "previews": {
       "title": "Assistez à une leçon",
@@ -122,6 +116,17 @@
       "body": "Créez votre compte, choisissez votre module ou votre cursus, et commencez à étudier.",
       "primary": "Inscrivez-vous",
       "secondary": "Découvrir nos formations"
+    },
+    "cursus": {
+      "title": "Nos cursus",
+      "titleAr": "مساراتنا",
+      "lead": "Deux façons d’étudier à l’institut : à la carte, ou un programme complet sur plusieurs années.",
+      "cta": "Voir ce cursus"
+    },
+    "reviews": {
+      "title": "Ce que disent nos étudiants",
+      "titleAr": "آراء طلابنا",
+      "lead": "Des témoignages recueillis auprès des étudiants de l’institut."
     }
   },
   "courses": {
@@ -384,7 +389,9 @@
     "passwordMismatch": "Les deux mots de passe ne correspondent pas.",
     "nameShort": "Indiquez votre nom complet.",
     "phoneInvalid": "Ce numéro de téléphone n’est pas valide.",
-    "termsRequired": "Vous devez accepter les conditions pour continuer."
+    "termsRequired": "Vous devez accepter les conditions pour continuer.",
+    "messageShort": "Votre message est trop court.",
+    "tooLong": "C’est trop long."
   },
   "authErrors": {
     "accountOpenedSignInFailed": "Votre compte a bien été créé, mais la connexion automatique n’a pas abouti. Connectez-vous avec l’adresse et le mot de passe que vous venez de choisir.",
@@ -994,5 +1001,25 @@
     "unreachableTitle": "Impossible de joindre la salle",
     "you": "vous",
     "slidesConverting": "Conversion du PDF — page {page} sur {pages}…"
+  },
+  "contact": {
+    "title": "Contactez-nous",
+    "lead": "Une question sur un module, un cursus ou une inscription ? Écrivez-nous, nous répondons sous quelques jours.",
+    "addressTitle": "Adresse",
+    "phoneTitle": "Téléphone",
+    "emailTitle": "E-mail",
+    "followTitle": "Nous suivre",
+    "formTitle": "Nous écrire",
+    "name": "Votre nom",
+    "email": "Votre adresse e-mail",
+    "subject": "Objet",
+    "subjectOptional": "facultatif",
+    "message": "Votre message",
+    "send": "Envoyer le message",
+    "sending": "Envoi…",
+    "sent": "Merci, votre message est bien arrivé. Nous vous répondrons à l’adresse indiquée.",
+    "failed": "Votre message n’a pas pu être envoyé. Réessayez, ou écrivez-nous directement par e-mail.",
+    "rateLimited": "Vous avez déjà envoyé plusieurs messages. Réessayez dans une heure.",
+    "noSubject": "Message du site"
   }
 }

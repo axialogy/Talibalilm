@@ -18,6 +18,14 @@ export interface Mail {
   subject: string;
   html: string;
   text: string;
+  /**
+   * Where a reply should go, when that is not the sender.
+   *
+   * The contact form needs it: the message leaves from the school's own
+   * verified domain, and without this the office would hit reply and answer
+   * itself instead of the visitor who wrote in.
+   */
+  replyTo?: string;
 }
 
 let client: Resend | null = null;
@@ -51,6 +59,7 @@ export async function sendMail(mail: Mail): Promise<boolean> {
     subject: mail.subject,
     html: mail.html,
     text: mail.text,
+    ...(mail.replyTo ? { replyTo: mail.replyTo } : {}),
   });
 
   if (error) {

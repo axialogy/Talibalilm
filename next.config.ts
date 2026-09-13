@@ -79,6 +79,11 @@ const nextConfig: NextConfig = {
         destination: '/checkout',
         permanent: false,
       },
+      // Tarifs became Contact. Prices moved onto each module's own page, beside
+      // the card that charges them, so the separate list had nothing left to
+      // say that the catalogue did not already say better.
+      { source: '/en/pricing', destination: '/en/contact', permanent: true },
+      { source: '/pricing', destination: '/contact', permanent: true },
     ];
   },
 

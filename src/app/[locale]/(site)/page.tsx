@@ -3,22 +3,14 @@ import { ArrowRight, GraduationCap, Layers, PlayCircle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/marketing/CourseCard';
+import { EventsSection } from '@/components/marketing/EventsSection';
+import { ReviewsSection } from '@/components/marketing/ReviewsSection';
 import { listCourses } from '@/lib/data/courses';
 import { listCursus } from '@/lib/data/commerce';
+import { listEvents, listReviews } from '@/lib/data/site';
 import { institut } from '@/lib/content/institut';
-import type { Course, CourseCategory } from '@/lib/content/types';
+import type { Course } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
-
-/** Every discipline the catalogue can carry, in the order the school lists them. */
-const CATEGORIES: CourseCategory[] = [
-  'aqida',
-  'fiqh',
-  'coran',
-  'hadith',
-  'tafsir',
-  'langue',
-  'histoire',
-];
 
 interface Preview {
   courseSlug: string;
@@ -55,26 +47,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const tCourses = await getTranslations('courses');
   const tMeta = await getTranslations('meta');
 
-  const [courses, cursusList] = await Promise.all([listCourses(), listCursus()]);
-
-  // Real counts, from the catalogue. A number on a homepage that nothing
-  // computes is a number that goes stale the week after it is written.
-  const chapters = courses.reduce((n, course) => n + course.modules.length, 0);
-  const lessons = courses.reduce(
-    (n, course) => n + course.modules.reduce((m, mod) => m + mod.lessons.length, 0),
-    0,
-  );
-
-  const byCategory = new Map<CourseCategory, number>();
-  for (const course of courses) {
-    byCategory.set(course.category, (byCategory.get(course.category) ?? 0) + 1);
-  }
-  // Disciplines that actually have something to offer lead; the rest follow, so
-  // the row still reads as the school's full field of study on a young
-  // catalogue without pretending every one of them is open.
-  const disciplines = [...CATEGORIES].sort(
-    (a, b) => (byCategory.get(b) ?? 0) - (byCategory.get(a) ?? 0),
-  );
+  const [courses, cursusList, events, reviews] = await Promise.all([
+    listCourses(),
+    listCursus(),
+    listEvents(6),
+    listReviews(6),
+  ]);
 
   const previews = freeLessons(courses, 3);
 
@@ -94,14 +72,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       addressCountry: 'FR',
     },
   };
-
-  const stats: [string, string][] = [
-    [String(courses.length), t('brief.statModules')],
-    [String(chapters), t('brief.statChapters')],
-    [String(lessons), t('brief.statLessons')],
-    [String(cursusList.length), t('brief.statCursus')],
-    ['2', t('brief.statModes')],
-  ];
 
   return (
     <>
@@ -148,89 +118,77 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
 
-      {/* L'institut en bref — prose beside a column of real numbers. */}
-      <section className="py-16 sm:py-20">
-        <div className="shell grid gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-16">
-          <div>
-            <h2 className="font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-              {t('brief.title')}
-            </h2>
-            <p className="mt-5 text-sm leading-relaxed text-ink-muted">{t('brief.body')}</p>
-            <p className="mt-4 text-sm leading-relaxed text-ink-muted">{t('brief.body2')}</p>
+      {/* L'institut en bref.
 
-            <div className="mt-8">
-              <Button asChild size="md" variant="goldOutline">
-                <Link href="/courses">{t('featured.cta')}</Link>
+          The column of figures that used to sit beside this is gone. It was
+          computed honestly from the catalogue, which is how it came to read
+          "0 modules, 0 chapitres, 0 séances" — an accurate advertisement for
+          having nothing. Numbers go back when there is something to count. */}
+      <section className="py-16 sm:py-20">
+        <div className="shell max-w-3xl text-center">
+          <h2 className="font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+            {t('brief.title')}
+          </h2>
+          <p className="mt-6 text-sm leading-relaxed text-ink-muted">{t('brief.body')}</p>
+          <p className="mt-4 text-sm leading-relaxed text-ink-muted">{t('brief.body2')}</p>
+
+          <div className="mt-8">
+            <Button asChild size="md" variant="goldOutline">
+              <Link href="/courses">{t('featured.cta')}</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Actualités & événements, then what students say. Both render nothing
+          at all while their table is empty — a heading over an empty grid
+          advertises that the institute has no news. */}
+      <EventsSection events={events} locale={locale} />
+      <ReviewsSection reviews={reviews} />
+
+      {/* Découvrez nos formations.
+
+          Seven hard-coded disciplines used to sit here, most of them with no
+          module behind them, while the real catalogue was shown again further
+          down the page. One section now, and it shows what the school has
+          actually published. */}
+      {courses.length > 0 && (
+        <section className="bg-surface/60 py-16 sm:py-20">
+          <div className="shell">
+            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+              {t('formations.title')}
+            </h2>
+            <p lang="ar" dir="rtl" className="mt-2 text-center font-arabic text-2xl text-ink">
+              {t('formations.titleAr')}
+            </p>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
+              {t('formations.lead')}
+            </p>
+
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {courses.slice(0, 6).map((course) => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </div>
+
+            <div className="mt-10 text-center">
+              <Button asChild size="md" variant="gold">
+                <Link href="/courses">{t('formations.cta')}</Link>
               </Button>
             </div>
           </div>
-
-          <dl className="divide-y divide-line border-s-2 border-gold-500 ps-6">
-            {stats.map(([value, label]) => (
-              <div key={label} className="py-4 first:pt-0 last:pb-0">
-                <dt className="font-display text-[32px] leading-none font-semibold text-ink">
-                  {value}
-                </dt>
-                <dd className="mt-1.5 text-[12px] tracking-[0.08em] text-ink-muted uppercase">
-                  {label}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* Découvrez nos formations — the disciplines, French and Arabic. */}
-      <section className="bg-surface/60 py-16 sm:py-20">
-        <div className="shell">
-          <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-            {t('formations.title')}
-          </h2>
-          <p lang="ar" dir="rtl" className="mt-2 text-center font-arabic text-2xl text-ink">
-            {t('formations.titleAr')}
-          </p>
-          <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
-            {t('formations.lead')}
-          </p>
-
-          <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {disciplines.map((category) => (
-              <li
-                key={category}
-                className="flex flex-col rounded-[var(--radius-card)] border border-line bg-white p-6 text-center"
-              >
-                <p className="font-display text-[17px] font-semibold text-ink">
-                  {tCourses(`category.${category}`)}
-                </p>
-                <p lang="ar" dir="rtl" className="mt-1 font-arabic text-xl text-gold-600">
-                  {tCourses(`categoryAr.${category}`)}
-                </p>
-                <p className="mt-3 flex-1 text-[13px] leading-relaxed text-ink-muted">
-                  {tCourses(`categoryBody.${category}`)}
-                </p>
-                <p className="mt-4 text-[11px] tracking-[0.08em] text-ink-muted uppercase">
-                  {t('formations.count', { count: byCategory.get(category) ?? 0 })}
-                </p>
-                <div className="mt-5">
-                  <Button asChild size="sm" variant="gold">
-                    <Link href={`/courses?category=${category}`}>{t('formations.cta')}</Link>
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Les cursus — the two ways through the school. */}
       {cursusList.length > 0 && (
         <section className="py-16 sm:py-20">
           <div className="shell">
             <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-              {t('events.title')}
+              {t('cursus.title')}
             </h2>
             <p lang="ar" dir="rtl" className="mt-2 text-center font-arabic text-2xl text-ink">
-              {t('events.titleAr')}
+              {t('cursus.titleAr')}
             </p>
 
             <ul className="mt-10 grid gap-6 md:grid-cols-2">
@@ -264,7 +222,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                       </p>
                       <div className="mt-5">
                         <Button asChild size="sm" variant="gold">
-                          <Link href="/checkout">{t('events.cta')}</Link>
+                          <Link href="/checkout">{t('cursus.cta')}</Link>
                         </Button>
                       </div>
                     </div>
@@ -272,32 +230,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 );
               })}
             </ul>
-          </div>
-        </section>
-      )}
-
-      {/* The catalogue itself */}
-      {courses.length > 0 && (
-        <section className="bg-surface/60 py-16 sm:py-20">
-          <div className="shell">
-            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-              {t('featured.title')}
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
-              {t('featured.body')}
-            </p>
-
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {courses.slice(0, 6).map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-
-            <div className="mt-10 text-center">
-              <Button asChild size="md" variant="goldOutline">
-                <Link href="/courses">{t('featured.cta')}</Link>
-              </Button>
-            </div>
           </div>
         </section>
       )}

@@ -29,7 +29,7 @@ async function client() {
 function refresh() {
   revalidatePath('/[locale]/admin/courses/[id]', 'page');
   revalidatePath('/[locale]/admin/cursus', 'page');
-  revalidatePath('/[locale]/pricing', 'page');
+  revalidatePath('/[locale]', 'page');
   revalidatePath('/[locale]/checkout', 'page');
 }
 

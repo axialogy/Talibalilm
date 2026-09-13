@@ -19,7 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entries.push(
       { url: `${base}${p || '/'}`, lastModified: now, changeFrequency: 'weekly', priority: 1 },
       { url: `${base}${p}/courses`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-      { url: `${base}${p}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+      { url: `${base}${p}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     );
 
     for (const course of listCourses()) {

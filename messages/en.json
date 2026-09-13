@@ -91,26 +91,20 @@
     "brief": {
       "title": "The institute at a glance",
       "body": "Institut Talib Alim teaches the Islamic sciences and the Arabic language in Montereau-Fault-Yonne and by video. Courses are open to beginners and to advanced students alike, with a progressive programme and teachers who follow each student individually.",
-      "body2": "Every module can be taken on its own or inside a full cursus. You choose the pace, the mode and the option; access opens as soon as you have paid.",
-      "statModules": "modules taught",
-      "statChapters": "chapters",
-      "statLessons": "sessions",
-      "statCursus": "cursus",
-      "statModes": "ways to study"
+      "body2": "Every module can be taken on its own or inside a full cursus. You choose the pace, the mode and the option; access opens as soon as you have paid."
     },
     "formations": {
       "title": "Discover our programmes",
       "titleAr": "اكتشف تكويناتنا",
-      "lead": "The disciplines taught at the institute. Each gathers the modules currently open for enrolment.",
-      "cta": "See the modules",
-      "count": "{count, plural, =0 {Coming soon} =1 {# module} other {# modules}}"
+      "lead": "The modules open for enrolment at the institute, on site and by video.",
+      "cta": "See every module"
     },
     "events": {
       "title": "News & events",
       "titleAr": "الأخبار والفعاليات",
-      "lead": "The institute’s next live sessions.",
-      "cta": "See the session",
-      "empty": "No session is scheduled at the moment."
+      "lead": "Announcements and dates from the institute.",
+      "cta": "Find out more",
+      "empty": "No news at the moment."
     },
     "previews": {
       "title": "Sit in on a lesson",
@@ -122,6 +116,17 @@
       "body": "Create your account, choose your module or your cursus, and start studying.",
       "primary": "Sign up",
       "secondary": "Discover our programmes"
+    },
+    "cursus": {
+      "title": "Our programmes",
+      "titleAr": "مساراتنا",
+      "lead": "Two ways to study at the institute: module by module, or a full programme over several years.",
+      "cta": "See this programme"
+    },
+    "reviews": {
+      "title": "What our students say",
+      "titleAr": "آراء طلابنا",
+      "lead": "Testimonials gathered from students at the institute."
     }
   },
   "courses": {
@@ -384,7 +389,9 @@
     "passwordMismatch": "The two passwords do not match.",
     "nameShort": "Please give your full name.",
     "phoneInvalid": "This phone number is not valid.",
-    "termsRequired": "You must accept the terms to continue."
+    "termsRequired": "You must accept the terms to continue.",
+    "messageShort": "Your message is too short.",
+    "tooLong": "That is too long."
   },
   "authErrors": {
     "accountOpenedSignInFailed": "Your account was created, but signing you in automatically did not work. Log in with the address and password you just chose.",
@@ -994,5 +1001,25 @@
     "unreachableTitle": "The room could not be reached",
     "you": "you",
     "slidesConverting": "Converting the PDF — page {page} of {pages}…"
+  },
+  "contact": {
+    "title": "Contact us",
+    "lead": "A question about a module, a programme or enrolling? Write to us — we answer within a few days.",
+    "addressTitle": "Address",
+    "phoneTitle": "Phone",
+    "emailTitle": "E-mail",
+    "followTitle": "Follow us",
+    "formTitle": "Write to us",
+    "name": "Your name",
+    "email": "Your e-mail address",
+    "subject": "Subject",
+    "subjectOptional": "optional",
+    "message": "Your message",
+    "send": "Send the message",
+    "sending": "Sending…",
+    "sent": "Thank you, your message arrived. We will reply to the address you gave.",
+    "failed": "Your message could not be sent. Try again, or write to us directly by e-mail.",
+    "rateLimited": "You have already sent several messages. Try again in an hour.",
+    "noSubject": "Message from the site"
   }
 }
