@@ -140,11 +140,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
 
-      {/* Actualités & événements, then what students say. Both render nothing
-          at all while their table is empty — a heading over an empty grid
-          advertises that the institute has no news. */}
+      {/* Actualités & événements. Renders nothing at all while the table is
+          empty — a heading over an empty grid advertises that the institute has
+          no news. The testimonials sit further down, after the three steps. */}
       <EventsSection events={events} locale={locale} />
-      <ReviewsSection reviews={reviews} />
 
       {/* Découvrez nos formations.
 
@@ -309,6 +308,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </ol>
         </div>
       </section>
+
+      {/* What students say, last before the closing band: it reads as the
+          argument for taking the three steps above, rather than as an
+          interruption between the news and the catalogue. Absent while no
+          review is published. */}
+      <ReviewsSection reviews={reviews} />
 
       {/* Closing band */}
       <section className="relative isolate overflow-hidden bg-brand-900">

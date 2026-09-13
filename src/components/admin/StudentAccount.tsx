@@ -2,13 +2,22 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Trash2 } from 'lucide-react';
+import { MailCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { deleteStudent, updateStudent } from '@/app/actions/office';
+import { confirmStudentEmail, deleteStudent, updateStudent } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
 const EMPTY: AdminState = { ok: true };
+
+/**
+ * For the one form that reports success.
+ *
+ * `EMPTY` above is `ok: true`, which is fine for forms that only ever show an
+ * error — and wrong here, where `ok` would make a freshly opened panel claim
+ * the account had just been activated.
+ */
+const IDLE: AdminState = { ok: false };
 
 /**
  * Correcting and removing a student account.
@@ -35,10 +44,14 @@ export function StudentAccount({
   const t = useTranslations('admin');
   const [saveState, save] = useActionState(updateStudent, EMPTY);
   const [removeState, remove] = useActionState(deleteStudent, EMPTY);
+  const [confirmState, confirmEmail] = useActionState(confirmStudentEmail, IDLE);
 
   return (
     <div className="space-y-4">
-      <form action={save} className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5">
+      <form
+        action={save}
+        className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
+      >
         <input type="hidden" name="userId" value={userId} />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -47,7 +60,9 @@ export function StudentAccount({
         </div>
 
         <label className="block">
-          <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('studentLocale')}</span>
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">
+            {t('studentLocale')}
+          </span>
           <select
             name="locale"
             defaultValue={locale}
@@ -77,6 +92,39 @@ export function StudentAccount({
         <p className="text-[11px] leading-relaxed text-ink-muted">{t('studentEmailNote')}</p>
       </form>
 
+      {/*
+        Opening an account whose confirmation e-mail never arrived.
+
+        Supabase will not let a student sign in until the address is confirmed,
+        and confirming it means receiving a message — so a broken mail path
+        strands somebody who can do nothing about it themselves. Idempotent, so
+        it is harmless on an account that is already active.
+      */}
+      <form
+        action={confirmEmail}
+        className="rounded-[var(--radius-card)] border border-line bg-white p-5"
+      >
+        <input type="hidden" name="userId" value={userId} />
+        <p className="text-[13px] font-medium text-ink">{t('studentActivate')}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+          {t('studentActivateNote')}
+        </p>
+        <Button type="submit" size="sm" variant="outline" className="mt-3">
+          <MailCheck className="size-3.5" aria-hidden="true" />
+          {t('studentActivateCta')}
+        </Button>
+        {confirmState.error && (
+          <p role="alert" className="mt-2 text-[12px] text-red-600">
+            {t(`errors.${confirmState.error}` as 'errors.saveFailed')}
+          </p>
+        )}
+        {confirmState.ok && (
+          <p role="status" className="mt-2 text-[12px] text-brand-600">
+            {t('studentActivated')}
+          </p>
+        )}
+      </form>
+
       {hasOrders ? (
         <p className="text-[12px] leading-relaxed text-ink-muted">{t('studentHasOrdersNote')}</p>
       ) : (
@@ -87,7 +135,12 @@ export function StudentAccount({
           }}
         >
           <input type="hidden" name="userId" value={userId} />
-          <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+          <Button
+            type="submit"
+            size="sm"
+            variant="ghost"
+            className="text-red-600 hover:text-red-700"
+          >
             <Trash2 className="size-3.5" aria-hidden="true" />
             {t('studentDelete')}
           </Button>

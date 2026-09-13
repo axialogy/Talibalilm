@@ -939,7 +939,11 @@
     "statusDraft": "Brouillon",
     "edit": "Modifier",
     "cancel": "Annuler",
-    "confirmDeleteSimple": "Supprimer définitivement ?"
+    "confirmDeleteSimple": "Supprimer définitivement ?",
+    "studentActivate": "Activer le compte",
+    "studentActivateNote": "Confirme l’adresse e-mail à la place de l’étudiant, quand le message de confirmation n’est jamais arrivé. Sans effet sur un compte déjà actif.",
+    "studentActivateCta": "Confirmer l’adresse",
+    "studentActivated": "Le compte est actif : l’étudiant peut se connecter."
   },
   "live": {
     "allow": "Autoriser",

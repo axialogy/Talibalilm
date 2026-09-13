@@ -939,7 +939,11 @@
     "statusDraft": "Draft",
     "edit": "Edit",
     "cancel": "Cancel",
-    "confirmDeleteSimple": "Delete permanently?"
+    "confirmDeleteSimple": "Delete permanently?",
+    "studentActivate": "Activate the account",
+    "studentActivateNote": "Confirms the e-mail address on the student’s behalf, when the confirmation message never arrived. No effect on an account that is already active.",
+    "studentActivateCta": "Confirm the address",
+    "studentActivated": "The account is active: the student can sign in."
   },
   "live": {
     "allow": "Allow",

@@ -208,6 +208,64 @@ export async function deleteStudent(_prev: AdminState, formData: FormData): Prom
 }
 
 /**
+ * Confirm a student's e-mail address by hand.
+ *
+ * Supabase refuses a sign-in until the address is confirmed, and confirming it
+ * means receiving a message. When the mail path is broken — an unverified
+ * sending domain, a provider over its limit — the student is stranded, and no
+ * amount of retrying by them fixes something that is not theirs to fix. The
+ * office should be able to open the account instead of waiting.
+ *
+ * The service role is the only way to touch `auth.users`, and this is one of
+ * the few legitimate uses of it: `requireAdmin()` has already passed, the id
+ * has been through Zod, and the row is checked to be a student before anything
+ * is written — a staff account is not activated from the student list.
+ *
+ * Idempotent. Confirming an already-confirmed address changes nothing, so the
+ * button can sit on every student without the page having to read `auth.users`
+ * to decide whether to draw it.
+ *
+ * NOT in `admin_audit`, unlike the grant and revoke operations, and the reason
+ * is worth stating rather than leaving as an oversight: `record_admin_action`
+ * is revoked from `public` and granted to nobody, so it is callable only from
+ * inside another SECURITY DEFINER function. Auditing this one properly means a
+ * definer function of its own. Until then the fact is written here rather than
+ * implied by silence.
+ */
+export async function confirmStudentEmail(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = z.object({ userId: z.string().uuid() }).safeParse({
+    userId: formData.get('userId'),
+  });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const { userId } = parsed.data;
+
+  const supabase = await admin();
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!profile) return { ok: false, error: 'saveFailed' };
+  if (profile.role !== 'student') return { ok: false, error: 'studentIsStaff' };
+
+  try {
+    const service = createAdminClient();
+    const { error } = await service.auth.admin.updateUserById(userId, { email_confirm: true });
+    if (error) throw error;
+  } catch (cause) {
+    reportError('students.confirmEmail', cause, { userId });
+    return { ok: false, error: 'saveFailed' };
+  }
+
+  revalidatePath('/[locale]/admin/students/[id]', 'page');
+  return OK;
+}
+
+/**
  * Erase a student on request (GDPR B9).
  *
  * Two halves make one erasure. The RPC scrubs everything in `public` that names
