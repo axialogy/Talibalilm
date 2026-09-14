@@ -40,19 +40,6 @@ export interface AdminState {
   detail?: string;
 }
 
-/** Format a Supabase/PostgREST error for the `detail` field above. */
-export function errorDetail(error: unknown): string | undefined {
-  if (!error || typeof error !== 'object') return undefined;
-  const e = error as { code?: string; message?: string; details?: string; hint?: string };
-  const parts = [
-    e.code ? `[${e.code}]` : null,
-    e.message ?? null,
-    e.details ?? null,
-    e.hint ? `hint: ${e.hint}` : null,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(' — ') : undefined;
-}
-
 const OK: AdminState = { ok: true };
 
 async function client() {

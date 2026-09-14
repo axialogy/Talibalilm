@@ -7,7 +7,8 @@ import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
 import { slugifyBatch } from '@/lib/commerce/batch';
-import { errorDetail, type AdminState } from '@/app/actions/admin';
+import type { AdminState } from '@/app/actions/admin';
+import { errorDetail } from '@/lib/supabase/error-detail';
 
 /**
  * Office operations — grant, revoke, and cash codes.
