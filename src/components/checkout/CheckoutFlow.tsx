@@ -47,8 +47,8 @@ const RETURN_ERRORS: Record<string, string> = {
 };
 
 const CARD = 'rounded-[var(--radius-card)] border p-5 text-start transition-colors';
-const CARD_ON = 'border-gold-400 bg-gold-50/60';
-const CARD_OFF = 'border-line bg-white hover:border-gold-300';
+const CARD_ON = 'border-brand-400 bg-brand-50/60';
+const CARD_OFF = 'border-line bg-white hover:border-brand-300';
 
 /**
  * The whole enrolment, in one card.
@@ -131,7 +131,7 @@ export async function CheckoutFlow({
                       className={`${CARD} flex h-full w-full flex-col items-start ${on ? CARD_ON : CARD_OFF}`}
                     >
                       <span
-                        className="flex size-10 items-center justify-center rounded-lg bg-gold-50 text-gold-600"
+                        className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
                         aria-hidden="true"
                       >
                         <Icon className="size-5" />
@@ -146,7 +146,7 @@ export async function CheckoutFlow({
                             : t('cursusModuleBody'))}
                       </span>
                       {option.yearCount > 1 && (
-                        <span className="mt-3 text-[11px] text-gold-600">
+                        <span className="mt-3 text-[11px] text-brand-600">
                           {t('yearLabel', { year: option.yearCount })}
                         </span>
                       )}
@@ -188,7 +188,7 @@ export async function CheckoutFlow({
                     className={`${CARD} flex h-full w-full flex-col items-start ${on ? CARD_ON : CARD_OFF}`}
                   >
                     <span
-                      className="flex size-10 items-center justify-center rounded-lg bg-gold-50 text-gold-600"
+                      className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
                       aria-hidden="true"
                     >
                       <Icon className="size-5" />
@@ -227,7 +227,7 @@ export async function CheckoutFlow({
                   <h4 className="font-display text-[16px] font-semibold text-ink">
                     {t('yearLabel', { year: year.yearIndex })}
                   </h4>
-                  <p className="font-display text-xl font-semibold text-gold-600">
+                  <p className="font-display text-xl font-semibold text-brand-600">
                     {formatPrice(year.priceCents, locale)}
                   </p>
                 </div>
@@ -286,7 +286,7 @@ export async function CheckoutFlow({
                     >
                       <span
                         className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                          picked ? 'bg-gold-500 text-white' : 'bg-surface text-ink-muted'
+                          picked ? 'bg-brand-500 text-white' : 'bg-surface text-ink-muted'
                         }`}
                         aria-hidden="true"
                       >
@@ -335,7 +335,7 @@ export async function CheckoutFlow({
                       <span className="text-[13px] text-ink-muted line-through">
                         {formatPrice(line.listPriceCents, locale)}
                       </span>
-                      <Badge variant="gold">{t('offerFree')}</Badge>
+                      <Badge variant="success">{t('offerFree')}</Badge>
                     </div>
                   ) : (
                     <span className="font-display text-[14px] font-semibold text-ink">
@@ -347,7 +347,7 @@ export async function CheckoutFlow({
             </ul>
 
             {quote.pack && (
-              <p className="flex items-center gap-2 border-t border-line bg-gold-50/60 px-4 py-3 text-[13px] text-gold-700">
+              <p className="flex items-center gap-2 border-t border-line bg-brand-50/60 px-4 py-3 text-[13px] text-brand-700">
                 <Gift className="size-4 shrink-0" aria-hidden="true" />
                 {t('offerApplied', { name: quote.pack.title })}
               </p>
@@ -392,7 +392,7 @@ export async function CheckoutFlow({
                 maxLength={32}
                 autoComplete="off"
                 spellCheck={false}
-                className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm tracking-wide text-ink uppercase outline-none focus:border-gold-400"
+                className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm tracking-wide text-ink uppercase outline-none focus:border-brand-400"
               />
               <span className="mt-1.5 block text-[11px] text-ink-muted">{t('couponHint')}</span>
             </label>
@@ -432,7 +432,7 @@ export async function CheckoutFlow({
           <div className="rounded-[var(--radius-card)] border border-line p-5">
             <dl className="flex items-baseline justify-between">
               <dt className="font-display text-[14px] font-semibold text-ink">{t('total')}</dt>
-              <dd className="font-display text-3xl font-semibold text-gold-600">
+              <dd className="font-display text-3xl font-semibold text-brand-600">
                 {formatPrice(quote.totalCents, locale)}
               </dd>
             </dl>

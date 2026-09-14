@@ -65,7 +65,7 @@ export async function PlanningTarifs({
   return (
     <section className="py-14 sm:py-16">
       <div className="shell">
-        <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+        <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-brand-600">
           {t('planningTitle')}
         </h2>
 
@@ -99,13 +99,13 @@ export async function PlanningTarifs({
 
           <label
             htmlFor="planning-presentiel"
-            className="inline-block cursor-pointer bg-surface px-8 py-4 font-display text-[15px] text-ink-muted transition-colors peer-checked/presentiel:bg-gold-500 peer-checked/presentiel:text-white peer-focus-visible/presentiel:outline-2 peer-focus-visible/presentiel:outline-offset-2 peer-focus-visible/presentiel:outline-gold-600"
+            className="inline-block cursor-pointer bg-surface px-8 py-4 font-display text-[15px] text-ink-muted transition-colors peer-checked/presentiel:bg-brand-500 peer-checked/presentiel:text-white peer-focus-visible/presentiel:outline-2 peer-focus-visible/presentiel:outline-offset-2 peer-focus-visible/presentiel:outline-brand-600"
           >
             {tCheckout('modePresentiel')}
           </label>
           <label
             htmlFor="planning-online"
-            className="inline-block cursor-pointer bg-surface px-8 py-4 font-display text-[15px] text-ink-muted transition-colors peer-checked/online:bg-gold-500 peer-checked/online:text-white peer-focus-visible/online:outline-2 peer-focus-visible/online:outline-offset-2 peer-focus-visible/online:outline-gold-600"
+            className="inline-block cursor-pointer bg-surface px-8 py-4 font-display text-[15px] text-ink-muted transition-colors peer-checked/online:bg-brand-500 peer-checked/online:text-white peer-focus-visible/online:outline-2 peer-focus-visible/online:outline-offset-2 peer-focus-visible/online:outline-brand-600"
           >
             {tCheckout('modeOnline')}
           </label>
@@ -131,7 +131,7 @@ export async function PlanningTarifs({
                       open={index === 0}
                       className="group overflow-hidden rounded-sm border border-line"
                     >
-                      <summary className="flex cursor-pointer list-none items-center gap-3 bg-surface px-5 py-4 font-display text-[15px] text-ink transition-colors group-open:bg-gold-500 group-open:text-white">
+                      <summary className="flex cursor-pointer list-none items-center gap-3 bg-surface px-5 py-4 font-display text-[15px] text-ink transition-colors group-open:bg-brand-500 group-open:text-white">
                         <span aria-hidden="true">
                           <Plus className="size-4 group-open:hidden" />
                           <Minus className="hidden size-4 group-open:block" />
@@ -148,7 +148,9 @@ export async function PlanningTarifs({
                               <p className="mt-1 text-[13px] text-white/70">
                                 {[
                                   entry.scheduleLabel,
-                                  entry.hoursPerYear ? t('hoursYear', { n: entry.hoursPerYear }) : null,
+                                  entry.hoursPerYear
+                                    ? t('hoursYear', { n: entry.hoursPerYear })
+                                    : null,
                                 ]
                                   .filter(Boolean)
                                   .join(' — ')}
@@ -156,7 +158,7 @@ export async function PlanningTarifs({
                             </div>
 
                             <div className="bg-white px-6 py-8 text-center">
-                              <p className="font-display text-4xl font-semibold text-gold-600">
+                              <p className="font-display text-4xl font-semibold text-brand-600">
                                 {formatPrice(entry.priceCents, locale)}
                               </p>
 

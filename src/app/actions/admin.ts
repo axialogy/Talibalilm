@@ -39,6 +39,15 @@ export interface AdminState {
    * certainly be shown an error code.
    */
   detail?: string;
+  /**
+   * The `name` of the input that caused a validation failure.
+   *
+   * The form uses it to put the cursor in the offending box and scroll it into
+   * view. Without it, a long form that refuses tells the office "invalid" and
+   * leaves them hunting for which of fifteen fields it meant — and the reflex
+   * is to start over, which throws away everything they had typed.
+   */
+  field?: string;
 }
 
 const OK: AdminState = { ok: true };
@@ -108,7 +117,18 @@ export async function createCourse(_prev: AdminState, formData: FormData): Promi
 
 export async function updateCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const parsed = courseSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success || !parsed.data.id) return { ok: false, error: 'invalid' };
+  if (!parsed.success) {
+    // Name the field. `revalidatePath` is deliberately NOT called on this path:
+    // re-rendering the route would reset every `defaultValue` and wipe what the
+    // office had typed, which is the behaviour being fixed here.
+    const first = parsed.error.issues[0];
+    return {
+      ok: false,
+      error: 'invalid',
+      field: first?.path[0] ? String(first.path[0]) : undefined,
+    };
+  }
+  if (!parsed.data.id) return { ok: false, error: 'invalid' };
 
   // `slug` is deliberately absent from the schema: the address is settled at
   // creation and kept, so renaming a course does not break the links to it.

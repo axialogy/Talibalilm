@@ -101,7 +101,7 @@ export function CheckoutWizard({
                     aria-hidden="true"
                     className={cn(
                       'flex size-7 shrink-0 items-center justify-center rounded-full font-display text-[12px] font-semibold transition-colors',
-                      isCurrent && 'bg-gold-500 text-white',
+                      isCurrent && 'bg-brand-500 text-white',
                       done && 'bg-brand-500 text-white',
                       !isCurrent && !done && 'bg-white text-ink-muted ring-1 ring-line',
                     )}
@@ -189,7 +189,7 @@ export function CheckoutWizard({
               type="button"
               onClick={() => setStep((c) => Math.min(steps.length - 1, c + 1))}
               disabled={!current.complete}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-gold-500 px-6 font-display text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-gold-600 disabled:pointer-events-none disabled:opacity-40"
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-500 px-6 font-display text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-brand-600 disabled:pointer-events-none disabled:opacity-40"
             >
               {labels.next}
               <ArrowRight className="size-4" aria-hidden="true" />

@@ -796,7 +796,7 @@
     "tabFees": "Tarif",
     "tabFeesLead": "Le prix de ce module. Un tarif par mode. Laissez 0 pour l’offrir — les étudiants l’obtiennent gratuitement, sans étape de paiement.",
     "tabCursus": "Cursus",
-    "tabCursusLead": "Les cursus qui incluent ce module. Cocher une case l’ouvre immédiatement à tous les inscrits de cette année.",
+    "tabCursusLead": "Comment ce module est vendu. Les cases s’enregistrent immédiatement : décocher une année le retire aussitôt aux étudiants inscrits à cette année.",
     "tabLive": "Cours en direct",
     "tabLiveLead": "Les séances de ce module. Seuls les étudiants qui l’ont acheté peuvent entrer.",
     "feeMode": "Mode",
@@ -975,7 +975,8 @@
     "cursusPerModule": "Vendu à la carte (Par module)",
     "cursusPerModuleHint": "L’étudiant peut acheter ce module seul, sans s’engager sur un cursus.",
     "cursusApprofondi": "Cursus Approfondi",
-    "cursusApprofondiHint": "Cochez les années où ce module est enseigné. Un module peut figurer dans plusieurs années. Le mode — présentiel ou en ligne — est choisi par l’étudiant au moment de l’inscription, pas ici."
+    "cursusApprofondiHint": "Cochez les années où ce module est enseigné. Un module peut figurer dans plusieurs années. Le mode — présentiel ou en ligne — est choisi par l’étudiant au moment de l’inscription, pas ici.",
+    "optional": "(facultatif)"
   },
   "live": {
     "allow": "Autoriser",

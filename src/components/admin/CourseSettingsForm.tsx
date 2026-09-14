@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Field } from '@/components/ui/field';
 import { SubmitButton } from '@/components/auth/SubmitButton';
@@ -12,8 +12,6 @@ const EMPTY: AdminState = { ok: true };
 
 const LEVELS = ['all', 'beginner', 'intermediate', 'advanced'] as const;
 const FORMATS = ['presentiel', 'visio', 'hybride'] as const;
-const CATEGORIES = ['aqida', 'fiqh', 'coran', 'hadith', 'tafsir', 'langue', 'histoire'] as const;
-const TONES = ['emerald', 'indigo', 'plum', 'sand', 'crimson', 'teal', 'night'] as const;
 
 export interface CourseSettings {
   id: string;
@@ -22,15 +20,9 @@ export interface CourseSettings {
   subtitle: string;
   description: string;
   title_ar: string;
-  category: string;
   level: string;
   format: string;
-  tone: string;
-  schedule: string;
   duration_weeks: number;
-  /** What the module's public page says about itself. */
-  department: string;
-  department_body: string;
   requirements: string[];
   highlights: Highlight[];
 }
@@ -39,16 +31,37 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
   const t = useTranslations('admin');
   const tc = useTranslations('courses');
   const [state, action] = useActionState(updateCourse, EMPTY);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // A refusal used to say "invalid" and leave the office to guess which of a
+  // dozen boxes it meant — and the reflex is to reload and start again, losing
+  // everything typed. Nothing is cleared now (the action does not revalidate on
+  // failure, so the DOM keeps what was entered); the cursor simply goes to the
+  // field that was wrong.
+  useEffect(() => {
+    if (state.ok || !state.field) return;
+    const target = formRef.current?.querySelector<HTMLElement>(`[name="${state.field}"]`);
+    target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target?.focus({ preventScroll: true });
+  }, [state]);
 
   return (
     <form
+      ref={formRef}
       action={action}
       className="space-y-3 rounded-[var(--radius-card)] border border-line bg-white p-5"
     >
       <input type="hidden" name="id" value={course.id} />
 
       <Field label={t('courseTitle')} name="title" defaultValue={course.title} required />
-      <Field label={t('titleAr')} name="title_ar" defaultValue={course.title_ar} dir="rtl" />
+      {/* Optional: plenty of modules have no Arabic name, and demanding one
+          would make the office invent it. */}
+      <Field
+        label={`${t('titleAr')} ${t('optional')}`}
+        name="title_ar"
+        defaultValue={course.title_ar}
+        dir="rtl"
+      />
       <Field label={t('subtitle')} name="subtitle" defaultValue={course.subtitle} />
 
       <label className="block">
@@ -63,12 +76,6 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Select
-          label={tc('filterSubject')}
-          name="category"
-          value={course.category}
-          options={CATEGORIES.map((c) => [c, tc(`category.${c}`)])}
-        />
-        <Select
           label={tc('filterLevel')}
           name="level"
           value={course.level}
@@ -80,10 +87,8 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
           value={course.format}
           options={FORMATS.map((f) => [f, tc(`format.${f}`)])}
         />
-        <Select label="Ton" name="tone" value={course.tone} options={TONES.map((x) => [x, x])} />
       </div>
 
-      <Field label={tc('detail.facts.schedule')} name="schedule" defaultValue={course.schedule} />
       <Field
         label={tc('detail.facts.duration')}
         name="duration_weeks"
@@ -100,13 +105,6 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
           {t('presentation')}
         </legend>
 
-        <Field label={t('department')} name="department" defaultValue={course.department} />
-        <Area
-          label={t('departmentBody')}
-          name="department_body"
-          rows={4}
-          defaultValue={course.department_body}
-        />
         <Area
           label={t('requirements')}
           name="requirements"

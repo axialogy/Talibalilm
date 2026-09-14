@@ -796,7 +796,7 @@
     "tabFees": "Price",
     "tabFeesLead": "What this module costs. One price per mode. Leave it at 0 to give it away — students get it free, with no payment step.",
     "tabCursus": "Programmes",
-    "tabCursusLead": "Which programmes include this module. Ticking a box opens it to everyone enrolled in that year straight away.",
+    "tabCursusLead": "How this module is sold. Each box saves immediately: unticking a year removes the module from everyone enrolled in that year at once.",
     "tabLive": "Live classes",
     "tabLiveLead": "Sessions for this module. Only students who bought it can enter.",
     "feeMode": "Mode",
@@ -975,7 +975,8 @@
     "cursusPerModule": "Sold on its own (Per module)",
     "cursusPerModuleHint": "A student can buy this module alone, without committing to a programme.",
     "cursusApprofondi": "Cursus Approfondi",
-    "cursusApprofondiHint": "Tick the years this module is taught in. A module may appear in more than one year. On site or online is the student’s choice at enrolment, not set here."
+    "cursusApprofondiHint": "Tick the years this module is taught in. A module may appear in more than one year. On site or online is the student’s choice at enrolment, not set here.",
+    "optional": "(optional)"
   },
   "live": {
     "allow": "Allow",
