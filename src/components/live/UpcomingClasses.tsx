@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { Radio, Video } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { upcomingLiveSessions } from '@/lib/data/live';
@@ -33,7 +34,10 @@ export async function UpcomingClasses({
 
   if (sessions.length === 0) return null;
 
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   return (
     <section>

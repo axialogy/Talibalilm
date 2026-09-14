@@ -1,3 +1,4 @@
+import { hasLocale } from 'next-intl';
 import { defineRouting } from 'next-intl/routing';
 
 /**
@@ -12,6 +13,25 @@ export const routing = defineRouting({
 });
 
 export type Locale = (typeof routing.locales)[number];
+
+/**
+ * A locale that came from somewhere untrusted, made safe to hand to `Intl`.
+ *
+ * The `[locale]` segment matches any string, so a path the middleware skipped
+ * — anything containing a dot, such as the `/wp-login.php` a scanner asks for
+ * — reaches a page as `locale = "wp-login.php"`. `notFound()` in the layout is
+ * meant to answer that, but layouts and pages render in parallel, so a page
+ * that calls `new Intl.DateTimeFormat(locale)` throws a RangeError before the
+ * 404 can resolve and the visitor is shown a crash instead. That fault was in
+ * the production log, once per scanner request.
+ *
+ * `hasLocale` is the same check the layout and the request config already
+ * make. This is that check in one place, for the code that hands the value to
+ * `Intl`.
+ */
+export function safeLocale(value: unknown): Locale {
+  return hasLocale(routing.locales, value) ? value : routing.defaultLocale;
+}
 
 /**
  * Both interface locales are left-to-right today. The function stays because

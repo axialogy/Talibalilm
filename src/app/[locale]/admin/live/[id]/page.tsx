@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { safeLocale } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import { BackLink } from '@/components/admin/BackLink';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +35,10 @@ export default async function AdminLiveSessionPage({
 
   const [slides, waiting] = await Promise.all([listSlides(id), listJoinRequests(id)]);
 
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'full',
+    timeStyle: 'short',
+  });
   const label: Record<LiveStatus, string> = {
     scheduled: t('liveStatusScheduled'),
     live: t('liveStatusLive'),
@@ -108,7 +112,7 @@ export default async function AdminLiveSessionPage({
                           {request.displayName || t('liveGuest')}
                         </p>
                         <p className="text-[11px] text-ink-muted">
-                          {new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(
+                          {new Intl.DateTimeFormat(safeLocale(locale), { timeStyle: 'short' }).format(
                             new Date(request.requestedAt),
                           )}
                         </p>

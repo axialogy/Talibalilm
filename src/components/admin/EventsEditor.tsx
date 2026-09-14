@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import { safeLocale } from '@/i18n/routing';
 import { CalendarDays, Plus, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
@@ -34,7 +35,10 @@ const IDLE: AdminState = { ok: false };
 export function EventsEditor({ events, locale }: { events: EventView[]; locale: string }) {
   const t = useTranslations('admin');
   const [adding, setAdding] = useState(false);
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   return (
     <div className="max-w-3xl space-y-6">

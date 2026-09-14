@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/tabs';
 import { PaymentSettingsForm, type PaymentStatus } from '@/components/admin/PaymentSettingsForm';
@@ -53,7 +54,7 @@ export default async function AdminPaymentsPage({
   // Read here rather than in the client component: the presence of the
   // variables is safe to report, their values are not.
   const envOverride = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'medium' });
 
   const badge: Record<PaymentStanding, 'success' | 'warn' | 'muted'> = {
     paid: 'success',

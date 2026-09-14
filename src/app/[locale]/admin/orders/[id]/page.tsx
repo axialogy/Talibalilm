@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { formatPrice } from '@/lib/commerce/quote';
@@ -21,7 +22,10 @@ export default async function AdminOrderDetailPage({
   const order = await getOrder(id);
   if (!order) notFound();
 
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  });
   const money = (c: number) => formatPrice(c, locale, order.currency);
 
   return (

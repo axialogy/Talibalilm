@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { safeLocale } from '@/i18n/routing';
 import { AlertTriangle, CheckCircle2, CircleSlash, XCircle } from 'lucide-react';
 import { BackLink } from '@/components/admin/BackLink';
 import { R2BrowserCheck } from '@/components/admin/R2BrowserCheck';
@@ -62,7 +63,10 @@ export default async function DiagnosticsPage({
   // made the old list read empty about errors the server had captured in full.
   const stored = await recentAppErrors();
   const errors = recentErrors();
-  const timeFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' });
+  const timeFmt = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  });
 
   const groups = [...new Set(checks.map((c) => c.group))];
   const bad = checks.filter((c) => c.state === 'missing' || c.state === 'error');

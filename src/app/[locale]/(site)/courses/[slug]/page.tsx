@@ -16,7 +16,7 @@ import { listLiveSessions } from '@/lib/data/live';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
-import { routing } from '@/i18n/routing';
+import { routing, safeLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
 /**
@@ -435,7 +435,7 @@ export default async function CoursePage({
                       {session.status === 'live'
                         ? t('detail.liveNow')
                         : session.scheduledAt
-                          ? new Intl.DateTimeFormat(locale, {
+                          ? new Intl.DateTimeFormat(safeLocale(locale), {
                               dateStyle: 'full',
                               timeStyle: 'short',
                             }).format(new Date(session.scheduledAt))

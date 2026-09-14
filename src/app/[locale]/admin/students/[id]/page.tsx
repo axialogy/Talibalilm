@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { GrantForm } from '@/components/admin/GrantForm';
 import { RevokeButton } from '@/components/admin/RevokeButton';
@@ -30,7 +31,7 @@ export default async function AdminStudentDetailPage({
 
   const isAdmin = viewer?.role === 'admin';
   const { student, account, entitlements } = data;
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'medium' });
 
   // Options for the grant form, read through the same staff-scoped client.
   let courses: { id: string; title: string }[] = [];
