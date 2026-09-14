@@ -6,6 +6,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin, requireStaff } from '@/lib/auth/guards';
 import type { AdminState } from '@/app/actions/admin';
+import { errorDetail } from '@/lib/supabase/error-detail';
 import { pickFreeSlug, slugify } from '@/lib/content/slug';
 
 /**
@@ -79,7 +80,7 @@ export async function deleteCourse(_prev: AdminState, formData: FormData): Promi
   if ((granted ?? 0) > 0) return { ok: false, error: 'courseGranted' };
 
   const { error } = await supabase.from('courses').delete().eq('id', id.data);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/courses', 'page');
   refresh();
@@ -127,7 +128,7 @@ export async function deleteCursus(_prev: AdminState, formData: FormData): Promi
   if ((granted ?? 0) > 0) return { ok: false, error: 'cursusGranted' };
 
   const { error } = await supabase.from('cursus').delete().eq('id', id.data);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/cursus', 'page');
   refresh();
@@ -146,7 +147,7 @@ export async function archiveCourse(_prev: AdminState, formData: FormData): Prom
     .from('courses')
     .update({ status: parsed.data.status })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/courses', 'page');
   refresh();
@@ -257,7 +258,12 @@ export async function deleteProduct(_prev: AdminState, formData: FormData): Prom
   const { error } = await supabase.from('products').delete().eq('id', id.data);
   // `order_items` references products with ON DELETE RESTRICT, so a product
   // that has ever been bought cannot be deleted. Archiving is the way out.
-  if (error) return { ok: false, error: error.code === '23503' ? 'productSold' : 'saveFailed' };
+  if (error)
+    return {
+      ok: false,
+      error: error.code === '23503' ? 'productSold' : 'saveFailed',
+      detail: errorDetail(error),
+    };
 
   refresh();
   return OK;
@@ -350,7 +356,7 @@ export async function saveBonus(_prev: AdminState, formData: FormData): Promise<
   let packId = id;
   if (packId) {
     const { error } = await supabase.from('packs').update(row).eq('id', packId);
-    if (error) return { ok: false, error: 'saveFailed' };
+    if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
     // Replace the items rather than diffing: a bonus is exactly two.
     await supabase.from('pack_items').delete().eq('pack_id', packId);
   } else {
@@ -360,7 +366,7 @@ export async function saveBonus(_prev: AdminState, formData: FormData): Promise<
       .insert({ ...row, slug })
       .select('id')
       .single();
-    if (error || !created) return { ok: false, error: 'saveFailed' };
+    if (error || !created) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
     packId = created.id;
   }
 
@@ -368,7 +374,7 @@ export async function saveBonus(_prev: AdminState, formData: FormData): Promise<
     { pack_id: packId, product_id: buy_product_id, is_free: false, position: 0 },
     { pack_id: packId, product_id: free_product_id, is_free: true, position: 1 },
   ]);
-  if (itemsError) return { ok: false, error: 'saveFailed' };
+  if (itemsError) return { ok: false, error: 'saveFailed', detail: errorDetail(itemsError) };
 
   revalidatePath('/[locale]/admin/coupons', 'page');
   refresh();
@@ -477,7 +483,12 @@ export async function saveCursus(_prev: AdminState, formData: FormData): Promise
     ({ error } = await supabase.from('cursus').insert({ ...row, slug }));
   }
 
-  if (error) return { ok: false, error: error.code === '23505' ? 'slugTaken' : 'saveFailed' };
+  if (error)
+    return {
+      ok: false,
+      error: error.code === '23505' ? 'slugTaken' : 'saveFailed',
+      detail: errorDetail(error),
+    };
 
   revalidatePath('/[locale]/admin/cursus', 'page');
   refresh();

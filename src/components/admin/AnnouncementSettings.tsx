@@ -7,6 +7,7 @@ import { SubmitButton } from '@/components/auth/SubmitButton';
 import { saveSiteSettings } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { SiteSettings } from '@/lib/data/site';
+import { ActionError } from '@/components/admin/ActionError';
 
 /** `ok` means "the save succeeded", so nothing has succeeded yet. */
 const IDLE: AdminState = { ok: false };
@@ -71,11 +72,7 @@ export function AnnouncementSettings({ settings }: { settings: SiteSettings }) {
         />
       </div>
 
-      {state.error && (
-        <p role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
       {state.ok && (
         <p role="status" className="text-[12px] text-brand-600">
           {t('saved')}

@@ -40,7 +40,12 @@ export function PublishControls({
       <form action={statusAction}>
         <input type="hidden" name="id" value={courseId} />
         <input type="hidden" name="status" value={published ? 'draft' : 'published'} />
-        <Button type="submit" size="sm" variant={published ? 'subtle' : 'primary'} disabled={statusPending}>
+        <Button
+          type="submit"
+          size="sm"
+          variant={published ? 'subtle' : 'primary'}
+          disabled={statusPending}
+        >
           <Globe className="size-3.5" aria-hidden="true" />
           {published ? t('unpublish') : t('publish')}
         </Button>

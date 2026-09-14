@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { requireStaff } from '@/lib/auth/guards';
 import type { AdminState } from '@/app/actions/admin';
+import { errorDetail } from '@/lib/supabase/error-detail';
 import { reportError } from '@/lib/observability/report';
 import { applyPermissions, evictParticipant } from '@/lib/live/server';
 import { currentViewer } from '@/lib/auth/guards';
@@ -61,7 +62,7 @@ export async function createLiveSession(
     scheduled_at: when ? when.toISOString() : null,
     max_participants: parsed.data.maxParticipants,
   });
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;
@@ -94,7 +95,7 @@ export async function startLiveSession(_prev: AdminState, formData: FormData): P
       ended_at: null,
     })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;
@@ -109,7 +110,7 @@ export async function endLiveSession(_prev: AdminState, formData: FormData): Pro
     .from('live_sessions')
     .update({ status: 'ended', ended_at: new Date().toISOString() })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   // Ending the class closes the door for everyone: `can_join_live` refuses an
   // ended session, so nobody wanders back in afterwards.
@@ -129,7 +130,7 @@ export async function cancelLiveSession(
     .from('live_sessions')
     .update({ status: 'cancelled' })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;
@@ -165,7 +166,7 @@ export async function deleteLiveSession(
 
   // Attendance and join requests cascade with the session.
   const { error } = await supabase.from('live_sessions').delete().eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;
@@ -183,7 +184,7 @@ export async function noteRecording(_prev: AdminState, formData: FormData): Prom
     .from('live_sessions')
     .update({ recording_note: parsed.data.note })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;
@@ -205,7 +206,7 @@ export async function decideJoinRequest(
     request_id: parsed.data.requestId,
     admit: parsed.data.admit,
   });
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;
@@ -294,7 +295,11 @@ export async function controlParticipant(
   const { error } = await supabase.rpc('live_set_participant', args);
   if (error) {
     reportError('live.control', error, { sessionId, action });
-    return { ok: false, error: error.code === '42501' ? 'notAdmin' : 'saveFailed' };
+    return {
+      ok: false,
+      error: error.code === '42501' ? 'notAdmin' : 'saveFailed',
+      detail: errorDetail(error),
+    };
   }
 
   // Read back what the database now says rather than assuming the write did
@@ -370,7 +375,7 @@ export async function setRoomPolicy(_prev: AdminState, formData: FormData): Prom
 
   const supabase = await staffClient();
   const { error } = await supabase.from('live_sessions').update(row).eq('id', sessionId);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');
   return OK;
@@ -406,7 +411,7 @@ export async function saveMessage(sessionId: string, body: string): Promise<Admi
     user_id: viewer.id,
     body: parsed.data.body,
   });
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   return OK;
 }
 
@@ -416,7 +421,7 @@ export async function saveBoardOp(sessionId: string, op: unknown): Promise<Admin
   const { error } = await supabase
     .from('live_board_ops')
     .insert({ session_id: sessionId, op: op as never });
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   return OK;
 }
 
@@ -426,7 +431,7 @@ export async function clearBoard(sessionId: string): Promise<AdminState> {
   // Deleting rather than stamping a marker keeps a late joiner's replay bounded
   // by what is still on the board, which is the whole point of storing ops.
   const { error } = await supabase.from('live_board_ops').delete().eq('session_id', sessionId);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   return OK;
 }
 
@@ -438,7 +443,7 @@ export async function endLiveSessionById(sessionId: string): Promise<AdminState>
     .from('live_sessions')
     .update({ status: 'ended', ended_at: new Date().toISOString() })
     .eq('id', sessionId);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/live', 'page');
   return OK;

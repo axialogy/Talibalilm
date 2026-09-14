@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
 import { deleteProduct, saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
@@ -185,9 +186,11 @@ export function ProductForm({
           label={t('hoursPerWeek')}
           name="hours_per_week"
           inputMode="decimal"
-          defaultValue={product?.hoursPerWeek !== null && product?.hoursPerWeek !== undefined
-            ? String(product.hoursPerWeek / 10)
-            : ''}
+          defaultValue={
+            product?.hoursPerWeek !== null && product?.hoursPerWeek !== undefined
+              ? String(product.hoursPerWeek / 10)
+              : ''
+          }
         />
 
         {kind === 'cursus' && (
@@ -225,7 +228,14 @@ export function ProductForm({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="sm">
-          {product ? <>{t('save')}</> : <><Plus className="size-3.5" aria-hidden="true" />{t('newProduct')}</>}
+          {product ? (
+            <>{t('save')}</>
+          ) : (
+            <>
+              <Plus className="size-3.5" aria-hidden="true" />
+              {t('newProduct')}
+            </>
+          )}
         </Button>
         {state.ok && !state.error && (
           <span role="status" className="text-[11px] text-brand-600">
@@ -258,11 +268,7 @@ export function DeleteProductButton({ id }: { id: string }) {
       <Button type="submit" size="sm" variant="ghost" aria-label={t('delete')}>
         <Trash2 className="size-3.5" aria-hidden="true" />
       </Button>
-      {state.error && (
-        <span role="alert" className="block text-[11px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </span>
-      )}
+      <ActionError state={state} />
     </form>
   );
 }

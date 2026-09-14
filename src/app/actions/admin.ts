@@ -9,6 +9,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { requireStaff } from '@/lib/auth/guards';
 import { pickFreeSlug, slugify } from '@/lib/content/slug';
 import { highlightsToJson, parseBullets, parseHighlights } from '@/lib/content/presentation';
+import { errorDetail } from '@/lib/supabase/error-detail';
 
 /**
  * Course-builder mutations.
@@ -94,7 +95,12 @@ export async function createCourse(_prev: AdminState, formData: FormData): Promi
     .select('id')
     .single();
 
-  if (error) return { ok: false, error: error.code === '23505' ? 'duplicate' : 'refused' };
+  if (error)
+    return {
+      ok: false,
+      error: error.code === '23505' ? 'duplicate' : 'refused',
+      detail: errorDetail(error),
+    };
 
   revalidatePath('/admin/courses', 'layout');
   redirect(`/admin/courses/${data.id}`);
@@ -112,7 +118,12 @@ export async function updateCourse(_prev: AdminState, formData: FormData): Promi
     .from('courses')
     .update({ ...fields, highlights: highlightsToJson(highlights) })
     .eq('id', id);
-  if (error) return { ok: false, error: error.code === '23505' ? 'duplicate' : 'refused' };
+  if (error)
+    return {
+      ok: false,
+      error: error.code === '23505' ? 'duplicate' : 'refused',
+      detail: errorDetail(error),
+    };
 
   revalidatePath('/admin/courses', 'layout');
   revalidatePath('/courses', 'layout');
@@ -137,7 +148,7 @@ export async function setCourseStatus(_prev: AdminState, formData: FormData): Pr
     })
     .eq('id', parsed.data.id);
 
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
 
   revalidatePath('/admin/courses', 'layout');
   revalidatePath('/courses', 'layout');
@@ -150,7 +161,7 @@ export async function deleteCourse(_prev: AdminState, formData: FormData): Promi
 
   const supabase = await client();
   const { error } = await supabase.from('courses').delete().eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
 
   revalidatePath('/admin/courses', 'layout');
   redirect('/admin/courses');
@@ -177,7 +188,7 @@ export async function addModule(_prev: AdminState, formData: FormData): Promise<
     .from('modules')
     .insert({ course_id: parsed.data.courseId, title: parsed.data.title, position: nextPosition });
 
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
   revalidatePath('/admin/courses', 'layout');
   return OK;
 }
@@ -194,7 +205,7 @@ export async function renameModule(_prev: AdminState, formData: FormData): Promi
     .update({ title: parsed.data.title })
     .eq('id', parsed.data.id);
 
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
   revalidatePath('/admin/courses', 'layout');
   return OK;
 }
@@ -205,7 +216,7 @@ export async function deleteModule(_prev: AdminState, formData: FormData): Promi
 
   const supabase = await client();
   const { error } = await supabase.from('modules').delete().eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
   revalidatePath('/admin/courses', 'layout');
   return OK;
 }
@@ -228,13 +239,13 @@ async function swapPositions(
     .from(table)
     .update({ position: b.position })
     .eq('id', a.id);
-  if (firstError) return { ok: false, error: 'refused' };
+  if (firstError) return { ok: false, error: 'refused', detail: errorDetail(firstError) };
 
   const { error: secondError } = await supabase
     .from(table)
     .update({ position: a.position })
     .eq('id', b.id);
-  if (secondError) return { ok: false, error: 'refused' };
+  if (secondError) return { ok: false, error: 'refused', detail: errorDetail(secondError) };
 
   revalidatePath('/admin/courses', 'layout');
   return OK;
@@ -304,7 +315,7 @@ export async function addLesson(_prev: AdminState, formData: FormData): Promise<
     .select('id')
     .single();
 
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
 
   // The 1:1 content row is created alongside so the editor always has
   // something to write into and the join never has to cope with a missing row.
@@ -342,7 +353,7 @@ export async function updateLesson(_prev: AdminState, formData: FormData): Promi
     })
     .eq('id', parsed.data.id);
 
-  if (lessonError) return { ok: false, error: 'refused' };
+  if (lessonError) return { ok: false, error: 'refused', detail: errorDetail(lessonError) };
 
   // The office pastes a YouTube or Drive link; the column stores only the id.
   // Deciding the provider here — rather than assuming Bunny, which is what this
@@ -380,7 +391,7 @@ export async function deleteLesson(_prev: AdminState, formData: FormData): Promi
 
   const supabase = await client();
   const { error } = await supabase.from('lessons').delete().eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'refused' };
+  if (error) return { ok: false, error: 'refused', detail: errorDetail(error) };
   revalidatePath('/admin/courses', 'layout');
   return OK;
 }

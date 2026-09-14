@@ -69,7 +69,7 @@ export async function grantEntitlement(_prev: AdminState, formData: FormData): P
     days: g.days,
     reason: g.reason,
   });
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/students/[id]', 'page');
   return OK;
@@ -106,7 +106,7 @@ export async function voidCoupon(_prev: AdminState, formData: FormData): Promise
     coupon_id: parsed.data.couponId,
     reason: parsed.data.reason,
   });
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/coupons', 'page');
   return OK;
@@ -150,7 +150,7 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
       locale: parsed.data.locale,
     })
     .eq('id', parsed.data.userId);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/students/[id]', 'page');
   revalidatePath('/[locale]/admin/students', 'page');
@@ -201,7 +201,7 @@ export async function deleteStudent(_prev: AdminState, formData: FormData): Prom
     if (error) throw error;
   } catch (cause) {
     reportError('students.delete', cause, { userId });
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(cause) };
   }
 
   revalidatePath('/[locale]/admin/students', 'page');
@@ -238,7 +238,11 @@ export async function markStudentReviewed(
 
   if (error) {
     reportError('students.markReviewed', error, { userId });
-    return { ok: false, error: error.code === '42501' ? 'notAdmin' : 'saveFailed' };
+    return {
+      ok: false,
+      error: error.code === '42501' ? 'notAdmin' : 'saveFailed',
+      detail: errorDetail(error),
+    };
   }
 
   revalidatePath('/[locale]/admin/students', 'layout');
@@ -296,7 +300,7 @@ export async function confirmStudentEmail(
     if (error) throw error;
   } catch (cause) {
     reportError('students.confirmEmail', cause, { userId });
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(cause) };
   }
 
   revalidatePath('/[locale]/admin/students/[id]', 'page');
@@ -331,7 +335,7 @@ export async function anonymiseStudent(_prev: AdminState, formData: FormData): P
     target_user: userId,
     reason,
   });
-  if (error || data !== true) return { ok: false, error: 'saveFailed' };
+  if (error || data !== true) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   // The email and login live in auth.users, which only the auth admin may
   // write. `.invalid` is a reserved, unroutable TLD, so the token can never be
@@ -352,7 +356,7 @@ export async function anonymiseStudent(_prev: AdminState, formData: FormData): P
     // office retries — the whole operation is idempotent, so a second run
     // simply finishes the auth half.
     reportError('gdpr.anonymise.auth', cause, { userId });
-    return { ok: false, error: 'partialErasure' };
+    return { ok: false, error: 'partialErasure', detail: errorDetail(cause) };
   }
 
   revalidatePath('/[locale]/admin/students/[id]', 'page');

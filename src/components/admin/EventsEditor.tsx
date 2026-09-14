@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { CalendarDays, Plus, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
 import { SubmitButton } from '@/components/auth/SubmitButton';
@@ -190,11 +191,7 @@ function EventForm({ event, onDone }: { event?: EventView; onDone?: () => void }
         />
       </div>
 
-      {state.error && (
-        <p role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
 
       <div className="flex items-center gap-3">
         <SubmitButton size="sm" block={false}>
@@ -252,11 +249,7 @@ function ImageButton({ id }: { id: string }) {
         <Upload className="size-3.5" aria-hidden="true" />
         {pending ? t('coverUploading') : t('eventImage')}
       </Button>
-      {state.error && (
-        <span role="alert" className="ms-2 text-[11px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </span>
-      )}
+      <ActionError state={state} />
     </form>
   );
 }

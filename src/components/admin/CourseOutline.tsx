@@ -205,13 +205,18 @@ function LessonRow({
       </div>
 
       {open && (
-        <form action={updateAction} className="mt-4 space-y-3 rounded-[var(--radius-input)] bg-surface/50 p-4">
+        <form
+          action={updateAction}
+          className="mt-4 space-y-3 rounded-[var(--radius-input)] bg-surface/50 p-4"
+        >
           <input type="hidden" name="id" value={lesson.id} />
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t('lessonTitle')} name="title" defaultValue={lesson.title} required />
             <label className="block">
-              <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('lessonType')}</span>
+              <span className="mb-1.5 block text-[13px] font-medium text-ink">
+                {t('lessonType')}
+              </span>
               <select
                 name="type"
                 defaultValue={lesson.type}
@@ -296,7 +301,12 @@ function MoveButtons<T extends { id: string; position: number }>({
 
   return (
     <span className="inline-flex">
-      {([['up', previous], ['down', next]] as const).map(([direction, neighbour]) => (
+      {(
+        [
+          ['up', previous],
+          ['down', next],
+        ] as const
+      ).map(([direction, neighbour]) => (
         <form key={direction} action={formAction}>
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="position" value={item.position} />

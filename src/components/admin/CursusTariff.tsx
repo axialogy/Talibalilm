@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -96,11 +97,7 @@ export function CursusTariff({
         </form>
       ))}
 
-      {state.error && (
-        <p role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Gift, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Badge } from '@/components/ui/badge';
 import { deletePack, saveBonus } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
@@ -71,10 +72,7 @@ export function BonusEditor({
       {bonuses.length > 0 && (
         <ul className="space-y-3">
           {bonuses.map((b) => (
-            <li
-              key={b.id}
-              className="rounded-[var(--radius-card)] border border-line bg-white p-4"
-            >
+            <li key={b.id} className="rounded-[var(--radius-card)] border border-line bg-white p-4">
               <form action={save} className="flex flex-wrap items-center gap-2 text-[13px]">
                 <input type="hidden" name="id" value={b.id} />
 
@@ -156,11 +154,7 @@ export function BonusEditor({
         </Button>
       </form>
 
-      {state.error && (
-        <p role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, MailCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -92,11 +93,7 @@ export function StudentAccount({
               {t('saved')}
             </span>
           )}
-          {saveState.error && (
-            <span role="alert" className="text-[12px] text-red-600">
-              {t(`errors.${saveState.error}` as 'errors.saveFailed')}
-            </span>
-          )}
+          <ActionError state={saveState} />
         </div>
 
         <p className="text-[11px] leading-relaxed text-ink-muted">{t('studentEmailNote')}</p>
@@ -128,11 +125,7 @@ export function StudentAccount({
             {t('studentSeenCta')}
           </Button>
 
-          {seenState.error && (
-            <p role="alert" className="mt-2 text-[12px] text-red-600">
-              {t(`errors.${seenState.error}` as 'errors.saveFailed')}
-            </p>
-          )}
+          <ActionError state={seenState} />
         </form>
       )}
 
@@ -157,11 +150,7 @@ export function StudentAccount({
           <MailCheck className="size-3.5" aria-hidden="true" />
           {t('studentActivateCta')}
         </Button>
-        {confirmState.error && (
-          <p role="alert" className="mt-2 text-[12px] text-red-600">
-            {t(`errors.${confirmState.error}` as 'errors.saveFailed')}
-          </p>
-        )}
+        <ActionError state={confirmState} />
         {confirmState.ok && (
           <p role="status" className="mt-2 text-[12px] text-brand-600">
             {t('studentActivated')}
@@ -188,11 +177,7 @@ export function StudentAccount({
             <Trash2 className="size-3.5" aria-hidden="true" />
             {t('studentDelete')}
           </Button>
-          {removeState.error && (
-            <p role="alert" className="mt-2 text-[12px] text-red-600">
-              {t(`errors.${removeState.error}` as 'errors.saveFailed')}
-            </p>
-          )}
+          <ActionError state={removeState} />
         </form>
       )}
     </div>

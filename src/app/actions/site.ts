@@ -9,6 +9,7 @@ import { checkImage } from '@/lib/media/image';
 import { reportError } from '@/lib/observability/report';
 import { EVENTS_TAG, REVIEWS_TAG, SITE_SETTINGS_TAG } from '@/lib/data/site';
 import type { AdminState } from '@/app/actions/admin';
+import { errorDetail } from '@/lib/supabase/error-detail';
 
 /**
  * The site's own content: the announcement strip, the social links, the
@@ -65,7 +66,7 @@ export async function saveSiteSettings(_prev: AdminState, formData: FormData): P
 
   if (error) {
     reportError('site.settings.save', error);
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
   revalidateTag(SITE_SETTINGS_TAG);
@@ -112,7 +113,7 @@ export async function saveEvent(_prev: AdminState, formData: FormData): Promise<
 
   if (error) {
     reportError('site.event.save', error);
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
   revalidateTag(EVENTS_TAG);
@@ -132,7 +133,7 @@ export async function setEventStatus(_prev: AdminState, formData: FormData): Pro
     .from('events')
     .update({ status: parsed.data.status, updated_at: new Date().toISOString() })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidateTag(EVENTS_TAG);
   revalidatePath('/[locale]/admin/site', 'page');
@@ -146,7 +147,7 @@ export async function deleteEvent(_prev: AdminState, formData: FormData): Promis
 
   const supabase = await client();
   const { error } = await supabase.from('events').delete().eq('id', id.data);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidateTag(EVENTS_TAG);
   revalidatePath('/[locale]/admin/site', 'page');
@@ -178,7 +179,7 @@ export async function uploadEventImage(_prev: AdminState, formData: FormData): P
     .upload(path, bytes, { contentType: check.contentType, upsert: true });
   if (uploadError) {
     reportError('site.event.upload', uploadError, { id: id.data });
-    return { ok: false, error: 'uploadFailed' };
+    return { ok: false, error: 'uploadFailed', detail: errorDetail(uploadError) };
   }
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -186,7 +187,7 @@ export async function uploadEventImage(_prev: AdminState, formData: FormData): P
     .from('events')
     .update({ image_url: pub.publicUrl, updated_at: new Date().toISOString() })
     .eq('id', id.data);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(uploadError) };
 
   revalidateTag(EVENTS_TAG);
   revalidatePath('/[locale]/admin/site', 'page');
@@ -223,7 +224,7 @@ export async function saveReview(_prev: AdminState, formData: FormData): Promise
 
   if (error) {
     reportError('site.review.save', error);
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
   revalidateTag(REVIEWS_TAG);
@@ -243,7 +244,7 @@ export async function setReviewStatus(_prev: AdminState, formData: FormData): Pr
     .from('reviews')
     .update({ status: parsed.data.status, updated_at: new Date().toISOString() })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidateTag(REVIEWS_TAG);
   revalidatePath('/[locale]/admin/site', 'page');
@@ -257,7 +258,7 @@ export async function deleteReview(_prev: AdminState, formData: FormData): Promi
 
   const supabase = await client();
   const { error } = await supabase.from('reviews').delete().eq('id', id.data);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidateTag(REVIEWS_TAG);
   revalidatePath('/[locale]/admin/site', 'page');
@@ -289,7 +290,7 @@ export async function setMessageHandled(
     .from('contact_messages')
     .update({ handled_at: parsed.data.handled === 'yes' ? new Date().toISOString() : null })
     .eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/site', 'page');
   return OK;

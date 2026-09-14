@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
 import { deleteCursus } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionError } from '@/components/admin/ActionError';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -38,11 +39,7 @@ export function CursusDeleteButton({ cursusId }: { cursusId: string }) {
         </button>
       </form>
 
-      {state.error && (
-        <p role="alert" className="mt-2 max-w-prose text-[11px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
     </div>
   );
 }

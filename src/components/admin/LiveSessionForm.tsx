@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { createLiveSession } from '@/app/actions/live';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -29,7 +30,10 @@ export function LiveSessionForm({
     'w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 text-sm text-ink outline-none focus:border-brand-400';
 
   return (
-    <form action={action} className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5">
+    <form
+      action={action}
+      className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         {fixedCourseId ? (
           <input type="hidden" name="courseId" value={fixedCourseId} />
@@ -47,7 +51,9 @@ export function LiveSessionForm({
         )}
 
         <label className="block">
-          <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('liveClassTitle')}</span>
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">
+            {t('liveClassTitle')}
+          </span>
           <input name="title" required maxLength={200} className={field} />
         </label>
 
@@ -58,7 +64,14 @@ export function LiveSessionForm({
 
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('liveCapacity')}</span>
-          <input type="number" name="maxParticipants" min={2} max={500} defaultValue={50} className={field} />
+          <input
+            type="number"
+            name="maxParticipants"
+            min={2}
+            max={500}
+            defaultValue={50}
+            className={field}
+          />
         </label>
       </div>
 
@@ -66,11 +79,7 @@ export function LiveSessionForm({
         <Button type="submit" size="sm">
           {t('liveCreate')}
         </Button>
-        {state.error && (
-          <span role="alert" className="text-[12px] text-red-600">
-            {t(`errors.${state.error}` as 'errors.saveFailed')}
-          </span>
-        )}
+        <ActionError state={state} />
       </div>
     </form>
   );

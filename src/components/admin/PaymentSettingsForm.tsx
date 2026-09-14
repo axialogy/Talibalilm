@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { KeyRound, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
 import { savePaymentSettings } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
@@ -41,7 +42,10 @@ export function PaymentSettingsForm({
   const [state, action] = useActionState(savePaymentSettings, EMPTY);
 
   return (
-    <form action={action} className="space-y-5 rounded-[var(--radius-card)] border border-line bg-white p-6">
+    <form
+      action={action}
+      className="space-y-5 rounded-[var(--radius-card)] border border-line bg-white p-6"
+    >
       {envOverride && (
         <p className="flex items-start gap-2 rounded-[var(--radius-input)] bg-surface/70 p-4 text-[12px] leading-relaxed text-ink">
           <ShieldAlert className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden="true" />
@@ -128,11 +132,7 @@ export function PaymentSettingsForm({
             {t('saved')}
           </span>
         )}
-        {state.error && (
-          <span role="alert" className="text-[12px] text-red-600">
-            {t(`errors.${state.error}` as 'errors.saveFailed')}
-          </span>
-        )}
+        <ActionError state={state} />
       </div>
     </form>
   );

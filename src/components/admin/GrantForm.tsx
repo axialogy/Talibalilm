@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
 import { grantEntitlement } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
@@ -35,7 +36,10 @@ export function GrantForm({
   const [scope, setScope] = useState<'course' | 'cursus' | 'site'>('course');
 
   return (
-    <form action={action} className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5">
+    <form
+      action={action}
+      className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
+    >
       <input type="hidden" name="userId" value={userId} />
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -55,7 +59,9 @@ export function GrantForm({
 
         {scope === 'course' && (
           <label className="block">
-            <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('grantCourse')}</span>
+            <span className="mb-1.5 block text-[13px] font-medium text-ink">
+              {t('grantCourse')}
+            </span>
             <select
               name="courseId"
               className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-400"
@@ -72,7 +78,9 @@ export function GrantForm({
         {scope === 'cursus' && (
           <>
             <label className="block">
-              <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('grantCursus')}</span>
+              <span className="mb-1.5 block text-[13px] font-medium text-ink">
+                {t('grantCursus')}
+              </span>
               <select
                 name="cursusId"
                 className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-400"
@@ -84,12 +92,21 @@ export function GrantForm({
                 ))}
               </select>
             </label>
-            <Field label={t('grantYear')} name="yearIndex" type="number" min={1} max={10} defaultValue={1} />
+            <Field
+              label={t('grantYear')}
+              name="yearIndex"
+              type="number"
+              min={1}
+              max={10}
+              defaultValue={1}
+            />
           </>
         )}
 
         <label className="block">
-          <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('grantDelivery')}</span>
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">
+            {t('grantDelivery')}
+          </span>
           <select
             name="delivery"
             className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-400"
@@ -99,7 +116,14 @@ export function GrantForm({
           </select>
         </label>
 
-        <Field label={t('grantDays')} name="days" type="number" min={1} max={3650} defaultValue={365} />
+        <Field
+          label={t('grantDays')}
+          name="days"
+          type="number"
+          min={1}
+          max={3650}
+          defaultValue={365}
+        />
       </div>
 
       <Field label={t('grantReason')} name="reason" required maxLength={200} />
@@ -113,11 +137,7 @@ export function GrantForm({
             {t('saved')}
           </span>
         )}
-        {state.error && (
-          <span role="alert" className="text-[11px] text-red-600">
-            {t(`errors.${state.error}` as 'errors.saveFailed')}
-          </span>
-        )}
+        <ActionError state={state} />
       </div>
     </form>
   );

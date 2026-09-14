@@ -41,7 +41,13 @@ export function ExportCsvButton({ rows, filename }: { rows: CsvRow[]; filename: 
   };
 
   return (
-    <Button type="button" size="sm" variant="outline" onClick={download} disabled={rows.length === 0}>
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={download}
+      disabled={rows.length === 0}
+    >
       <Download className="size-3.5" aria-hidden="true" />
       {t('exportCsv')}
     </Button>

@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { anonymiseStudent } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -41,11 +42,7 @@ export function AnonymiseButton({ userId }: { userId: string }) {
       <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
         {t('anonymise')}
       </Button>
-      {state.error && (
-        <p role="alert" className="mt-2 text-[12px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
     </form>
   );
 }

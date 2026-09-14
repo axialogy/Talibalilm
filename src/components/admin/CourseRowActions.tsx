@@ -6,6 +6,7 @@ import { Archive, Pencil, Trash2, Undo2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { archiveCourse, deleteCourse } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionError } from '@/components/admin/ActionError';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -75,11 +76,7 @@ export function CourseRowActions({
         </button>
       </form>
 
-      {removeState.error && (
-        <p role="alert" className="w-full text-end text-[11px] text-red-600">
-          {t(`errors.${removeState.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={removeState} />
     </div>
   );
 }

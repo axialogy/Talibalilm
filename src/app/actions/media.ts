@@ -9,6 +9,7 @@ import { checkImage } from '@/lib/media/image';
 import { galleryToJson, readGallery } from '@/lib/content/presentation';
 import { reportError } from '@/lib/observability/report';
 import type { AdminState } from '@/app/actions/admin';
+import { errorDetail } from '@/lib/supabase/error-detail';
 
 /**
  * Course cover uploads.
@@ -48,7 +49,7 @@ export async function uploadCourseCover(
   });
   if (uploadError) {
     reportError('media.upload', uploadError, { courseId: courseId.data });
-    return { ok: false, error: 'uploadFailed' };
+    return { ok: false, error: 'uploadFailed', detail: errorDetail(uploadError) };
   }
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -59,7 +60,7 @@ export async function uploadCourseCover(
     .eq('id', courseId.data);
   if (updateError) {
     reportError('media.setCover', updateError, { courseId: courseId.data });
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(updateError) };
   }
 
   revalidatePath('/[locale]/admin/courses/[id]', 'page');
@@ -85,7 +86,7 @@ export async function removeCourseCover(
     .from('courses')
     .update({ cover_url: null })
     .eq('id', courseId.data);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/courses/[id]', 'page');
   return OK;
@@ -140,7 +141,7 @@ export async function addGalleryImage(_prev: AdminState, formData: FormData): Pr
   });
   if (uploadError) {
     reportError('media.gallery.upload', uploadError, { courseId: courseId.data });
-    return { ok: false, error: 'uploadFailed' };
+    return { ok: false, error: 'uploadFailed', detail: errorDetail(uploadError) };
   }
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -150,7 +151,7 @@ export async function addGalleryImage(_prev: AdminState, formData: FormData): Pr
     .eq('id', courseId.data);
   if (updateError) {
     reportError('media.gallery.save', updateError, { courseId: courseId.data });
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(updateError) };
   }
 
   revalidatePath('/[locale]/admin/courses/[id]', 'page');
@@ -182,7 +183,7 @@ export async function removeGalleryImage(
     .from('courses')
     .update({ gallery: galleryToJson(kept) })
     .eq('id', parsed.data.courseId);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/courses/[id]', 'page');
   revalidatePath('/[locale]/(site)/courses/[slug]', 'page');

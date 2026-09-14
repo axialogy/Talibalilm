@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
 import { SubmitButton } from '@/components/auth/SubmitButton';
@@ -159,11 +160,7 @@ function ReviewForm({ review, onDone }: { review?: ReviewView; onDone?: () => vo
         />
       </div>
 
-      {state.error && (
-        <p role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
 
       <div className="flex items-center gap-3">
         <SubmitButton size="sm" block={false}>

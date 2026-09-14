@@ -16,6 +16,7 @@ import {
 } from '@/lib/storage/r2';
 import { reportError } from '@/lib/observability/report';
 import type { AdminState } from '@/app/actions/admin';
+import { errorDetail } from '@/lib/supabase/error-detail';
 
 /**
  * Slides for a live class.
@@ -166,7 +167,7 @@ export async function confirmSlide(input: {
   if (error) {
     reportError('slides.insert', error, { sessionId });
     await deleteSlideObject(key);
-    return { ok: false, error: 'saveFailed' };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');
@@ -193,7 +194,7 @@ export async function deleteSlide(_prev: AdminState, formData: FormData): Promis
   }
 
   const { error } = await supabase.from('live_slides').delete().eq('id', parsed.data.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   // The row is gone, so the slide is already unreachable; a bucket object that
   // outlives its row is waste, not an exposure, and a failed delete is logged
@@ -241,7 +242,7 @@ export async function moveSlide(_prev: AdminState, formData: FormData): Promise<
     .from('live_slides')
     .update({ display_order: b.display_order })
     .eq('id', a.id);
-  if (error) return { ok: false, error: 'saveFailed' };
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   await supabase.from('live_slides').update({ display_order: a.display_order }).eq('id', b.id);
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');

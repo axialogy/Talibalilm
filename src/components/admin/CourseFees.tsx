@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { deleteProduct, saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -203,7 +204,9 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
           <input type="hidden" name="status" value="published" />
 
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-ink-muted">{t('feeMode')}</span>
+            <span className="mb-1 block text-[11px] font-medium text-ink-muted">
+              {t('feeMode')}
+            </span>
             <select name="delivery" defaultValue={free[0]} className={field}>
               {free.map((d) => (
                 <option key={d} value={d}>
@@ -214,7 +217,9 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-[11px] font-medium text-ink-muted">{t('feePrice')}</span>
+            <span className="mb-1 block text-[11px] font-medium text-ink-muted">
+              {t('feePrice')}
+            </span>
             <input name="price" placeholder="300" inputMode="decimal" className={`${field} w-28`} />
           </label>
 
@@ -226,11 +231,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
         </form>
       )}
 
-      {addState.error && (
-        <p role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${addState.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={addState} />
     </div>
   );
 }

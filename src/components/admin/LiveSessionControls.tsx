@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { Link } from '@/i18n/navigation';
 import {
   cancelLiveSession,
@@ -70,7 +71,12 @@ export function LiveSessionControls({
       {!finished && status !== 'live' && (
         <form action={cancel}>
           <input type="hidden" name="id" value={id} />
-          <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+          <Button
+            type="submit"
+            size="sm"
+            variant="ghost"
+            className="text-red-600 hover:text-red-700"
+          >
             {t('liveCancel')}
           </Button>
         </form>
@@ -85,17 +91,18 @@ export function LiveSessionControls({
           }}
         >
           <input type="hidden" name="id" value={id} />
-          <Button type="submit" size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+          <Button
+            type="submit"
+            size="sm"
+            variant="ghost"
+            className="text-red-600 hover:text-red-700"
+          >
             {t('liveDelete')}
           </Button>
         </form>
       )}
 
-      {removeState.error && (
-        <span role="alert" className="text-[12px] text-red-600">
-          {t(`errors.${removeState.error}` as 'errors.saveFailed')}
-        </span>
-      )}
+      <ActionError state={removeState} />
     </div>
   );
 }

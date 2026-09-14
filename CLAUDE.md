@@ -112,6 +112,30 @@ host picks its own default and the install can die before the build starts.
 
 ## Errors
 
+**An admin screen shows the cause, never only our reading of it.** This rule was
+bought with days: the coupon generator reported a confident paragraph naming a
+migration that might be missing, while PostgREST's actual error — the one string
+that identified the fault — went to `reportError` and then to a hosting log
+nobody was going to fetch. The guess was on screen; the evidence was not.
+
+So every `{ ok: false, error }` returned from a CAUGHT database, storage or
+network error carries `detail: errorDetail(error)`
+(`@/lib/supabase/error-detail`), and admin screens render it under the sentence
+through `<ActionError>`. The translated sentence is our diagnosis. `detail` is
+the evidence. When they disagree, the evidence wins.
+
+Two exceptions, both deliberate:
+
+- **Zod validation failures** carry no detail. They already name the field; a
+  raw dump would be noise.
+- **Anything a student can reach** carries no detail. They cannot act on a
+  Postgres code and should never be shown one. `detail` is for screens behind
+  `requireAdmin()`, where the reader can act on it.
+
+Never let a failure reach a person as a sentence you composed while discarding
+what the system said. If a cause cannot be shown in the UI, it goes in the same
+response as the symptom — not in a log the user has to go and find.
+
 Report through `reportError(context, error)` (`@/lib/observability/report`), not
 a bare `console.error`. It is the seam Sentry forwards from once `SENTRY_DSN` is
 set. The payment-critical paths (capture mismatch, webhook signature rejection)

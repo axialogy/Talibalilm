@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/admin/ActionError';
 import { addGalleryImage, removeGalleryImage } from '@/app/actions/media';
 import type { AdminState } from '@/app/actions/admin';
 import type { GalleryImage } from '@/lib/content/presentation';
@@ -83,11 +84,7 @@ export function GalleryUpload({ courseId, images }: { courseId: string; images: 
         </Button>
       </form>
 
-      {state.error && (
-        <p role="alert" className="mt-2 text-[11px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
     </div>
   );
 }

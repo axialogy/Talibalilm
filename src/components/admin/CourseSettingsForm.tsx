@@ -6,6 +6,7 @@ import { Field } from '@/components/ui/field';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { updateCourse, type AdminState } from '@/app/actions/admin';
 import { formatBullets, formatHighlights, type Highlight } from '@/lib/content/presentation';
+import { ActionError } from '@/components/admin/ActionError';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -122,11 +123,7 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
         />
       </fieldset>
 
-      {state.error && (
-        <p role="alert" className="text-[11px] text-red-600">
-          {t(`errors.${state.error}` as 'errors.saveFailed')}
-        </p>
-      )}
+      <ActionError state={state} />
       {state.ok && !state.error && (
         <p className="text-[11px] text-brand-600" role="status">
           {t('saved')}
