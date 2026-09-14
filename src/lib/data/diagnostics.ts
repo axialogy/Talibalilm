@@ -66,6 +66,17 @@ const TABLES = [
   'live_slides',
   'live_messages',
   'live_board_ops',
+  // Added after this list quietly reported a clean bill of health while FIVE
+  // tables were missing from the project. Every one of them arrived in a later
+  // migration, and every one was left out of this array — so the page answered
+  // "everything is readable" about a set of tables it was never asked about.
+  // A probe that omits the newest thing is at its least useful exactly when it
+  // is most needed, because the newest thing is what has not been applied yet.
+  'site_settings',
+  'contact_messages',
+  'events',
+  'reviews',
+  'push_subscriptions',
 ] as const;
 
 /**

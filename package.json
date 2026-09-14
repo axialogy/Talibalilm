@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
+    "db:catchup": "./supabase/catchup.sh",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "test:rls": "./supabase/tests/run.sh",
     "db:generate": "prisma generate",
