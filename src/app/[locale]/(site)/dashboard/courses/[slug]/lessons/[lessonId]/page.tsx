@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { signDownload } from '@/lib/storage/r2';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { CheckCircle2, Circle, Lock, PlayCircle } from 'lucide-react';
@@ -60,6 +61,14 @@ export default async function LessonPage({
   // Asked for unconditionally. RLS answers with null for a non-member, so the
   // paywall below is driven by the database's decision, not by ours.
   const content = await getLessonContent(lesson.id);
+
+  // A short-lived signature for an uploaded video, minted only once the read
+  // above has succeeded — that read is RLS-gated, so it IS the paywall. The
+  // bucket stays private: there is no public base URL anywhere in this app.
+  const videoSrc =
+    content?.videoProvider === 'r2' && content.videoId
+      ? await signDownload(content.videoId, 3600)
+      : null;
   // Only for the padlock icons in the sidebar — access to THIS lesson is
   // decided by whether `content` came back, not by this flag.
   const hasAccess = await hasCourseAccess(course.id);
@@ -103,7 +112,35 @@ export default async function LessonPage({
 
         {content ? (
           <>
+            {/*
+              An uploaded video, played from our own bucket.
+
+              Rendered before the embed branch because it is not an embed. The
+              signature is minted HERE, in a server component, after the
+              RLS-gated read above has already let the row through — so the
+              paywall decides, and the URL it produces stops working within the
+              hour if it escapes.
+            */}
+            {content.videoProvider === 'r2' && content.videoId && (
+              <div className="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-line bg-black">
+                {videoSrc ? (
+                  <video
+                    src={videoSrc}
+                    controls
+                    preload="metadata"
+                    controlsList="nodownload"
+                    className="block aspect-video w-full"
+                  />
+                ) : (
+                  <p className="flex aspect-video items-center justify-center px-6 text-center text-[13px] text-white/70">
+                    {t('playerPending')}
+                  </p>
+                )}
+              </div>
+            )}
+
             {content.videoProvider !== 'none' &&
+              content.videoProvider !== 'r2' &&
               (() => {
                 // Reaching this branch already means the paywall let the row
                 // through: `getLessonContent` is an RLS-gated read, so a

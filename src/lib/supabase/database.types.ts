@@ -14,7 +14,7 @@ export type CourseLevel = 'all' | 'beginner' | 'intermediate' | 'advanced';
 export type CourseFormat = 'presentiel' | 'visio' | 'hybride';
 export type CourseStatus = 'draft' | 'published' | 'archived';
 export type LessonType = 'video' | 'text' | 'live' | 'quiz' | 'assignment';
-export type VideoProvider = 'bunny' | 'youtube' | 'drive' | 'none';
+export type VideoProvider = 'bunny' | 'youtube' | 'drive' | 'r2' | 'none';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled';
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 
@@ -265,6 +265,9 @@ export interface Database {
           content: string;
           video_provider: VideoProvider;
           video_id: string | null;
+          video_bytes: number;
+          video_uploaded_at: string | null;
+          video_expires_at: string | null;
           attachments: Json;
           created_at: string;
           updated_at: string;
@@ -280,6 +283,9 @@ export interface Database {
           content?: string;
           video_provider?: VideoProvider;
           video_id?: string | null;
+          video_bytes?: number;
+          video_uploaded_at?: string | null;
+          video_expires_at?: string | null;
           attachments?: Json;
         };
         Relationships: [
@@ -1048,6 +1054,10 @@ export interface Database {
       admin_mark_reviewed: {
         Args: { uid: string };
         Returns: boolean;
+      };
+      lesson_video_total_bytes: {
+        Args: Record<string, never>;
+        Returns: number;
       };
       unreviewed_student_count: {
         Args: Record<string, never>;

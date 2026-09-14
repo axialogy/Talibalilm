@@ -12,7 +12,7 @@
  * built from a fixed template at render time. Nothing the office types can
  * become a different host, a `javascript:` URL, or extra query parameters.
  */
-export type VideoProvider = 'youtube' | 'drive' | 'bunny' | 'none';
+export type VideoProvider = 'youtube' | 'drive' | 'bunny' | 'r2' | 'none';
 
 export interface VideoRef {
   provider: VideoProvider;
@@ -108,5 +108,10 @@ export function embedUrl(ref: VideoRef): string | null {
   if (ref.provider === 'drive' && DRIVE_ID.test(ref.id)) {
     return `https://drive.google.com/file/d/${ref.id}/preview`;
   }
+  // 'r2' deliberately returns null. An uploaded video is not an embed: it is
+  // played by a <video> element pointed at a signature that expires within the
+  // hour, minted only after the RLS-gated read has already let the row through.
+  // Building an address here would mean holding a playable URL in a pure
+  // function that has no idea who is asking.
   return null;
 }

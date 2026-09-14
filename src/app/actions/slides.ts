@@ -8,11 +8,11 @@ import { requireStaff } from '@/lib/auth/guards';
 import { checkImage, MAX_IMAGE_BYTES } from '@/lib/media/image';
 import { isSlideKeyFor, safeFilename, slideKey, slideName } from '@/lib/storage/key';
 import {
-  deleteSlideObject,
+  deleteObject,
   r2Configured,
-  readSlideHead,
-  signSlideDownload,
-  signSlideUpload,
+  readObjectHead,
+  signDownload,
+  signUpload,
 } from '@/lib/storage/r2';
 import { reportError } from '@/lib/observability/report';
 import type { AdminState } from '@/app/actions/admin';
@@ -103,7 +103,7 @@ export async function requestSlideUpload(input: {
         ? 'webp'
         : 'jpg';
   const key = slideKey(parsed.data.sessionId, extension, slideName());
-  const url = await signSlideUpload(key, parsed.data.contentType);
+  const url = await signUpload(key, parsed.data.contentType);
   if (!url) return { ok: false, error: 'storageUnavailable' };
 
   return { ok: true, url, key, contentType: parsed.data.contentType };
@@ -135,16 +135,16 @@ export async function confirmSlide(input: {
   // What was actually uploaded, judged by its leading bytes and its real
   // length. A file that only claims to be an image, or that is larger than the
   // ticket allowed for, is removed rather than left sitting in the bucket.
-  const object = await readSlideHead(key);
+  const object = await readObjectHead(key);
   if (!object) return { ok: false, error: 'uploadFailed' };
 
   if (object.size > MAX_IMAGE_BYTES) {
-    await deleteSlideObject(key);
+    await deleteObject(key);
     return { ok: false, error: 'tooLarge' };
   }
   const check = checkImage(object.head);
   if (!check.ok) {
-    await deleteSlideObject(key);
+    await deleteObject(key);
     return { ok: false, error: check.error };
   }
 
@@ -166,7 +166,7 @@ export async function confirmSlide(input: {
   });
   if (error) {
     reportError('slides.insert', error, { sessionId });
-    await deleteSlideObject(key);
+    await deleteObject(key);
     return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
@@ -199,7 +199,7 @@ export async function deleteSlide(_prev: AdminState, formData: FormData): Promis
   // The row is gone, so the slide is already unreachable; a bucket object that
   // outlives its row is waste, not an exposure, and a failed delete is logged
   // rather than shown to the teacher as a failure to remove the slide.
-  await deleteSlideObject(slide.storage_key);
+  await deleteObject(slide.storage_key);
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');
   return OK;
@@ -266,5 +266,5 @@ export async function slideUrl(key: string): Promise<string | null> {
     return null;
   }
   if (!allowed) return null;
-  return signSlideDownload(key);
+  return signDownload(key);
 }

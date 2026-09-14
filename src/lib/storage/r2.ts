@@ -12,10 +12,14 @@ import { reportError } from '@/lib/observability/report';
 /**
  * Cloudflare R2.
  *
- * The bucket holds slide images and nothing else for now. Recordings do NOT
- * come here: a recording is made by the teacher's browser and saved to their
- * own computer, which is what the school asked for and what keeps the whole
- * feature free — see `useRecorder`.
+ * The bucket holds slide images and uploaded lesson videos.
+ *
+ * A live class recording still goes to the teacher's own computer as it is made
+ * (see `useRecorder`) — that path costs nothing and is unchanged. What the
+ * school then does with the file is its own decision: put it on YouTube or
+ * Drive and paste the link, or upload it here and have it served from a private
+ * bucket behind the paywall. R2 charges for storage but not for downloads,
+ * which is what makes the second option affordable at all.
  *
  * `server-only` at the top is load-bearing. R2 credentials are ordinary secrets
  * with full read and write over the bucket, and the one way they could leak is
@@ -73,10 +77,14 @@ function s3(): S3Client {
  *
  * The upload goes straight from the teacher's machine to Cloudflare rather than
  * through Vercel — a function that streams every slide would be paying for
- * bandwidth to do nothing but forward it. The signature pins the key and the
- * content type, so the URL cannot be reused for a different object.
+ * bandwidth to do nothing but forward it, and a two-gigabyte video could not go
+ * through one at all. The signature pins the key and the content type, so the
+ * URL cannot be reused for a different object.
+ *
+ * A video needs longer than a slide: `seconds` is a parameter for that reason,
+ * and the caller decides.
  */
-export async function signSlideUpload(
+export async function signUpload(
   key: string,
   contentType: string,
   seconds = 300,
@@ -102,7 +110,7 @@ export async function signSlideUpload(
  * through a signature minted after `can_read_slide()` said yes. A link that
  * escapes into a chat log stops working within the hour.
  */
-export async function signSlideDownload(key: string, seconds = 3600): Promise<string | null> {
+export async function signDownload(key: string, seconds = 3600): Promise<string | null> {
   if (!r2Configured) return null;
   try {
     return await getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), {
@@ -127,7 +135,7 @@ export async function signSlideDownload(key: string, seconds = 3600): Promise<st
  * from the browser. A presigned PUT cannot cap what is actually sent, so the
  * size that reaches the database has to be measured here rather than believed.
  */
-export async function readSlideHead(
+export async function readObjectHead(
   key: string,
   bytes = 16,
 ): Promise<{ head: Uint8Array; size: number } | null> {
@@ -150,7 +158,7 @@ export async function readSlideHead(
 }
 
 /** Remove one object. Used when a slide is deleted, and to clean up a rejected upload. */
-export async function deleteSlideObject(key: string): Promise<boolean> {
+export async function deleteObject(key: string): Promise<boolean> {
   if (!r2Configured) return false;
   try {
     await s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));

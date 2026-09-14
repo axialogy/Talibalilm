@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
+import { LessonVideoUpload } from '@/components/admin/LessonVideoUpload';
 import {
   addLesson,
   addModule,
@@ -30,6 +31,9 @@ export interface OutlineLesson {
   isPreview: boolean;
   content: string;
   videoId: string;
+  videoProvider: string;
+  videoBytes: number;
+  videoExpiresAt: string | null;
 }
 
 export interface OutlineModule {
@@ -239,7 +243,7 @@ function LessonRow({
             <Field
               label={t('videoId')}
               name="video_id"
-              defaultValue={lesson.videoId}
+              defaultValue={lesson.videoProvider === 'r2' ? '' : lesson.videoId}
               hint={t('videoIdHint')}
               error={
                 state.error === 'video_unrecognised' || state.error === 'video_id_is_url'
@@ -248,6 +252,19 @@ function LessonRow({
               }
             />
           </div>
+
+          {/*
+            The other way to give a lesson a video. Outside the form on
+            purpose: it uploads and saves on its own, so putting it inside
+            would make a half-finished upload part of whatever else the
+            teacher happens to be editing.
+          */}
+          <LessonVideoUpload
+            lessonId={lesson.id}
+            provider={lesson.videoProvider}
+            bytes={lesson.videoBytes}
+            expiresAt={lesson.videoExpiresAt}
+          />
 
           <label className="block">
             <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('content')}</span>

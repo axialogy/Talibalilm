@@ -137,7 +137,8 @@ from (
                  where n.nspname = 'public' and p.proname = f.name)
   from (values
     ('admin_generate_coupons'), ('admin_mark_reviewed'), ('unreviewed_student_count'),
-    ('admin_grant_entitlement'), ('admin_anonymise_user'), ('rate_limit_hit')
+    ('admin_grant_entitlement'), ('admin_anonymise_user'), ('rate_limit_hit'),
+    ('lesson_video_total_bytes')
   ) as f(name)
   union all
   select 'column', c.label,
@@ -146,7 +147,9 @@ from (
   from (values
     ('courses.department', 'courses', 'department'),
     ('courses.gallery', 'courses', 'gallery'),
-    ('profiles.reviewed_at', 'profiles', 'reviewed_at')
+    ('profiles.reviewed_at', 'profiles', 'reviewed_at'),
+    ('lesson_content.video_bytes', 'lesson_content', 'video_bytes'),
+    ('lesson_content.video_expires_at', 'lesson_content', 'video_expires_at')
   ) as c(label, tbl, col)
 ) as checks
 order by state desc, kind, name;

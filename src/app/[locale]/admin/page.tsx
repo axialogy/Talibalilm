@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  Film,
   Gift,
   GraduationCap,
   Receipt,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { PushToggle } from '@/components/admin/PushToggle';
+import { formatBytes } from '@/lib/media/video';
 import { createClient } from '@/lib/supabase/server';
 import { currentViewer } from '@/lib/auth/guards';
 
@@ -59,6 +61,11 @@ export default async function AdminOverviewPage({
     .from('courses')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'published');
+
+  // What the uploaded videos weigh, beside the free tier so the number means
+  // something. R2 bills by the gigabyte-month past 10 GB — small, but the
+  // school should watch it arrive rather than find it on a statement.
+  const { data: videoBytes } = await supabase.rpc('lesson_video_total_bytes');
 
   const { count: livePrices } = await supabase
     .from('products')
@@ -116,6 +123,13 @@ export default async function AdminOverviewPage({
       hint: null,
       icon: Users,
       href: '/admin/students',
+    },
+    {
+      key: 'storedVideo',
+      value: formatBytes(Number(videoBytes ?? 0)),
+      hint: 'storedVideoHint',
+      icon: Film,
+      href: '/admin/courses',
     },
   ] as const;
 

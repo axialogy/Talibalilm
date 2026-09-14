@@ -1,5 +1,5 @@
 /**
- * Object keys for the slide bucket.
+ * Object keys for the bucket.
  *
  * Pure, and separated from the client that signs URLs, because the shape of a
  * key is a security rule rather than a storage detail: the database has a CHECK
@@ -55,4 +55,28 @@ export function safeFilename(raw: string): string {
     .replace(/[\u0000-\u001f\u007f]/g, '')
     .trim()
     .slice(0, 120);
+}
+
+/**
+ * Where one lesson video lives: `lessons/<lesson id>/<random>.<ext>`.
+ *
+ * Same reasoning as a slide key, one level up: the lesson id is the prefix, so
+ * a key naming another lesson's object is not something a caller can construct
+ * and have accepted — it is refused by shape before R2 is ever called.
+ *
+ * The random name matters more here than for a slide. A predictable key would
+ * let anyone who guessed a lesson id ask us to sign a URL for its video, and a
+ * signed URL does not consult the paywall once it exists.
+ */
+export const VIDEO_KEY_PATTERN = /^lessons\/[0-9a-f-]{36}\/[A-Za-z0-9_-]{8,64}\.(mp4|webm)$/;
+
+export type VideoExtension = 'mp4' | 'webm';
+
+export function videoKey(lessonId: string, extension: VideoExtension, random: string): string {
+  return `lessons/${lessonId}/${random}.${extension}`;
+}
+
+/** Is this a key we issued for this lesson? */
+export function isVideoKeyFor(key: string, lessonId: string): boolean {
+  return VIDEO_KEY_PATTERN.test(key) && key.startsWith(`lessons/${lessonId}/`);
 }

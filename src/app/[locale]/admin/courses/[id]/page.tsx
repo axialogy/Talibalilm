@@ -85,14 +85,20 @@ export default async function CourseBuilderPage({
   const { data: contentRows } = lessonIds.length
     ? await supabase
         .from('lesson_content')
-        .select('lesson_id, content, video_id')
+        .select('lesson_id, content, video_id, video_provider, video_bytes, video_expires_at')
         .in('lesson_id', lessonIds)
     : { data: [] };
 
   const contentByLesson = Object.fromEntries(
     (contentRows ?? []).map((row) => [
       row.lesson_id,
-      { content: row.content, videoId: row.video_id },
+      {
+        content: row.content,
+        videoId: row.video_id,
+        videoProvider: row.video_provider,
+        videoBytes: row.video_bytes,
+        videoExpiresAt: row.video_expires_at,
+      },
     ]),
   );
 
@@ -148,6 +154,9 @@ export default async function CourseBuilderPage({
           isPreview: l.is_preview,
           content: contentByLesson[l.id]?.content ?? '',
           videoId: contentByLesson[l.id]?.videoId ?? '',
+          videoProvider: contentByLesson[l.id]?.videoProvider ?? 'none',
+          videoBytes: contentByLesson[l.id]?.videoBytes ?? 0,
+          videoExpiresAt: contentByLesson[l.id]?.videoExpiresAt ?? null,
         })),
     }));
 
