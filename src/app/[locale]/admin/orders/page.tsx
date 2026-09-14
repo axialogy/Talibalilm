@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { formatPrice } from '@/lib/commerce/quote';
 import { listOrders } from '@/lib/data/admin';
@@ -27,7 +28,10 @@ export default async function AdminOrdersPage({
   const t = await getTranslations('admin');
   const validStatus = STATUSES.includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
   const orders = await listOrders({ status: validStatus, since });
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   return (
     <div>

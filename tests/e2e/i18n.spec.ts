@@ -49,4 +49,14 @@ test.describe('locale routing', () => {
     await expect(page.locator('link[hreflang="en"]')).toHaveAttribute('href', /\/en/);
     await expect(page.locator('link[hreflang="fr"]')).toHaveCount(1);
   });
+
+  test('a dotted path a scanner asks for 404s instead of crashing', async ({ page }) => {
+    // The middleware matcher skips anything containing a dot, so the first
+    // segment becomes `[locale]` — here `wp-login.php`. The page used to throw
+    // a RangeError out of Intl before the layout's notFound() could answer, and
+    // the scanner got a 500. The legal page is the deterministic probe: it
+    // formats a fixed date whatever the database holds.
+    const response = await page.goto('/wp-login.php/legal/terms');
+    expect(response?.status()).toBe(404);
+  });
 });

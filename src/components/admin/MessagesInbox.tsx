@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Mail } from 'lucide-react';
+import { safeLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { setMessageHandled } from '@/app/actions/site';
@@ -30,7 +31,10 @@ export function MessagesInbox({
   locale: string;
 }) {
   const t = useTranslations('admin');
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   if (messages.length === 0) {
     return (

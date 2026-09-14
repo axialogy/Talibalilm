@@ -230,7 +230,17 @@ describe('formatting', () => {
   });
 
   it('keeps them when there are cents to show', () => {
-    expect(formatPrice(22050, 'fr-FR').replace(/ | /g, ' ')).toBe('220,50 €');
+    expect(formatPrice(22050, 'fr-FR').replace(/\u202f|\u00a0/g, ' ')).toBe('220,50 €');
+  });
+
+  it('survives the locale a scanner puts in the URL', () => {
+    // The `[locale]` segment matches any string, and the middleware skips any
+    // path with a dot in it — so `formatPrice` can be handed `wp-login.php`.
+    // A price label must not be able to take a page down; it falls back to the
+    // school's French.
+    expect(() => formatPrice(22000, 'wp-login.php')).not.toThrow();
+    expect(formatPrice(22000, 'wp-login.php').replace(/\u202f|\u00a0/g, ' ')).toBe('220 €');
+    expect(formatPrice(0, 'wp-login.php')).toBe('Gratuit');
   });
 });
 

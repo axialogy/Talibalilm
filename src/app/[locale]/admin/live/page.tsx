@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { BackLink } from '@/components/admin/BackLink';
 import { Badge } from '@/components/ui/badge';
 import { LiveSessionForm } from '@/components/admin/LiveSessionForm';
@@ -30,7 +31,10 @@ export default async function AdminLivePage({ params }: { params: Promise<{ loca
     supabase.from('courses').select('id, title').order('display_order'),
   ]);
 
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   const label: Record<LiveStatus, string> = {
     scheduled: t('liveStatusScheduled'),

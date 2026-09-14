@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import Image from 'next/image';
 import { ArrowRight, CalendarDays, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import type { EventView } from '@/lib/data/site';
 
@@ -20,7 +21,10 @@ export async function EventsSection({ events, locale }: { events: EventView[]; l
   if (events.length === 0) return null;
 
   const t = await getTranslations('home');
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  });
 
   return (
     <section className="py-16 sm:py-20">

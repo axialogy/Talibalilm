@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/marketing/PageHero';
-import { routing } from '@/i18n/routing';
+import { routing, safeLocale } from '@/i18n/routing';
 
 /**
  * The three documents GDPR and French consumer law require.
@@ -55,7 +55,9 @@ export default async function LegalPage({
   if (!key) notFound();
 
   const t = await getTranslations('legal');
-  const updated = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(new Date('2026-09-10'));
+  const updated = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'long' }).format(
+    new Date('2026-09-10'),
+  );
 
   return (
     <>

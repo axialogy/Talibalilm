@@ -244,6 +244,27 @@ export function priceSelection(options: {
   };
 }
 
+/** The school's language, and what a locale that cannot be used at all becomes. */
+const FALLBACK_LOCALE = 'fr';
+
+/**
+ * A locale `Intl` will accept.
+ *
+ * `formatPrice` is called with the UI's `fr`/`en`, with regional forms like
+ * `fr-FR`/`en-GB`, and — on a page a scanner reached by asking for a dotted
+ * path — with whatever string the URL's first segment happened to be.
+ * `Intl.NumberFormat` throws a RangeError on the last of those, and a price
+ * label must not be able to take a page down. `getCanonicalLocales` is the
+ * check that accepts all the legitimate forms and rejects the rest.
+ */
+function intlLocale(locale: string): string {
+  try {
+    return Intl.getCanonicalLocales(locale)[0] ?? FALLBACK_LOCALE;
+  } catch {
+    return FALLBACK_LOCALE;
+  }
+}
+
 /** Cents to a display string, in the reader's locale. */
 /**
  * Money for a reader.
@@ -253,9 +274,10 @@ export function priceSelection(options: {
  * failed to load, and neither invites anyone to enrol.
  */
 export function formatPrice(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
-  if (cents === 0) return locale.startsWith('en') ? 'Free' : 'Gratuit';
+  const safe = intlLocale(locale);
+  if (cents === 0) return safe.startsWith('en') ? 'Free' : 'Gratuit';
 
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(safe, {
     style: 'currency',
     currency,
     minimumFractionDigits: cents % 100 === 0 ? 0 : 2,

@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
 import { Search } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { safeLocale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { listStudents } from '@/lib/data/admin';
 
@@ -19,7 +20,7 @@ export default async function AdminStudentsPage({
 
   const t = await getTranslations('admin');
   const students = await listStudents(q?.trim() || undefined);
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'medium' });
 
   return (
     <div>
