@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `develop` is the integration branch: a merge lands there first, so the
+    # post-merge state is checked too, not only the PR before it.
+    branches: [main, develop]
   pull_request:
 
 jobs:
