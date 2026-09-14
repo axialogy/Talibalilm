@@ -59,6 +59,15 @@ export function CheckoutWizard({
   }, [reachable]);
 
   const active = Math.min(step, reachable);
+
+  // Which way the next panel should come from. Kept in a ref rather than state
+  // so changing it never causes its own render: it is read during the render
+  // that the step change already triggered.
+  const previous = useRef(active);
+  const forward = active >= previous.current;
+  useEffect(() => {
+    previous.current = active;
+  }, [active]);
   const current = steps[active];
   const isLast = active === steps.length - 1;
 
@@ -135,10 +144,30 @@ export function CheckoutWizard({
           half-typed coupon code is still there when the student steps back to
           look at the price again. `hidden` rather than unmounting also keeps
           the card from resizing to nothing between steps.
+
+          The active one slides in — from the right going forward, from the left
+          coming back — so a step feels like a step rather than the card
+          redrawing. `overflow-hidden` on the wrapper is what stops the incoming
+          panel widening the card mid-transition and showing a horizontal
+          scrollbar for a fraction of a second.
+
+          `motion-reduce:` turns the translation off for anyone who has asked
+          for that; the opacity fade is retained because it moves nothing.
         */}
-        <div className="mt-6">
+        <div className="mt-6 overflow-hidden">
           {steps.map((s, index) => (
-            <div key={s.key} hidden={index !== active}>
+            <div
+              key={s.key}
+              hidden={index !== active}
+              className={cn(
+                'transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none motion-reduce:duration-150',
+                index === active
+                  ? 'translate-x-0 opacity-100'
+                  : forward
+                    ? 'translate-x-4 opacity-0'
+                    : '-translate-x-4 opacity-0',
+              )}
+            >
               {s.panel}
             </div>
           ))}

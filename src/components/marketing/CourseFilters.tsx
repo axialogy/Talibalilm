@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
-import type { CourseCategory, CourseLevel } from '@/lib/content/types';
+import type { CourseCategory } from '@/lib/content/types';
 import { cn } from '@/lib/utils';
 
 /**
@@ -15,20 +15,16 @@ import { cn } from '@/lib/utils';
  */
 export function CourseFilters({
   categories,
-  levels,
   activeCategory,
-  activeLevel,
 }: {
   categories: CourseCategory[];
-  levels: CourseLevel[];
   activeCategory: CourseCategory | null;
-  activeLevel: CourseLevel | null;
 }) {
   const t = useTranslations('courses');
   const searchParams = useSearchParams();
 
-  /** Build the query for toggling one facet, preserving the other. */
-  const queryWith = (key: 'category' | 'level', value: string | null) => {
+  /** Build the query for the subject facet, preserving anything else present. */
+  const queryWith = (key: 'category', value: string | null) => {
     const next = new URLSearchParams(searchParams.toString());
     if (value === null) next.delete(key);
     else next.set(key, value);
@@ -37,6 +33,10 @@ export function CourseFilters({
 
   return (
     <div className="space-y-4">
+      {/* Subject only. A level filter used to sit below this and was removed:
+          the school teaches a module to whoever enrols, so it drew a
+          distinction the catalogue does not make and split results for no
+          gain. */}
       <div className="flex flex-wrap gap-2">
         <Chip href={queryWith('category', null)} active={activeCategory === null}>
           {t('filterAll')}
@@ -48,23 +48,6 @@ export function CourseFilters({
             active={activeCategory === c}
           >
             {t(`category.${c}`)}
-          </Chip>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-ink-muted">{t('filterLevel')}</span>
-        <Chip href={queryWith('level', null)} active={activeLevel === null} small>
-          {t('filterAllLevels')}
-        </Chip>
-        {levels.map((l) => (
-          <Chip
-            key={l}
-            href={queryWith('level', activeLevel === l ? null : l)}
-            active={activeLevel === l}
-            small
-          >
-            {t(`level.${l}`)}
           </Chip>
         ))}
       </div>

@@ -11,13 +11,8 @@ import { PublishControls } from '@/components/admin/PublishControls';
 import { Tabs } from '@/components/ui/tabs';
 import { CourseFees, type CourseFee } from '@/components/admin/CourseFees';
 import { CourseCursus, membershipKey } from '@/components/admin/CourseCursus';
-import { LiveSessionForm } from '@/components/admin/LiveSessionForm';
-import { LiveSessionControls } from '@/components/admin/LiveSessionControls';
-import { Badge } from '@/components/ui/badge';
-import { listLiveSessions } from '@/lib/data/live';
 import { createClient } from '@/lib/supabase/server';
 import { reportError } from '@/lib/observability/report';
-import type { LiveStatus } from '@/lib/supabase/database.types';
 
 /**
  * The course builder — the screen the school lives in.
@@ -102,22 +97,21 @@ export default async function CourseBuilderPage({
     ]),
   );
 
-  // Everything else this course needs, in parallel: what it costs, which
-  // programmes carry it, and its live classes.
-  const [{ data: feeRows }, { data: cursusRows }, { data: linkRows }, liveSessions] =
-    await Promise.all([
-      supabase
-        .from('products')
-        .select(
-          'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
-        )
-        .eq('kind', 'module')
-        .eq('course_id', id)
-        .order('delivery'),
-      supabase.from('cursus').select('id, title, year_count').order('display_order'),
-      supabase.from('cursus_courses').select('cursus_id, year_index, delivery').eq('course_id', id),
-      listLiveSessions(id),
-    ]);
+  // Everything else this course needs, in parallel: what it costs and which
+  // cursus carry it. Live classes are no longer read here — they have their own
+  // screen, and a module is attached to a session from that side.
+  const [{ data: feeRows }, { data: cursusRows }, { data: linkRows }] = await Promise.all([
+    supabase
+      .from('products')
+      .select(
+        'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
+      )
+      .eq('kind', 'module')
+      .eq('course_id', id)
+      .order('delivery'),
+    supabase.from('cursus').select('id, kind, title, year_count').order('display_order'),
+    supabase.from('cursus_courses').select('cursus_id, year_index, delivery').eq('course_id', id),
+  ]);
 
   const fees: CourseFee[] = (feeRows ?? []).map((f) => ({
     id: f.id,
@@ -235,67 +229,12 @@ export default async function CourseBuilderPage({
                     courseId={course.id}
                     cursus={(cursusRows ?? []).map((c) => ({
                       id: c.id,
+                      kind: c.kind,
                       title: c.title,
                       yearCount: c.year_count,
                     }))}
                     included={included}
                   />
-                </div>
-              ),
-            },
-            {
-              key: 'live',
-              label: t('tabLive'),
-              content: (
-                <div className="max-w-3xl space-y-6">
-                  <p className="text-[13px] leading-relaxed text-ink-muted">{t('tabLiveLead')}</p>
-                  <LiveSessionForm courses={[]} fixedCourseId={course.id} />
-
-                  {liveSessions.length === 0 ? (
-                    <p className="rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6 text-center text-sm text-ink-muted">
-                      {t('liveNone')}
-                    </p>
-                  ) : (
-                    <ul className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
-                      {liveSessions.map((s) => {
-                        const label: Record<LiveStatus, string> = {
-                          scheduled: t('liveStatusScheduled'),
-                          live: t('liveStatusLive'),
-                          ended: t('liveStatusEnded'),
-                          cancelled: t('liveStatusCancelled'),
-                        };
-                        const tone: Record<LiveStatus, 'success' | 'soft' | 'muted' | 'danger'> = {
-                          scheduled: 'soft',
-                          live: 'success',
-                          ended: 'muted',
-                          cancelled: 'danger',
-                        };
-                        return (
-                          <li key={s.id} className="flex flex-wrap items-center gap-3 p-4">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-medium text-ink">{s.title}</p>
-                                <Badge variant={tone[s.status]}>{label[s.status]}</Badge>
-                              </div>
-                              <p className="mt-0.5 text-[11px] text-ink-muted">
-                                {s.scheduledAt
-                                  ? new Intl.DateTimeFormat(locale, {
-                                      dateStyle: 'medium',
-                                      timeStyle: 'short',
-                                    }).format(new Date(s.scheduledAt))
-                                  : t('liveNotScheduled')}
-                              </p>
-                            </div>
-                            <LiveSessionControls
-                              id={s.id}
-                              roomToken={s.roomToken}
-                              status={s.status}
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
                 </div>
               ),
             },

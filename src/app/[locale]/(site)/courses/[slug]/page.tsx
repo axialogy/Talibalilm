@@ -9,11 +9,10 @@ import { CourseCard } from '@/components/marketing/CourseCard';
 import { PlanningTarifs } from '@/components/marketing/PlanningTarifs';
 import { InfoCarousel } from '@/components/courses/InfoCarousel';
 import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
-import { selectModuleProduct } from '@/app/actions/checkout';
+import { selectModuleCourse } from '@/app/actions/checkout';
 import { getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
 import { listCursus, listProducts } from '@/lib/data/commerce';
 import { listLiveSessions } from '@/lib/data/live';
-import { formatPrice } from '@/lib/commerce/quote';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
@@ -84,7 +83,6 @@ export default async function CoursePage({
   const t = await getTranslations('courses');
   const tMeta = await getTranslations('meta');
   const tNav = await getTranslations('nav');
-  const tCheckout = await getTranslations('checkout');
   const tLive = await getTranslations('live');
 
   const [instructor, related, onSite, online, cursusList, liveSessions] = await Promise.all([
@@ -466,23 +464,22 @@ export default async function CoursePage({
             {t('detail.enrolmentLead')}
           </p>
 
-          {/* One click to enrol on the module whose page this is, rather than
-              finding it again in a list. The form posts ids only; the product
-              is re-checked against the published price list server-side. */}
+          {/* ONE button, not one per delivery mode.
+              There used to be two — "on site, €300" beside "online, €300" —
+              which asked the presentiel-or-online question here, and then the
+              wizard asked it again at step two. This answers only what the page
+              actually knows (which module, sold à la carte) and lets the mode
+              step do its job. The form posts ids; the price is read from the
+              published list server-side, never from the browser. */}
           {entries.length > 0 && (
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              {entries.map((entry) => (
-                <form key={entry.id} action={selectModuleProduct}>
-                  <input type="hidden" name="productId" value={entry.id} />
-                  <input type="hidden" name="delivery" value={entry.delivery} />
-                  <input type="hidden" name="cursusId" value={moduleCursusId} />
-                  <Button type="submit" size="md" variant="outline">
-                    {t('detail.quickEnrol')} —{' '}
-                    {tCheckout(entry.delivery === 'presentiel' ? 'modePresentiel' : 'modeOnline')} ·{' '}
-                    {formatPrice(entry.priceCents, locale)}
-                  </Button>
-                </form>
-              ))}
+            <div className="mt-8 flex justify-center">
+              <form action={selectModuleCourse}>
+                <input type="hidden" name="courseId" value={course.id} />
+                <input type="hidden" name="cursusId" value={moduleCursusId} />
+                <Button type="submit" size="md">
+                  {t('detail.quickEnrol')}
+                </Button>
+              </form>
             </div>
           )}
 

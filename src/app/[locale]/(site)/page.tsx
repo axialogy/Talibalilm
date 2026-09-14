@@ -157,9 +157,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
               {t('formations.title')}
             </h2>
-            <p lang="ar" dir="rtl" className="mt-2 text-center font-arabic text-2xl text-ink">
-              {t('formations.titleAr')}
-            </p>
             <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
               {t('formations.lead')}
             </p>

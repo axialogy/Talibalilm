@@ -18,6 +18,15 @@ export const selectionSchema = z.object({
   delivery: z.enum(['presentiel', 'online']).nullable().default(null),
   yearIndex: z.number().int().min(1).max(10).default(1),
   productIds: z.array(z.string().uuid()).max(20).default([]),
+  /**
+   * The module a student arrived wanting, before a delivery mode is known.
+   *
+   * A product belongs to one mode, so "this module" cannot be a product id
+   * until the mode step is answered. Holding the COURSE lets the enrol button
+   * on a module page skip the cursus step without pre-answering the mode
+   * question on the student's behalf.
+   */
+  courseId: z.string().uuid().nullable().default(null),
   couponCode: z.string().max(32).nullable().default(null),
 });
 
@@ -29,6 +38,7 @@ export const EMPTY_SELECTION: Selection = {
   delivery: null,
   yearIndex: 1,
   productIds: [],
+  courseId: null,
   couponCode: null,
 };
 

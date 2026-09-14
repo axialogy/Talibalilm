@@ -4,7 +4,7 @@ import { CourseCard } from '@/components/marketing/CourseCard';
 import { CourseFilters } from '@/components/marketing/CourseFilters';
 import { PageHero } from '@/components/marketing/PageHero';
 import { listCourses } from '@/lib/data/courses';
-import type { CourseCategory, CourseLevel } from '@/lib/content/types';
+import type { CourseCategory } from '@/lib/content/types';
 
 /**
  * Filters live in the URL, not in component state, so a filtered catalogue is
@@ -13,7 +13,6 @@ import type { CourseCategory, CourseLevel } from '@/lib/content/types';
  */
 interface SearchParams {
   category?: string;
-  level?: string;
 }
 
 export async function generateMetadata({
@@ -26,15 +25,18 @@ export async function generateMetadata({
   return { title: t('title'), description: t('lead') };
 }
 
-const CATEGORIES: CourseCategory[] = ['aqida', 'fiqh', 'coran', 'hadith', 'tafsir', 'langue', 'histoire'];
-const LEVELS: CourseLevel[] = ['all', 'beginner', 'intermediate', 'advanced'];
+const CATEGORIES: CourseCategory[] = [
+  'aqida',
+  'fiqh',
+  'coran',
+  'hadith',
+  'tafsir',
+  'langue',
+  'histoire',
+];
 
 function asCategory(value: string | undefined): CourseCategory | null {
   return value && (CATEGORIES as string[]).includes(value) ? (value as CourseCategory) : null;
-}
-
-function asLevel(value: string | undefined): CourseLevel | null {
-  return value && (LEVELS as string[]).includes(value) ? (value as CourseLevel) : null;
 }
 
 export default async function CoursesPage({
@@ -48,15 +50,15 @@ export default async function CoursesPage({
   setRequestLocale(locale);
 
   const t = await getTranslations('courses');
-  const { category: rawCategory, level: rawLevel } = await searchParams;
+  const { category: rawCategory } = await searchParams;
 
   const category = asCategory(rawCategory);
-  const level = asLevel(rawLevel);
 
   const all = await listCourses();
-  const results = all.filter(
-    (c) => (!category || c.category === category) && (!level || c.level === level),
-  );
+  // Subject only. The level filter is gone: the school teaches a module to
+  // whoever enrols on it, so splitting the catalogue by level offered a
+  // distinction the catalogue does not actually make.
+  const results = all.filter((c) => !category || c.category === category);
 
   // Only offer a chip for a category the catalogue actually uses — a filter
   // that can only return nothing is worse than no filter.
@@ -65,16 +67,16 @@ export default async function CoursesPage({
 
   return (
     <>
-      <PageHero crumb={t('title')} eyebrow={t('filterSubject')} title={t('title')} lead={t('lead')} />
+      <PageHero
+        crumb={t('title')}
+        eyebrow={t('filterSubject')}
+        title={t('title')}
+        lead={t('lead')}
+      />
 
       <section className="py-14 sm:py-16">
         <div className="shell">
-          <CourseFilters
-            categories={categories}
-            levels={LEVELS}
-            activeCategory={category}
-            activeLevel={level}
-          />
+          <CourseFilters categories={categories} activeCategory={category} />
 
           <p className="mt-8 text-xs text-ink-muted" aria-live="polite">
             {t('resultCount', { count: results.length })}

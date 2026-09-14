@@ -10,9 +10,13 @@ import { cn } from '@/lib/utils';
 /**
  * A catalogue card.
  *
- * The whole card is not one link: the title and the CTA are. A single wrapping
- * anchor would give a screen reader one target whose accessible name is the
- * title, the rating, the instructor and the price run together.
+ * The whole card is not one link: the cover, the title and the two actions are.
+ * A single wrapping anchor would give a screen reader one target whose
+ * accessible name is the title, the instructor and the price run together.
+ *
+ * The cover is a link because people click pictures — but it carries
+ * `aria-hidden` and `tabIndex={-1}`, so it is a fourth mouse target rather than
+ * a fourth stop for anyone using a keyboard, who already has the title.
  */
 export async function CourseCard({ course, className }: { course: Course; className?: string }) {
   const t = await getTranslations('courses');
@@ -27,14 +31,21 @@ export async function CourseCard({ course, className }: { course: Course; classN
       )}
     >
       <div className="relative aspect-4/3 overflow-hidden bg-surface">
-        <div className="size-full transition-transform duration-500 group-hover:scale-[1.04]">
-          <CourseArt
-            titleAr={course.title_ar}
-            title={course.title}
-            kicker={t(`category.${course.category}`)}
-            tone={course.tone}
-          />
-        </div>
+        <Link
+          href={`/courses/${course.slug}`}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="block size-full"
+        >
+          <div className="size-full transition-transform duration-500 group-hover:scale-[1.04]">
+            <CourseArt
+              titleAr={course.title_ar}
+              title={course.title}
+              kicker={t(`category.${course.category}`)}
+              tone={course.tone}
+            />
+          </div>
+        </Link>
         <Badge className="absolute start-3 top-3">{t(`level.${course.level}`)}</Badge>
       </div>
 
@@ -48,7 +59,9 @@ export async function CourseCard({ course, className }: { course: Course; classN
           </Link>
         </h3>
 
-        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-ink-muted">{course.subtitle}</p>
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-ink-muted">
+          {course.subtitle}
+        </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
@@ -73,12 +86,26 @@ export async function CourseCard({ course, className }: { course: Course; classN
               {t('card.by', { name: instructor.full_name })}
             </span>
           )}
-          <Link
-            href={`/courses/${course.slug}`}
-            className="rounded-md border border-brand-500 px-3 py-1.5 text-[11px] font-semibold text-brand-600 transition-colors hover:bg-brand-500 hover:text-white"
-          >
-            {t('card.viewCourse')}
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/courses/${course.slug}`}
+              className="rounded-md border border-brand-500 px-3 py-1.5 text-[11px] font-semibold text-brand-600 transition-colors hover:bg-brand-500 hover:text-white"
+            >
+              {t('card.viewCourse')}
+            </Link>
+            {/*
+              Straight to the enrolment card on the module page. The fragment
+              does the scrolling — `scroll-behavior` is set in CSS, which means
+              it is also where `prefers-reduced-motion` turns the animation off.
+              A script would have had to re-implement that rule by hand.
+            */}
+            <Link
+              href={`/courses/${course.slug}#inscription`}
+              className="rounded-md bg-brand-500 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-600"
+            >
+              {t('card.enrol')}
+            </Link>
+          </div>
         </div>
       </div>
     </article>

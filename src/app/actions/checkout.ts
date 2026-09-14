@@ -133,6 +133,45 @@ export async function resetCheckout(): Promise<void> {
  * thing whose page they are standing on. The id still goes through the
  * published price list before it is stored.
  */
+/**
+ * Start a checkout on this module without deciding how it is taught.
+ *
+ * The module page used to offer one button per delivery mode — "on site, €300"
+ * beside "online, €300" — which asked a question the wizard asks anyway, twice,
+ * with the same price on both. Now there is one button: it answers the CURSUS
+ * step (this module is sold à la carte) and remembers which module, and leaves
+ * presentiel-or-online to the mode step that already exists for it.
+ *
+ * No delivery means no product id yet, because a product belongs to one mode.
+ * The module is carried as `courseId` and turned into a product once the mode
+ * is known — the browser never posts a price, here or anywhere.
+ */
+export async function selectModuleCourse(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({
+      courseId: z.string().uuid(),
+      cursusId: z.string().uuid().nullable().catch(null),
+    })
+    .safeParse({
+      courseId: formData.get('courseId'),
+      cursusId: formData.get('cursusId') || null,
+    });
+  if (!parsed.success) return;
+
+  const { courseId, cursusId } = parsed.data;
+  const current = await readSelection();
+  await writeSelection({
+    ...current,
+    kind: 'module',
+    cursusId: cursusId ?? current.cursusId,
+    // Deliberately cleared: a mode chosen on a previous visit must not silently
+    // decide this one, and the wizard's mode step is the thing that asks.
+    delivery: null,
+    productIds: [],
+    courseId,
+  });
+}
+
 export async function selectModuleProduct(formData: FormData): Promise<void> {
   const parsed = z
     .object({

@@ -27,9 +27,6 @@ export async function ReviewsSection({ reviews }: { reviews: ReviewView[] }) {
         <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
           {t('reviews.title')}
         </h2>
-        <p lang="ar" dir="rtl" className="mt-2 text-center font-arabic text-2xl text-ink">
-          {t('reviews.titleAr')}
-        </p>
         <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
           {t('reviews.lead')}
         </p>

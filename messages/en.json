@@ -87,7 +87,7 @@
       "title": "Trusted by our students and our teachers",
       "ratingLabel": "{count, plural, =1 {# review} other {# reviews}}"
     },
-    "heroTitleAr": "معهد طالب علم",
+    "heroTitleAr": "معهد طالب العلم",
     "brief": {
       "title": "The institute at a glance",
       "body": "Institut Talib Alim teaches the Islamic sciences and the Arabic language in Montereau-Fault-Yonne and by video. Courses are open to beginners and to advanced students alike, with a progressive programme and teachers who follow each student individually.",
@@ -95,13 +95,11 @@
     },
     "formations": {
       "title": "Discover our programmes",
-      "titleAr": "اكتشف تكويناتنا",
       "lead": "The modules open for enrolment at the institute, on site and by video.",
       "cta": "See every module"
     },
     "events": {
       "title": "News & events",
-      "titleAr": "الأخبار والفعاليات",
       "lead": "Announcements and dates from the institute.",
       "cta": "Find out more",
       "empty": "No news at the moment."
@@ -125,7 +123,6 @@
     },
     "reviews": {
       "title": "What our students say",
-      "titleAr": "آراء طلابنا",
       "lead": "Testimonials gathered from students at the institute."
     }
   },
@@ -147,7 +144,8 @@
       "viewCourse": "View the module",
       "lessons": "{count, plural, =1 {# lesson} other {# lessons}}",
       "duration": "{count, plural, =1 {# week} other {# weeks}}",
-      "years": "{count, plural, =1 {# year} other {# years}}"
+      "years": "{count, plural, =1 {# year} other {# years}}",
+      "enrol": "Enrol"
     },
     "level": {
       "all": "All levels",
@@ -271,7 +269,7 @@
     "title": "Enrolment",
     "step": "Step {current} of {total}",
     "steps": {
-      "cursus": "Your programme",
+      "cursus": "Your cursus",
       "mode": "On site or online",
       "modules": "Your modules",
       "review": "Summary",
@@ -808,7 +806,7 @@
     "feeAdd": "Add the price",
     "feeRemove": "Remove this price",
     "feeHint": "Access lasts 365 days and the price goes live immediately. Both can be changed afterwards.",
-    "cursusNoneYet": "No programme created yet. Create one under Cursus first.",
+    "cursusNoneYet": "Neither cursus exists yet. Create them under Cursus, then come back and tick the boxes.",
     "promoTitle": "Promo codes & bonuses",
     "promoLead": "Percentage codes for a campaign, cash codes for the front desk, and \"buy one get one\" bonuses.",
     "bonusTitle": "Bonuses",
@@ -973,7 +971,11 @@
     "videoKeepMonths": "{count} months",
     "videoKeepSet": "deletion scheduled",
     "storedVideo": "Stored video",
-    "storedVideoHint": "10 GB free"
+    "storedVideoHint": "10 GB free",
+    "cursusPerModule": "Sold on its own (Per module)",
+    "cursusPerModuleHint": "A student can buy this module alone, without committing to a programme.",
+    "cursusApprofondi": "Cursus Approfondi",
+    "cursusApprofondiHint": "Tick the years this module is taught in. A module may appear in more than one year. On site or online is the student’s choice at enrolment, not set here."
   },
   "live": {
     "allow": "Allow",

@@ -87,7 +87,7 @@
       "title": "Approuvé par nos étudiantes et nos enseignants",
       "ratingLabel": "{count, plural, =1 {# évaluation} other {# évaluations}}"
     },
-    "heroTitleAr": "معهد طالب علم",
+    "heroTitleAr": "معهد طالب العلم",
     "brief": {
       "title": "L’institut en bref",
       "body": "L’Institut Talib Alim enseigne les sciences islamiques et la langue arabe à Montereau-Fault-Yonne et en visioconférence. Les cours sont ouverts aux débutants comme aux étudiants confirmés, avec un programme progressif et des enseignants qui suivent chacun individuellement.",
@@ -95,13 +95,11 @@
     },
     "formations": {
       "title": "Découvrez nos formations",
-      "titleAr": "اكتشف تكويناتنا",
       "lead": "Les modules ouverts aux inscriptions à l’institut, en présentiel comme en visioconférence.",
       "cta": "Voir tous les modules"
     },
     "events": {
       "title": "Actualités & événements",
-      "titleAr": "الأخبار والفعاليات",
       "lead": "Les annonces et les rendez-vous de l’institut.",
       "cta": "En savoir plus",
       "empty": "Aucune actualité pour le moment."
@@ -125,7 +123,6 @@
     },
     "reviews": {
       "title": "Ce que disent nos étudiants",
-      "titleAr": "آراء طلابنا",
       "lead": "Des témoignages recueillis auprès des étudiants de l’institut."
     }
   },
@@ -147,7 +144,8 @@
       "viewCourse": "Voir le module",
       "lessons": "{count, plural, =1 {# leçon} other {# leçons}}",
       "duration": "{count, plural, =1 {# semaine} other {# semaines}}",
-      "years": "{count, plural, =1 {# année} other {# années}}"
+      "years": "{count, plural, =1 {# année} other {# années}}",
+      "enrol": "S’inscrire"
     },
     "level": {
       "all": "Tous niveaux",
@@ -808,7 +806,7 @@
     "feeAdd": "Ajouter le tarif",
     "feeRemove": "Supprimer ce tarif",
     "feeHint": "L’accès dure 365 jours et le tarif est publié immédiatement. Les deux restent modifiables.",
-    "cursusNoneYet": "Aucun cursus créé pour l’instant. Créez-en un dans Cursus d’abord.",
+    "cursusNoneYet": "Les deux cursus n’existent pas encore. Créez-les dans Cursus, puis revenez cocher les cases.",
     "promoTitle": "Codes promo & bonus",
     "promoLead": "Codes en pourcentage pour une campagne, codes de caisse pour le bureau, et bonus « un acheté, un offert ».",
     "bonusTitle": "Bonus",
@@ -973,7 +971,11 @@
     "videoKeepMonths": "{count} mois",
     "videoKeepSet": "suppression programmée",
     "storedVideo": "Vidéos stockées",
-    "storedVideoHint": "10 Go gratuits"
+    "storedVideoHint": "10 Go gratuits",
+    "cursusPerModule": "Vendu à la carte (Par module)",
+    "cursusPerModuleHint": "L’étudiant peut acheter ce module seul, sans s’engager sur un cursus.",
+    "cursusApprofondi": "Cursus Approfondi",
+    "cursusApprofondiHint": "Cochez les années où ce module est enseigné. Un module peut figurer dans plusieurs années. Le mode — présentiel ou en ligne — est choisi par l’étudiant au moment de l’inscription, pas ici."
   },
   "live": {
     "allow": "Autoriser",
