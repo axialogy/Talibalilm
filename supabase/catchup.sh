@@ -128,7 +128,8 @@ from (
                   where table_schema = 'public' and table_name = t.name) as present
   from (values
     ('site_settings'), ('contact_messages'), ('events'), ('reviews'),
-    ('push_subscriptions'), ('live_slides'), ('live_messages'), ('live_board_ops')
+    ('push_subscriptions'), ('live_slides'), ('live_messages'), ('live_board_ops'),
+    ('app_errors')
   ) as t(name)
   union all
   select 'function', f.name,
@@ -138,7 +139,7 @@ from (
   from (values
     ('admin_generate_coupons'), ('admin_mark_reviewed'), ('unreviewed_student_count'),
     ('admin_grant_entitlement'), ('admin_anonymise_user'), ('rate_limit_hit'),
-    ('lesson_video_total_bytes')
+    ('lesson_video_total_bytes'), ('record_app_error')
   ) as f(name)
   union all
   select 'column', c.label,

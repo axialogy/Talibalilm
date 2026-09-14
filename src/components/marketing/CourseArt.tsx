@@ -10,7 +10,14 @@ import { cn } from '@/lib/utils';
  * Inline SVG so the self-hosted fonts apply and the Arabic shapes correctly —
  * an external .svg loaded through <img> gets neither.
  */
-const TONES: Record<ArtTone, { from: string; to: string; ink: string; wash: string }> = {
+interface Palette {
+  from: string;
+  to: string;
+  ink: string;
+  wash: string;
+}
+
+const TONES: Record<ArtTone, Palette> = {
   emerald: { from: '#118866', to: '#0f5241', ink: '#ffffff', wash: '#7fd2ba' },
   indigo: { from: '#2b3f8f', to: '#16225a', ink: '#ffffff', wash: '#9fb2ff' },
   plum: { from: '#5b2b6b', to: '#331642', ink: '#ffffff', wash: '#dcaef0' },
@@ -54,7 +61,23 @@ export function CourseArt({
   tone: ArtTone;
   className?: string;
 }) {
-  const t = TONES[tone];
+  // `courses.tone` is plain `text not null default 'emerald'` with NO check
+  // constraint (20260910140000_courses.sql), so the database will happily hold
+  // a value this palette has never heard of. Indexing straight into the record
+  // and dereferencing the result made that a SERVER-RENDER CRASH — one bad row
+  // took down every catalogue page it appeared on, and the browser was told
+  // only "cette page n'a pas pu s'afficher".
+  //
+  // A cover in the wrong colour is a blemish. A blank error page is a broken
+  // site. Fall back.
+  const t: Palette = TONES[tone] ?? TONES.emerald;
+  const toneKey = TONES[tone] ? tone : 'emerald';
+
+  // Defended rather than trusted. The column is `not null default ''` today,
+  // but the Arabic title became OPTIONAL in the module form, and `.length` on
+  // a value that turns out to be null is the same blank error page as an
+  // unknown tone — from a field the office was invited to leave empty.
+  const ar = titleAr ?? '';
 
   // Sized to the space it has rather than to a bracket, because a long
   // discipline name otherwise runs straight through the gold frame.
@@ -66,7 +89,7 @@ export function CourseArt({
   // short name coming out slightly small is invisible, a long one overflowing
   // is not. Re-measure this if the face ever changes again; the previous 0.46
   // was tuned for Tajawal and overflowed five of six covers under Alexandria.
-  const arSize = Math.max(18, Math.min(60, Math.round(300 / Math.max(1, titleAr.length * 0.56))));
+  const arSize = Math.max(18, Math.min(60, Math.round(300 / Math.max(1, ar.length * 0.56))));
   const titleLines = wrap(title, 30, 2);
 
   return (
@@ -78,13 +101,13 @@ export function CourseArt({
       preserveAspectRatio="xMidYMid slice"
     >
       <defs>
-        <linearGradient id={`ca-${tone}`} x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={`ca-${toneKey}`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={t.from} />
           <stop offset="1" stopColor={t.to} />
         </linearGradient>
       </defs>
 
-      <rect width="400" height="300" fill={`url(#ca-${tone})`} />
+      <rect width="400" height="300" fill={`url(#ca-${toneKey})`} />
 
       <g fill="none" stroke={t.wash} strokeWidth="1.2" opacity="0.26">
         <circle cx="336" cy="52" r="58" />
@@ -122,7 +145,7 @@ export function CourseArt({
         fontWeight="700"
         direction="rtl"
       >
-        {titleAr}
+        {ar}
       </text>
 
       <line x1="150" y1="198" x2="250" y2="198" stroke="#c4a05a" strokeWidth="2" />

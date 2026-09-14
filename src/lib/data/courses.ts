@@ -43,6 +43,21 @@ const COURSE_SELECT = `
               is_preview, created_at, updated_at ) )
 `;
 
+const TONES: readonly ArtTone[] = [
+  'emerald',
+  'indigo',
+  'plum',
+  'sand',
+  'crimson',
+  'teal',
+  'night',
+];
+
+/** The cover palette has seven colours; the column will hold anything. */
+function asTone(value: unknown): ArtTone {
+  return TONES.includes(value as ArtTone) ? (value as ArtTone) : 'emerald';
+}
+
 function toCourse(row: NestedCourse): Course {
   const objectives = Array.isArray(row.objectives)
     ? row.objectives.filter((o): o is string => typeof o === 'string')
@@ -56,7 +71,11 @@ function toCourse(row: NestedCourse): Course {
     description: row.description,
     title_ar: row.title_ar,
     cover_url: row.cover_url,
-    tone: row.tone as ArtTone,
+    // Narrowed, not cast. `tone`, `category` and `level` are free `text` in
+    // the schema with only a default to keep them sane, so a cast here is a
+    // promise the database never made — and the components downstream index
+    // records and translation catalogues with the result.
+    tone: asTone(row.tone),
     category: row.category as CourseCategory,
     level: row.level as CourseLevel,
     format: row.format,

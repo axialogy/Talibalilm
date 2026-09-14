@@ -354,6 +354,22 @@ export interface Database {
           },
         ];
       };
+      app_errors: {
+        Row: {
+          id: string;
+          at: string;
+          route: string;
+          digest: string;
+          name: string;
+          message: string;
+          stack_head: string;
+        };
+        // No Insert or Update shape that means anything: the table carries no
+        // write policy at all, and `record_app_error` is the only door.
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       push_subscriptions: {
         Row: {
           id: string;
@@ -1083,6 +1099,16 @@ export interface Database {
       claim_confirmation_email: {
         Args: { oid: string };
         Returns: boolean;
+      };
+      record_app_error: {
+        Args: {
+          p_route: string;
+          p_digest: string;
+          p_name: string;
+          p_message: string;
+          p_stack_head: string;
+        };
+        Returns: undefined;
       };
       rate_limit_hit: {
         Args: { bucket: string; max_hits: number; window_seconds: number };

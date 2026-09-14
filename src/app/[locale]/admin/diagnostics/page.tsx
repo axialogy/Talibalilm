@@ -5,6 +5,7 @@ import { R2BrowserCheck } from '@/components/admin/R2BrowserCheck';
 import { SmtpHostTest } from '@/components/admin/SmtpHostTest';
 import { runDiagnostics, type CheckState } from '@/lib/data/diagnostics';
 import { recentErrors } from '@/lib/observability/recent-errors';
+import { findErrorByDigest, recentAppErrors } from '@/lib/data/errors';
 import { requireAdmin } from '@/lib/auth/guards';
 
 export const dynamic = 'force-dynamic';
@@ -35,13 +36,31 @@ export const maxDuration = 60;
  * Admin only, read-only, and safe to open in front of anyone: it names tables,
  * functions and variable names, never a value.
  */
-export default async function DiagnosticsPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function DiagnosticsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ digest?: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   await requireAdmin();
   const t = await getTranslations('admin');
   const checks = await runDiagnostics();
+
+  // A code off an error page, looked up. This is the whole reason the durable
+  // table exists: the office reads a number on a broken screen and gets the
+  // message, the route and the first stack frames back.
+  const { digest } = await searchParams;
+  const lookup = digest ? await findErrorByDigest(digest) : [];
+
+  // Durable rows first, this instance's memory second. The in-memory list is
+  // instant and covers the seconds before a write lands; the table is the one
+  // that survives the request ending up on another instance, which is what
+  // made the old list read empty about errors the server had captured in full.
+  const stored = await recentAppErrors();
   const errors = recentErrors();
   const timeFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'medium' });
 
@@ -89,24 +108,107 @@ export default async function DiagnosticsPage({ params }: { params: Promise<{ lo
 
         Next strips an error's message from the browser in production and
         leaves only a hash — correct, since a stack can name internals, and
-        useless when nobody can open the platform's logs. Chasing one of those
-        codes by guesswork has cost several rounds. The server keeps the last
-        few here so the code can simply be looked up.
+        useless when nobody can open the platform's logs. So the server keeps
+        its own record, and this is where it is read back.
 
-        Honest about its limits: a serverless deployment runs many instances
-        and this is only what the one answering THIS request happened to see.
-        An empty list is not proof that nothing failed.
+        Two lists, because they fail differently. The DURABLE one is in
+        Postgres and is what anybody sees from any instance. The INSTANCE one
+        is this container's memory: instant, and gone the moment the container
+        is recycled. For weeks there was only the second, which is why the
+        office kept opening this page and reading "aucune erreur" about faults
+        the server had captured in full.
       */}
       <section className="mt-8">
         <h2 className="font-display text-[15px] font-semibold text-ink">{t('diagErrors')}</h2>
         <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">{t('diagErrorsLead')}</p>
 
-        {errors.length === 0 ? (
-          <p className="mt-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-5 text-center text-[12px] text-ink-muted">
+        {/* Paste the code from the error page. A GET form with no action so it
+            submits to this same URL and stays linkable. */}
+        <form className="mt-3 flex flex-wrap gap-2">
+          <input
+            type="search"
+            name="digest"
+            defaultValue={digest ?? ''}
+            placeholder={t('diagDigestPlaceholder')}
+            aria-label={t('diagDigestTitle')}
+            className="min-w-0 flex-1 rounded-[var(--radius-input)] border border-line bg-white px-3 py-2 font-mono text-[12px] text-ink"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-brand-500 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-600"
+          >
+            {t('diagDigestSearch')}
+          </button>
+        </form>
+
+        {digest &&
+          (lookup.length === 0 ? (
+            <p className="mt-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-4 text-[12px] leading-relaxed text-ink-muted">
+              {t('diagDigestNone')}
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line rounded-[var(--radius-card)] border border-brand-200 bg-brand-50/30">
+              {lookup.map((e) => (
+                <li key={e.id} className="p-3">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-mono text-[12px] text-ink">{e.route}</span>
+                    <span className="text-[11px] text-ink-muted">
+                      {timeFmt.format(new Date(e.at))}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[12px] break-words text-red-700">
+                    {e.name}: {e.message}
+                  </p>
+                  {e.stackHead && (
+                    <pre className="mt-2 overflow-x-auto rounded-[var(--radius-input)] border border-line bg-white p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-ink-muted">
+                      {e.stackHead}
+                    </pre>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ))}
+
+        <h3 className="mt-6 text-[13px] font-medium text-ink">{t('diagErrorsStored')}</h3>
+        {stored.length === 0 ? (
+          <p className="mt-2 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-4 text-center text-[12px] text-ink-muted">
             {t('diagErrorsEmpty')}
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
+          <ul className="mt-2 divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
+            {stored.map((e) => (
+              <li key={e.id} className="p-3">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="font-mono text-[12px] text-ink">{e.route}</span>
+                  <span className="text-[11px] text-ink-muted">
+                    {timeFmt.format(new Date(e.at))}
+                  </span>
+                  {e.digest && (
+                    <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">
+                      {e.digest}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-[12px] break-words text-red-700">
+                  {e.name}: {e.message}
+                </p>
+                {e.stackHead && (
+                  <pre className="mt-1 overflow-x-auto font-mono text-[11px] break-words whitespace-pre-wrap text-ink-muted">
+                    {e.stackHead}
+                  </pre>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h3 className="mt-6 text-[13px] font-medium text-ink">{t('diagErrorsInstance')}</h3>
+        {errors.length === 0 ? (
+          <p className="mt-2 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-4 text-center text-[12px] text-ink-muted">
+            {t('diagErrorsEmpty')}
+          </p>
+        ) : (
+          <ul className="mt-2 divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
             {errors.map((e) => (
               <li key={`${e.at}-${e.route}`} className="p-3">
                 <div className="flex flex-wrap items-baseline gap-2">

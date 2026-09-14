@@ -12,6 +12,13 @@ import { defineConfig } from 'vitest/config';
  * component tests arrive in Phase 2.
  */
 export default defineConfig({
+  // The automatic JSX runtime, set on esbuild rather than through a plugin.
+  // Without it a component under test transforms to `React.createElement` with
+  // no React in scope and every render throws `React is not defined` — which
+  // looks exactly like the component being broken. This is a transform
+  // setting, not the React plugin the note above declines.
+  esbuild: { jsx: 'automatic' },
+
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
