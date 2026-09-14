@@ -241,6 +241,7 @@ async function authSettingsChecks(): Promise<Check[]> {
     const response = await fetch(`${base.replace(/\/$/, '')}/auth/v1/settings`, {
       headers: { apikey: key },
       cache: 'no-store',
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
     if (!response.ok) {
       return [
@@ -387,6 +388,7 @@ async function rpcCacheChecks(): Promise<Check[]> {
     const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/`, {
       headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' },
       cache: 'no-store',
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
     if (!response.ok) {
       // 401 and 404 here are NOT a fault. Supabase closed the OpenAPI root to
@@ -505,6 +507,7 @@ async function latencyChecks(): Promise<Check[]> {
         const response = await fetch(`${base}/auth/v1/settings`, {
           headers: { apikey: key },
           cache: 'no-store',
+          signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
         });
         const authMs = Date.now() - authAt;
         authState = response.ok ? slow(authMs) : 'error';
@@ -521,7 +524,10 @@ async function latencyChecks(): Promise<Check[]> {
 
   // Opens the connection and authenticates; sends nothing. This is the exact
   // operation that hangs when a shared mail host is unwell.
-  const smtp = await smtpProbe();
+  // Four seconds, not fifteen. The old value was longer than the whole
+  // function is allowed to live on Vercel's smaller plans, so a dead mail
+  // server could take the page down with it rather than being reported by it.
+  const smtp = await smtpProbe(4000);
   checks.push({
     group,
     name: 'Serveur d’envoi (SMTP)',
@@ -535,6 +541,36 @@ async function latencyChecks(): Promise<Check[]> {
 
   return checks;
 }
+
+/**
+ * Run probes a few at a time instead of all at once.
+ *
+ * This page used to fire 48 Supabase queries in three `Promise.all` bursts,
+ * plus three raw fetches and a mail-server socket — around fifty-five outbound
+ * connections from one serverless function, at once. The result was a page that
+ * caused the outage it was built to diagnose: Supabase's edge answered a burst
+ * like that with an instant 504 (reported here, honestly and uselessly, as
+ * "Supabase Auth — 0 ms — 504" — nought milliseconds because nothing was ever
+ * sent), and whatever tried to open a connection afterwards got `fetch failed`
+ * or a resolver error.
+ *
+ * Five at a time is slower and finishes. A diagnostic that has to be trusted
+ * cannot be the heaviest request the app makes.
+ */
+async function mapWithLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    out.push(...(await Promise.all(items.slice(i, i + limit).map(fn))));
+  }
+  return out;
+}
+
+/** Every outbound fetch here gets a deadline. One hang must not starve the page. */
+const PROBE_TIMEOUT_MS = 4000;
 
 export async function runDiagnostics(): Promise<Check[]> {
   const checks: Check[] = [];
@@ -681,51 +717,45 @@ export async function runDiagnostics(): Promise<Check[]> {
   const supabase = await createClient();
 
   // --- tables --------------------------------------------------------------
-  await Promise.all(
-    TABLES.map(async (table) => {
-      const { error } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .limit(1);
-      checks.push({
-        group: 'Tables',
-        name: table,
-        state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
-        detail: detailFor(error, 'lisible'),
-      });
-    }),
-  );
+  await mapWithLimit(TABLES, 5, async (table) => {
+    const { error } = await supabase
+      .from(table)
+      .select('*', { count: 'exact', head: true })
+      .limit(1);
+    checks.push({
+      group: 'Tables',
+      name: table,
+      state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
+      detail: detailFor(error, 'lisible'),
+    });
+  });
 
   // --- functions -----------------------------------------------------------
-  await Promise.all(
-    FUNCTIONS.map(async ([fn, args]) => {
-      const { error } = await supabase.rpc(fn, args as never);
-      checks.push({
-        group: 'Fonctions',
-        name: fn,
-        state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
-        detail: detailFor(error, 'répond'),
-      });
-    }),
-  );
+  await mapWithLimit(FUNCTIONS, 5, async ([fn, args]) => {
+    const { error } = await supabase.rpc(fn, args as never);
+    checks.push({
+      group: 'Fonctions',
+      name: fn,
+      state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
+      detail: detailFor(error, 'répond'),
+    });
+  });
 
   checks.push(...(await rpcCacheChecks()));
 
   // --- columns -------------------------------------------------------------
-  await Promise.all(
-    COLUMNS.map(async ([table, columns]) => {
-      const { error } = await supabase
-        .from(table as (typeof TABLES)[number])
-        .select(columns)
-        .limit(1);
-      checks.push({
-        group: 'Colonnes',
-        name: table,
-        state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
-        detail: detailFor(error, columns),
-      });
-    }),
-  );
+  await mapWithLimit(COLUMNS, 5, async ([table, columns]) => {
+    const { error } = await supabase
+      .from(table as (typeof TABLES)[number])
+      .select(columns)
+      .limit(1);
+    checks.push({
+      group: 'Colonnes',
+      name: table,
+      state: !error ? 'ok' : isMissing(error.code) ? 'missing' : 'error',
+      detail: detailFor(error, columns),
+    });
+  });
 
   return checks;
 }

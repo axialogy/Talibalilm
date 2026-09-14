@@ -226,6 +226,9 @@ export async function checkCors(origin: string): Promise<CorsProbe> {
         'Access-Control-Request-Headers': 'content-type',
       },
       cache: 'no-store',
+      // A deadline, because this runs inside a page render with a budget. A
+      // preflight that hangs must report itself, not take the page with it.
+      signal: AbortSignal.timeout(4000),
     });
 
     const allowOrigin = response.headers.get('access-control-allow-origin') ?? '';

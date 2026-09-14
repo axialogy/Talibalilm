@@ -8,6 +8,18 @@ import { requireAdmin } from '@/lib/auth/guards';
 export const dynamic = 'force-dynamic';
 
 /**
+ * Room to finish.
+ *
+ * This page makes more outbound calls than any other request the app serves —
+ * every table, every function, three HTTP probes and a mail-server handshake.
+ * Vercel's default allowance is ten seconds, and a page that is killed halfway
+ * reports its own truncation as a fault in the thing it was measuring, which is
+ * worse than being slow. The probes are individually capped at four seconds and
+ * run five at a time, so this is headroom rather than a licence to hang.
+ */
+export const maxDuration = 60;
+
+/**
  * What this deployment can and cannot see.
  *
  * Several faults have cost a round each, all the same shape: a table or a
