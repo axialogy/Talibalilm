@@ -21,6 +21,36 @@ import { highlightsToJson, parseBullets, parseHighlights } from '@/lib/content/p
 export interface AdminState {
   ok: boolean;
   error?: string;
+  /**
+   * What the database actually said, verbatim, for an ADMIN screen only.
+   *
+   * Every `error` above is a key we chose, which means it is our diagnosis of
+   * the failure rather than the failure itself. That is right for a student —
+   * they cannot act on a PostgREST error code and should not be shown one. It
+   * is wrong for the office: the coupon generator spent days reporting a
+   * confident guess about which migration was missing while the one string
+   * that would have identified the real cause went to a server log nobody was
+   * going to fetch.
+   *
+   * So an admin gets both: the sentence, and underneath it the code, message
+   * and hint exactly as Postgres phrased them. These screens are already
+   * behind `requireAdmin()`, and an admin who can grant entitlements can
+   * certainly be shown an error code.
+   */
+  detail?: string;
+}
+
+/** Format a Supabase/PostgREST error for the `detail` field above. */
+export function errorDetail(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const e = error as { code?: string; message?: string; details?: string; hint?: string };
+  const parts = [
+    e.code ? `[${e.code}]` : null,
+    e.message ?? null,
+    e.details ?? null,
+    e.hint ? `hint: ${e.hint}` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(' — ') : undefined;
 }
 
 const OK: AdminState = { ok: true };

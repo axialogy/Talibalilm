@@ -106,6 +106,21 @@ export function CouponGenerator() {
             </span>
           )}
         </div>
+
+        {/*
+          What the database actually said.
+
+          The sentence above is OUR diagnosis; this is the evidence. They were
+          not the same thing, and for days the diagnosis named a migration that
+          turned out to be present while the real cause sat in a server log.
+          An admin can read a Postgres error code, and showing it beats asking
+          them to fetch one from a hosting dashboard.
+        */}
+        {state.detail && (
+          <pre className="mt-3 overflow-x-auto rounded-[var(--radius-input)] border border-red-200 bg-red-50/60 p-3 text-[11px] leading-relaxed break-words whitespace-pre-wrap text-red-900">
+            {state.detail}
+          </pre>
+        )}
       </form>
 
       {state.codes && state.codes.length > 0 && (

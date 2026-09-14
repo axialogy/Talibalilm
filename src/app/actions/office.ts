@@ -7,7 +7,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
 import { slugifyBatch } from '@/lib/commerce/batch';
-import type { AdminState } from '@/app/actions/admin';
+import { errorDetail, type AdminState } from '@/app/actions/admin';
 
 /**
  * Office operations — grant, revoke, and cash codes.
@@ -424,16 +424,16 @@ export async function generateCoupons(
       // which is ordinary right after running DDL in the SQL editor. Saying
       // only the first sent someone to re-run a file they had already run.
       // The message names both and gives the reload command.
-      return { ok: false, error: 'couponFunctionMissing' };
+      return { ok: false, error: 'couponFunctionMissing', detail: errorDetail(error) };
     }
     if (code === '23502') {
       // A NOT NULL violation inside the generator means the first version of
       // `admin_generate_coupons` is still installed — the one whose empty
       // prefix produced a NULL code. The fix migration has not been run here.
-      return { ok: false, error: 'couponFunctionOutdated' };
+      return { ok: false, error: 'couponFunctionOutdated', detail: errorDetail(error) };
     }
-    if (code === '42501') return { ok: false, error: 'notAdmin' };
-    return { ok: false, error: 'saveFailed' };
+    if (code === '42501') return { ok: false, error: 'notAdmin', detail: errorDetail(error) };
+    return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
   revalidatePath('/[locale]/admin/coupons', 'page');
