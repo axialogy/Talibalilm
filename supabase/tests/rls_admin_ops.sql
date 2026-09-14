@@ -9,6 +9,25 @@
 
 \set ON_ERROR_STOP on
 
+-- ---------------------------------------------------------------------------
+-- Put pgcrypto where SUPABASE puts it, before anything runs.
+--
+-- Supabase ships pgcrypto pre-installed in the `extensions` schema, so the
+-- `create extension if not exists "pgcrypto"` in 20260910120000 is a no-op
+-- there and the extension never lands in `public`. Every SECURITY DEFINER
+-- function here is pinned to `search_path = public, pg_temp` — correctly, so a
+-- caller cannot shadow a table — which also means none of them can see a
+-- single pgcrypto function.
+--
+-- The coupon generator called `gen_random_bytes` and therefore could never
+-- have worked on a real project, while passing every test on a local database
+-- where pgcrypto happened to be in `public`. The test was reproducing the
+-- wrong world. This makes it reproduce the right one.
+-- ---------------------------------------------------------------------------
+drop extension if exists pgcrypto cascade;
+create schema if not exists extensions;
+create extension pgcrypto with schema extensions;
+
 create or replace function public.assert(ok boolean, what text)
 returns void language plpgsql as $$
 begin
