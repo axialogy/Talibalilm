@@ -568,8 +568,7 @@
     "envOverride": "PayPal environment variables are set on the server: they take precedence over this form.",
     "errors": {
       "amountRequired": "Give the discount amount.",
-      "bonusDeliveryMismatch": "Both modules must be the same mode — both online, or both on site.",
-      "bonusSameProduct": "The free module must be different from the one they buy.",
+      "bonusSameProduct": "The free module must be different from the one being paid for.",
       "convertToPdf": "PowerPoint cannot be read directly. In PowerPoint: File → Save As → choose PDF, then drop the PDF here. Each page becomes a slide.",
       "couponFunctionMissing": "The database refused to generate. The exact detail is shown below — that is what names the cause, not this message.",
       "couponFunctionOutdated": "The installed generator function is an old version. Run supabase/catchup.sh in the SQL editor. The detail below says what the database answered.",
@@ -611,7 +610,8 @@
       "unavailable": "The database is not configured.",
       "uploadFailed": "The upload did not complete. The detail below comes from the browser or from storage.",
       "videoTooLarge": "The video is over 2 GB. Make it smaller, or use a YouTube / Google Drive link.",
-      "notAVideo": "That file is not a video a browser can play. Accepted formats: MP4 and WebM."
+      "notAVideo": "That file is not a video a browser can play. Accepted formats: MP4 and WebM.",
+      "bonusGiftNotSoldInThisMode": "That module has no published price in the mode being bought. Publish its price in that mode, then try again."
     },
     "overview": "Overview",
     "overviewLead": "The state of the site at a glance: what is published, what is still a draft, and what is left before enrolment can open.",
@@ -978,7 +978,8 @@
     "cursusPerModuleHint": "A student can buy this module alone, without committing to a programme.",
     "cursusApprofondi": "Cursus Approfondi",
     "cursusApprofondiHint": "Tick the years this module is taught in. A module may appear in more than one year. On site or online is the student’s choice at enrolment, not set here.",
-    "optional": "(optional)"
+    "optional": "(optional)",
+    "colEnrolledIn": "Enrolled on"
   },
   "live": {
     "allow": "Allow",

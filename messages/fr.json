@@ -568,7 +568,6 @@
     "envOverride": "Des variables d’environnement PayPal sont définies sur le serveur : elles priment sur ce formulaire.",
     "errors": {
       "amountRequired": "Indiquez le montant de la remise.",
-      "bonusDeliveryMismatch": "Les deux modules doivent être dans le même mode — tous deux en ligne, ou tous deux en présentiel.",
       "bonusSameProduct": "Le module offert doit être différent de celui qui est acheté.",
       "convertToPdf": "PowerPoint ne peut pas être lu directement. Dans PowerPoint : Fichier → Enregistrer sous → choisissez PDF, puis déposez le PDF ici. Chaque page deviendra une diapositive.",
       "couponFunctionMissing": "La base de données a refusé la génération. Le détail exact est affiché ci-dessous — c’est lui qui nomme la cause, pas ce message.",
@@ -611,7 +610,8 @@
       "unavailable": "Base de données non configurée.",
       "uploadFailed": "L’envoi n’a pas abouti. Le détail ci-dessous vient du navigateur ou du stockage.",
       "videoTooLarge": "La vidéo dépasse 2 Go. Réduisez-la, ou utilisez un lien YouTube / Google Drive.",
-      "notAVideo": "Ce fichier n’est pas une vidéo lisible par un navigateur. Formats acceptés : MP4 et WebM."
+      "notAVideo": "Ce fichier n’est pas une vidéo lisible par un navigateur. Formats acceptés : MP4 et WebM.",
+      "bonusGiftNotSoldInThisMode": "Ce module n’a pas de tarif publié dans le mode acheté. Publiez son tarif dans ce mode, puis réessayez."
     },
     "overview": "Vue d’ensemble",
     "overviewLead": "L’état du site en un coup d’œil : ce qui est publié, ce qui est encore en brouillon, et ce qu’il reste à faire avant d’ouvrir les inscriptions.",
@@ -978,7 +978,8 @@
     "cursusPerModuleHint": "L’étudiant peut acheter ce module seul, sans s’engager sur un cursus.",
     "cursusApprofondi": "Cursus Approfondi",
     "cursusApprofondiHint": "Cochez les années où ce module est enseigné. Un module peut figurer dans plusieurs années. Le mode — présentiel ou en ligne — est choisi par l’étudiant au moment de l’inscription, pas ici.",
-    "optional": "(facultatif)"
+    "optional": "(facultatif)",
+    "colEnrolledIn": "Inscrit à"
   },
   "live": {
     "allow": "Autoriser",

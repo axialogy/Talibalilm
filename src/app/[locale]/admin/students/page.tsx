@@ -56,6 +56,7 @@ export default async function AdminStudentsPage({
               <tr className="bg-surface/60 text-left text-[11px] tracking-wide text-ink-muted uppercase">
                 <th className="p-3 font-medium">{t('colName')}</th>
                 <th className="p-3 font-medium">{t('colEmail')}</th>
+                <th className="p-3 font-medium">{t('colEnrolledIn')}</th>
                 <th className="p-3 font-medium">{t('colAccess')}</th>
                 <th className="p-3 font-medium">{t('colJoined')}</th>
               </tr>
@@ -85,6 +86,27 @@ export default async function AdminStudentsPage({
                     )}
                   </td>
                   <td className="p-3 text-ink-muted">{s.email ?? '—'}</td>
+                  {/* What they are actually enrolled on. The column beside it
+                      counts; this one says what, which is the question a
+                      student list is normally opened to answer. */}
+                  <td className="p-3">
+                    {s.enrolledIn.length === 0 ? (
+                      <span className="text-ink-muted">—</span>
+                    ) : (
+                      <span className="flex flex-wrap gap-1">
+                        {s.enrolledIn.slice(0, 3).map((name) => (
+                          <Badge key={name} variant="soft">
+                            {name}
+                          </Badge>
+                        ))}
+                        {s.enrolledIn.length > 3 && (
+                          <span className="text-[11px] text-ink-muted">
+                            +{s.enrolledIn.length - 3}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3">
                     {s.activeEntitlements > 0 ? (
                       <Badge variant="success">{s.activeEntitlements}</Badge>

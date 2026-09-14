@@ -198,6 +198,14 @@ export interface StudentSummary {
   /** When the office marked this registration as seen. Null means new. */
   reviewedAt: string | null;
   activeEntitlements: number;
+  /**
+   * What they are enrolled on, in words — the module titles, or the cursus.
+   *
+   * The list used to show only a count, which answers "how many" and not the
+   * question the office actually asks a student list: who is doing what. A
+   * number tells you to open the row to find out.
+   */
+  enrolledIn: string[];
 }
 
 /** The extra detail the account panel needs, on the detail screen only. */
@@ -242,16 +250,37 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
     ? withEmail.filter((r) => (r.email ?? '').toLowerCase().includes(emailNeedle))
     : withEmail;
 
-  // Count live entitlements per student, in one read.
+  // Live entitlements per student, in ONE read, with the titles joined rather
+  // than fetched per row — a list of two hundred students must not become two
+  // hundred queries.
   const { data: ents } = await supabase
     .from('entitlements')
-    .select('user_id')
+    .select('user_id, scope, year_index, courses ( title ), cursus ( title )')
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString());
-  const activeByUser = new Map<string, number>();
-  for (const e of ents ?? []) activeByUser.set(e.user_id, (activeByUser.get(e.user_id) ?? 0) + 1);
 
-  return filtered.map((r) => ({ ...r, activeEntitlements: activeByUser.get(r.userId) ?? 0 }));
+  const activeByUser = new Map<string, number>();
+  const namesByUser = new Map<string, string[]>();
+  for (const e of ents ?? []) {
+    activeByUser.set(e.user_id, (activeByUser.get(e.user_id) ?? 0) + 1);
+
+    // A cursus entitlement names the year as well: "Approfondi — année 2" is
+    // the useful fact, and "Approfondi" alone is not.
+    const label =
+      e.scope === 'cursus'
+        ? `${e.cursus?.title ?? ''}${e.year_index > 1 ? ` · ${e.year_index}` : ''}`.trim()
+        : (e.courses?.title ?? '');
+    if (!label) continue;
+    const list = namesByUser.get(e.user_id) ?? [];
+    if (!list.includes(label)) list.push(label);
+    namesByUser.set(e.user_id, list);
+  }
+
+  return filtered.map((r) => ({
+    ...r,
+    activeEntitlements: activeByUser.get(r.userId) ?? 0,
+    enrolledIn: namesByUser.get(r.userId) ?? [],
+  }));
 }
 
 export interface StudentEntitlement {
@@ -316,6 +345,9 @@ export async function getStudent(userId: string): Promise<{
       activeEntitlements: (ents ?? []).filter(
         (e) => e.status === 'active' && new Date(e.expires_at).getTime() > now,
       ).length,
+      // The detail page lists every entitlement in full underneath, so the
+      // summary line it shares with the list view has nothing to add here.
+      enrolledIn: [],
     },
     entitlements: (ents ?? []).map((e) => ({
       id: e.id,

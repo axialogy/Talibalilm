@@ -66,12 +66,17 @@ select id, 'Contenu réservé.', 'bunny', 'SECRET-' || substr(id::text, 1, 8)
 from public.lessons;
 
 -- Two cursus, as the school sells them.
+-- The schema now SEEDS the two real cursus (20260914120000), because the app
+-- cannot function without them. These fixtures are a separate, deliberately
+-- differently-slugged pair: this suite is about policies, not about the seeded
+-- rows, and reusing their slugs made the whole file die on a unique violation
+-- rather than testing anything.
 insert into public.cursus (id, slug, kind, title, year_count, status) values
-  ('f0000000-0000-0000-0000-000000000001', 'cursus-module', 'module',
+  ('f0000000-0000-0000-0000-000000000001', 'fixture-module', 'module',
    'Cursus Module', 1, 'published'),
-  ('f0000000-0000-0000-0000-000000000002', 'cursus-approfondi', 'approfondi',
+  ('f0000000-0000-0000-0000-000000000002', 'fixture-approfondi', 'approfondi',
    'Cursus Approfondi', 3, 'published'),
-  ('f0000000-0000-0000-0000-000000000003', 'cursus-secret', 'approfondi',
+  ('f0000000-0000-0000-0000-000000000003', 'fixture-secret', 'approfondi',
    'Pas encore annoncé', 1, 'draft');
 
 -- The programmes. Note that the ONLINE and ON-SITE Approfondi cover different
@@ -195,8 +200,16 @@ begin
   raise notice 'the catalogue is public — it is the sales page';
   call auth.logout();
 
-  perform public.assert((select count(*) from public.cursus) = 2,
+  -- Counted among THIS SUITE'S fixtures rather than the whole table. The
+  -- schema seeds two real cursus of its own, so a bare count says "4" and the
+  -- assertion becomes a statement about the seed instead of about the policy.
+  -- What is being proved is that `published` is visible and `draft` is not.
+  perform public.assert(
+    (select count(*) from public.cursus where slug like 'fixture-%') = 2,
     'an anonymous visitor reads the published cursus');
+  perform public.assert(
+    not exists (select 1 from public.cursus where slug = 'fixture-secret'),
+    'and not the draft one');
   perform public.assert(
     (select count(*) from public.cursus where slug = 'cursus-secret') = 0,
     'a draft cursus is invisible before it is announced');

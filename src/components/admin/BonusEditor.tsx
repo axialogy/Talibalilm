@@ -22,7 +22,8 @@ export interface BonusRow {
   title: string;
   status: 'draft' | 'published' | 'archived';
   buyProductId: string | null;
-  freeProductId: string | null;
+  /** The MODULE thrown in, not one of its two priced products. */
+  freeCourseId: string | null;
   maxRedemptions: number | null;
   redeemedCount: number;
 }
@@ -30,16 +31,24 @@ export interface BonusRow {
 /**
  * A bonus is one sentence: buy this, receive that.
  *
- * So the form is that sentence with two dropdowns in it, and nothing else to
- * fill in. The slug, the title, the delivery mode and the pricing rule are all
- * derived server-side — they are facts about the two products, not decisions
- * the teacher should be asked to make.
+ * The two halves are deliberately different KINDS of thing. What is paid for is
+ * a product — a module in one mode, because that is what has a price. What is
+ * received is a MODULE, with no mode attached: the student gets it in whichever
+ * mode they are buying, which is both the only thing the basket can price and
+ * the only thing that means anything, since an entitlement is to a course and
+ * not to a mode of attending it.
+ *
+ * The slug, the title, the delivery and the pricing rule are all derived
+ * server-side — facts about the choice, not decisions to hand the teacher.
  */
 export function BonusEditor({
   products,
+  giftModules,
   bonuses,
 }: {
   products: ProductChoice[];
+  /** Modules that can be thrown in. One entry per module, not per mode. */
+  giftModules: ProductChoice[];
   bonuses: BonusRow[];
 }) {
   const t = useTranslations('admin');
@@ -67,6 +76,16 @@ export function BonusEditor({
     </>
   );
 
+  const giftOptions = (
+    <>
+      {giftModules.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.label}
+        </option>
+      ))}
+    </>
+  );
+
   return (
     <div className="space-y-4">
       {bonuses.length > 0 && (
@@ -88,11 +107,11 @@ export function BonusEditor({
 
                 <span className="text-ink-muted">{t('bonusThenGets')}</span>
                 <select
-                  name="free_product_id"
-                  defaultValue={b.freeProductId ?? ''}
+                  name="free_course_id"
+                  defaultValue={b.freeCourseId ?? ''}
                   className={select}
                 >
-                  {options}
+                  {giftOptions}
                 </select>
 
                 <select name="status" defaultValue={b.status} className={select}>
@@ -144,8 +163,8 @@ export function BonusEditor({
         </select>
 
         <span className="text-ink-muted">{t('bonusThenGets')}</span>
-        <select name="free_product_id" className={select} defaultValue={products[1]?.id}>
-          {options}
+        <select name="free_course_id" className={select} defaultValue={giftModules[0]?.id}>
+          {giftOptions}
         </select>
 
         <input type="hidden" name="status" value="published" />

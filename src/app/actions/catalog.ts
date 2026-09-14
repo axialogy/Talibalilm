@@ -307,36 +307,62 @@ export async function saveBonus(_prev: AdminState, formData: FormData): Promise<
     .object({
       id: z.string().uuid().optional(),
       buy_product_id: z.string().uuid(),
-      free_product_id: z.string().uuid(),
+      /** A MODULE, not a product: the mode is taken from the paid half. */
+      free_course_id: z.string().uuid(),
       status: z.enum(['draft', 'published', 'archived']).default('published'),
       max_redemptions: z.coerce.number().int().min(1).max(100_000).nullable().default(null),
     })
     .safeParse({
       id: (formData.get('id') as string) || undefined,
       buy_product_id: formData.get('buy_product_id'),
-      free_product_id: formData.get('free_product_id'),
+      free_course_id: formData.get('free_course_id'),
       status: formData.get('status') ?? 'published',
       max_redemptions: String(formData.get('max_redemptions') ?? '').trim() || null,
     });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
-  const { id, buy_product_id, free_product_id, status, max_redemptions } = parsed.data;
-  if (buy_product_id === free_product_id) return { ok: false, error: 'bonusSameProduct' };
+  const { id, buy_product_id, free_course_id, status, max_redemptions } = parsed.data;
 
   const supabase = await client();
 
-  // Both halves must be the same mode. An on-site purchase that hands back an
-  // online course is almost certainly a mis-click, and the basket could not
-  // price it anyway — a pack carries one delivery.
-  const { data: products } = await supabase
+  // The office picks a PAID PRODUCT (a module in one mode) and a FREE MODULE,
+  // with no mode of its own. The mode of the gift is then this one's, resolved
+  // below — and that is not a shortcut, it is the only shape that works:
+  //
+  //   * A basket is one delivery mode from end to end. `priceSelection` takes a
+  //     single `delivery`, `bestPack` filters packs by it, and a `sum` pack
+  //     zeroes a line ALREADY IN the basket. A gift from the other mode could
+  //     never appear there to be zeroed.
+  //   * And it would buy nothing anyway. An entitlement carries `course_id`;
+  //     access is to the COURSE. "Buy Quran online, get Quran on site free"
+  //     grants a course the student already has.
+  //
+  // So the office chooses which module is thrown in, we find that module's
+  // product in the mode being bought, and the old "both must be the same mode"
+  // refusal disappears because the question is no longer asked.
+  const { data: buyRows } = await supabase
     .from('products')
     .select('id, delivery, course_id, cursus_id, courses ( title ), cursus ( title )')
-    .in('id', [buy_product_id, free_product_id]);
+    .eq('id', buy_product_id);
+  const buy = buyRows?.[0];
+  if (!buy) return { ok: false, error: 'invalid' };
 
-  const buy = products?.find((p) => p.id === buy_product_id);
-  const gift = products?.find((p) => p.id === free_product_id);
-  if (!buy || !gift) return { ok: false, error: 'invalid' };
-  if (buy.delivery !== gift.delivery) return { ok: false, error: 'bonusDeliveryMismatch' };
+  if (buy.course_id === free_course_id) return { ok: false, error: 'bonusSameProduct' };
+
+  const { data: giftRows } = await supabase
+    .from('products')
+    .select('id, delivery, course_id, cursus_id, courses ( title ), cursus ( title )')
+    .eq('course_id', free_course_id)
+    .eq('kind', 'module')
+    .eq('delivery', buy.delivery)
+    .eq('status', 'published')
+    .limit(1);
+  const gift = giftRows?.[0];
+  // The module exists but has no published price in the mode being bought, so
+  // there is nothing to give away. Said precisely rather than as "invalid".
+  if (!gift) return { ok: false, error: 'bonusGiftNotSoldInThisMode' };
+
+  const free_product_id = gift.id;
 
   const name = (p: typeof buy) => p.courses?.title ?? p.cursus?.title ?? '';
   const title = `${name(buy)} + ${name(gift)}`.slice(0, 200);

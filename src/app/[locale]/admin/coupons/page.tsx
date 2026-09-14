@@ -31,7 +31,7 @@ export default async function AdminCouponsPage({
     couponBatches(),
     supabase
       .from('products')
-      .select('id, delivery, price_cents, courses ( title ), cursus ( title )')
+      .select('id, delivery, price_cents, course_id, courses ( title ), cursus ( title )')
       .eq('status', 'published')
       .order('display_order'),
     supabase
@@ -50,6 +50,24 @@ export default async function AdminCouponsPage({
     }`,
   }));
 
+  // The gift half of a bonus is a MODULE, with no mode of its own — the mode
+  // comes from whatever was bought. So this list is modules, de-duplicated
+  // across the two products each one has.
+  const giftModules: ProductChoice[] = Array.from(
+    new Map(
+      (productRows ?? [])
+        .filter((p) => p.course_id && p.courses?.title)
+        .map((p) => [
+          p.course_id as string,
+          { id: p.course_id as string, label: p.courses!.title, delivery: p.delivery },
+        ]),
+    ).values(),
+  );
+
+  const courseOfProduct = new Map(
+    (productRows ?? []).filter((p) => p.course_id).map((p) => [p.id, p.course_id as string]),
+  );
+
   // A bonus is a pack carrying exactly one free item; anything else on this
   // table is a bundle built on the Offers screen and is left alone here.
   const bonuses: BonusRow[] = (packRows ?? [])
@@ -59,7 +77,10 @@ export default async function AdminCouponsPage({
       title: p.title,
       status: p.status,
       buyProductId: (p.pack_items ?? []).find((i) => !i.is_free)?.product_id ?? null,
-      freeProductId: (p.pack_items ?? []).find((i) => i.is_free)?.product_id ?? null,
+      // Stored as a product; shown as the module it belongs to, because that
+      // is the choice the office actually made.
+      freeCourseId:
+        courseOfProduct.get((p.pack_items ?? []).find((i) => i.is_free)?.product_id ?? '') ?? null,
       maxRedemptions: p.max_redemptions,
       redeemedCount: p.redeemed_count,
     }));
@@ -187,7 +208,7 @@ export default async function AdminCouponsPage({
                   <p className="mt-1 mb-3 max-w-2xl text-[12px] leading-relaxed text-ink-muted">
                     {t('bonusLead')}
                   </p>
-                  <BonusEditor products={products} bonuses={bonuses} />
+                  <BonusEditor products={products} giftModules={giftModules} bonuses={bonuses} />
                 </>
               ),
             },
