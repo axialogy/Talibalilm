@@ -340,7 +340,9 @@
     "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
     "claimFree": "Obtenir ce cours gratuitement",
     "claimFreeNote": "Rien à régler. L’accès s’ouvre immédiatement, pour la durée habituelle.",
-    "notFree": "Ce panier n’est pas gratuit. Veuillez poursuivre vers le paiement."
+    "notFree": "Ce panier n’est pas gratuit. Veuillez poursuivre vers le paiement.",
+    "certificationApprofondi": "Certification agréée",
+    "certificationModule": "Certification de présence"
   },
   "auth": {
     "loginTitle": "Connexion",

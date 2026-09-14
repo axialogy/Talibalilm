@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import {
   AlertCircle,
+  Award,
   Check,
   Gift,
   GraduationCap,
@@ -145,8 +146,20 @@ export async function CheckoutFlow({
                             ? t('cursusApprofondiBody')
                             : t('cursusModuleBody'))}
                       </span>
+                      {/*
+                        What the student leaves with. It is the clearest
+                        difference between the two routes and the question the
+                        office is asked most, so it belongs on the card where
+                        the choice is made rather than three steps later.
+                      */}
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                        <Award className="size-3.5" aria-hidden="true" />
+                        {option.kind === 'approfondi'
+                          ? t('certificationApprofondi')
+                          : t('certificationModule')}
+                      </span>
                       {option.yearCount > 1 && (
-                        <span className="mt-3 text-[11px] text-brand-600">
+                        <span className="mt-2 text-[11px] text-brand-600">
                           {t('yearLabel', { year: option.yearCount })}
                         </span>
                       )}

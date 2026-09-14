@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { ArrowRight, GraduationCap, Layers, PlayCircle } from 'lucide-react';
+import { ArrowRight, Award, GraduationCap, Layers, PlayCircle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/marketing/CourseCard';
@@ -45,6 +45,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const t = await getTranslations('home');
   const tCourses = await getTranslations('courses');
+  const tCheckout = await getTranslations('checkout');
   const tMeta = await getTranslations('meta');
 
   const [courses, cursusList, events, reviews] = await Promise.all([
@@ -215,6 +216,18 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                     <div className="p-6">
                       <p className="text-[13px] leading-relaxed text-ink-muted">
                         {cursus.description || cursus.subtitle}
+                      </p>
+                      {/* The same line the checkout shows on the same choice.
+                          Said in both places on purpose: it is the difference
+                          people actually ask about, and a visitor should not
+                          have to reach the payment screen to learn it. */}
+                      <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                        <Award className="size-3.5" aria-hidden="true" />
+                        {tCheckout(
+                          cursus.kind === 'approfondi'
+                            ? 'certificationApprofondi'
+                            : 'certificationModule',
+                        )}
                       </p>
                       <div className="mt-5">
                         <Button asChild size="sm" variant="gold">

@@ -340,7 +340,9 @@
     "rateLimited": "Too many attempts. Try again in a few minutes.",
     "claimFree": "Get this course free",
     "claimFreeNote": "Nothing to pay. Access opens straight away and lasts the usual period.",
-    "notFree": "This basket is not free. Please continue to payment."
+    "notFree": "This basket is not free. Please continue to payment.",
+    "certificationApprofondi": "Accredited certificate",
+    "certificationModule": "Certificate of attendance"
   },
   "auth": {
     "loginTitle": "Log in",
