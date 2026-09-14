@@ -157,6 +157,83 @@ export async function readObjectHead(
   }
 }
 
+export interface CorsProbe {
+  configured: boolean;
+  ok: boolean;
+  status?: number;
+  allowOrigin?: string;
+  allowMethods?: string;
+  allowHeaders?: string;
+  error?: string;
+}
+
+/**
+ * Will the bucket accept a browser PUT from this origin?
+ *
+ * A failed direct upload tells the browser almost nothing — a CORS refusal and
+ * a dropped connection arrive at `xhr.onerror` identically, with no status and
+ * no message, by design in the fetch spec. So the guess goes on screen and the
+ * fault stays hidden, which is exactly the thing CLAUDE.md forbids.
+ *
+ * The server has no such handicap: it can send the preflight ITSELF, with an
+ * `Origin` header, and read what R2 actually answers. That turns "the upload
+ * was refused or interrupted" into a fact — either the bucket names our origin
+ * back, or it does not.
+ *
+ * The key is presigned but never written to. A preflight is a question, not an
+ * upload; nothing is stored by asking.
+ */
+export async function checkCors(origin: string): Promise<CorsProbe> {
+  if (!r2Configured) return { configured: false, ok: false };
+
+  try {
+    const url = await getSignedUrl(
+      s3(),
+      new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: 'cors-probe/never-written',
+        ContentType: 'video/mp4',
+      }),
+      { expiresIn: 60 },
+    );
+
+    const response = await fetch(url, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: origin,
+        'Access-Control-Request-Method': 'PUT',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+      cache: 'no-store',
+    });
+
+    const allowOrigin = response.headers.get('access-control-allow-origin') ?? '';
+    const allowMethods = response.headers.get('access-control-allow-methods') ?? '';
+    const allowHeaders = response.headers.get('access-control-allow-headers') ?? '';
+
+    // R2 answers 200 with the headers when the policy matches, and 403 — or a
+    // 200 with no headers at all — when it does not.
+    const ok =
+      response.ok && (allowOrigin === '*' || allowOrigin.toLowerCase() === origin.toLowerCase());
+
+    return {
+      configured: true,
+      ok,
+      status: response.status,
+      allowOrigin,
+      allowMethods,
+      allowHeaders,
+    };
+  } catch (error) {
+    reportError('r2.checkCors', error, { origin });
+    return {
+      configured: true,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 /** Remove one object. Used when a slide is deleted, and to clean up a rejected upload. */
 export async function deleteObject(key: string): Promise<boolean> {
   if (!r2Configured) return false;

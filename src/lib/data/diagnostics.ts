@@ -2,7 +2,7 @@ import 'server-only';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured, siteUrl } from '@/lib/env';
-import { r2Configured, r2Missing } from '@/lib/storage/r2';
+import { checkCors, r2Configured, r2Missing } from '@/lib/storage/r2';
 import { smtpProbe } from '@/lib/email/send';
 import { liveKitConfigured } from '@/lib/live/server';
 
@@ -595,10 +595,34 @@ export async function runDiagnostics(): Promise<Check[]> {
   const missingR2 = r2Missing();
   checks.push({
     group: 'Configuration',
-    name: 'Cloudflare R2 (diapositives)',
+    name: 'Cloudflare R2 (diapositives et vidéos)',
     state: r2Configured ? 'ok' : 'unset',
     detail: r2Configured ? 'les quatre variables sont lues' : missingR2.join(', '),
   });
+
+  // The one fault a browser cannot report. A CORS refusal and a dropped
+  // connection both reach `xhr.onerror` with no status and no message — so an
+  // upload that fails for want of a bucket policy is indistinguishable from
+  // one that failed for want of signal. The server can just ask.
+  if (r2Configured) {
+    const origin = siteUrl().replace(/\/$/, '');
+    const cors = await checkCors(origin);
+    checks.push({
+      group: 'Configuration',
+      name: 'R2 — autorisation d’envoi depuis le navigateur (CORS)',
+      state: cors.ok ? 'ok' : 'error',
+      detail: cors.ok
+        ? `le bucket accepte un PUT depuis ${origin}` +
+          (cors.allowHeaders ? ` — en-têtes autorisés : ${cors.allowHeaders}` : '')
+        : cors.error
+          ? `la vérification a échoué : ${cors.error}`
+          : `le bucket a répondu ${cors.status ?? '?'} et n’autorise pas ${origin}. ` +
+            `Ajoutez la règle CORS au bucket (voir .env.example) : AllowedOrigins ["${origin}"], ` +
+            'AllowedMethods ["PUT"], AllowedHeaders ["content-type"]. ' +
+            'Sans elle, tout envoi de diapositive ou de vidéo échoue dans le navigateur ' +
+            'avec « refusé ou interrompu » et rien d’autre.',
+    });
+  }
 
   checks.push({
     group: 'Configuration',
