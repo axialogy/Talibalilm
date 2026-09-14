@@ -67,6 +67,27 @@ function s3(): S3Client {
       region: 'auto',
       endpoint: `https://${ACCOUNT}.r2.cloudflarestorage.com`,
       credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET },
+
+      // WITHOUT THIS, EVERY BROWSER UPLOAD FAILS.
+      //
+      // Recent versions of the AWS SDK add a CRC32 checksum to S3 writes by
+      // default. For an ordinary upload it is computed from the body and is a
+      // genuine integrity check. For a PRESIGNED url there is no body at
+      // signing time, so the SDK computes the checksum of NOTHING —
+      // `x-amz-checksum-crc32=AAAAAA==`, the CRC32 of zero bytes — and bakes
+      // that into the query string. R2 then compares the file the browser
+      // actually sent against the checksum of an empty payload, and rejects
+      // every upload that is not empty.
+      //
+      // The rejection is invisible from the browser: an S3 error response
+      // carries no CORS headers, so `xhr.onerror` fires with no status and no
+      // message, indistinguishable from a dropped connection. It cost a full
+      // round of blaming the bucket policy, which was correct all along.
+      //
+      // 'WHEN_REQUIRED' keeps checksums for the operations that genuinely need
+      // them and stops the SDK volunteering one it cannot compute.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     });
   }
   return client;
