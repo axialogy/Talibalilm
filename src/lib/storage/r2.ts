@@ -178,9 +178,25 @@ export async function readObjectHead(
   }
 }
 
+/**
+ * Three outcomes, not two.
+ *
+ * `unverifiable` is the one that had to exist. The previous version returned a
+ * boolean, so a probe that never reached Cloudflare at all — DNS, egress, a
+ * four-second deadline — came back `ok: false` and was printed as "the bucket
+ * refuses your origin". That is a fault this code never observed, reported as
+ * fact, about a bucket whose policy was correct the whole time. A check that
+ * cries wolf costs more than no check.
+ *
+ * So: `allowed` means R2 named our origin back, `refused` means R2 answered and
+ * did not, and `unverifiable` means the question was never put. Only the first
+ * two are evidence.
+ */
+export type CorsOutcome = 'allowed' | 'refused' | 'unverifiable';
+
 export interface CorsProbe {
   configured: boolean;
-  ok: boolean;
+  outcome: CorsOutcome;
   status?: number;
   allowOrigin?: string;
   allowMethods?: string;
@@ -205,7 +221,7 @@ export interface CorsProbe {
  * upload; nothing is stored by asking.
  */
 export async function checkCors(origin: string): Promise<CorsProbe> {
-  if (!r2Configured) return { configured: false, ok: false };
+  if (!r2Configured) return { configured: false, outcome: 'unverifiable' };
 
   try {
     const url = await getSignedUrl(
@@ -237,22 +253,26 @@ export async function checkCors(origin: string): Promise<CorsProbe> {
 
     // R2 answers 200 with the headers when the policy matches, and 403 — or a
     // 200 with no headers at all — when it does not.
-    const ok =
+    const allowed =
       response.ok && (allowOrigin === '*' || allowOrigin.toLowerCase() === origin.toLowerCase());
 
     return {
       configured: true,
-      ok,
+      outcome: allowed ? 'allowed' : 'refused',
       status: response.status,
       allowOrigin,
       allowMethods,
       allowHeaders,
     };
   } catch (error) {
+    // The request never completed. That is a fact about this probe — a resolver,
+    // an egress rule, the four-second deadline — and says nothing whatever
+    // about the bucket's policy. Reported as what it is, with the raw error, so
+    // the browser test can answer the question properly.
     reportError('r2.checkCors', error, { origin });
     return {
       configured: true,
-      ok: false,
+      outcome: 'unverifiable',
       error: error instanceof Error ? error.message : String(error),
     };
   }

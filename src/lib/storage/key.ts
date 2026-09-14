@@ -80,3 +80,24 @@ export function videoKey(lessonId: string, extension: VideoExtension, random: st
 export function isVideoKeyFor(key: string, lessonId: string): boolean {
   return VIDEO_KEY_PATTERN.test(key) && key.startsWith(`lessons/${lessonId}/`);
 }
+
+/**
+ * Where the browser's own CORS test writes its eight bytes.
+ *
+ * `cors-probe/<random>.bin`, matching NEITHER `SLIDE_KEY_PATTERN` nor
+ * `VIDEO_KEY_PATTERN` — and that is the point rather than an accident. The
+ * diagnostics page needs a real upload to prove a real upload works, but a key
+ * under `live/` or `lessons/` could, through some future bug, be adopted by a
+ * row and served to a student as a slide or a video. This prefix can never be:
+ * every read path in the app runs its key through one of the two patterns
+ * above, and this one fails both.
+ *
+ * The object is deleted seconds after it arrives. The prefix is also the one
+ * safe thing to sweep blindly if a delete ever fails.
+ */
+export function corsProbeKey(random: string): string {
+  return `cors-probe/${random}.bin`;
+}
+
+/** Mirrors `corsProbeKey`. Used to refuse a key the browser did not get from us. */
+export const CORS_PROBE_KEY_PATTERN = /^cors-probe\/[A-Za-z0-9_-]{8,64}\.bin$/;

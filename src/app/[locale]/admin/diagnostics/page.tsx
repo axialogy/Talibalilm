@@ -1,6 +1,8 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { AlertTriangle, CheckCircle2, CircleSlash, XCircle } from 'lucide-react';
 import { BackLink } from '@/components/admin/BackLink';
+import { R2BrowserCheck } from '@/components/admin/R2BrowserCheck';
+import { SmtpHostTest } from '@/components/admin/SmtpHostTest';
 import { runDiagnostics, type CheckState } from '@/lib/data/diagnostics';
 import { recentErrors } from '@/lib/observability/recent-errors';
 import { requireAdmin } from '@/lib/auth/guards';
@@ -146,6 +148,17 @@ export default async function DiagnosticsPage({ params }: { params: Promise<{ lo
                 </li>
               ))}
           </ul>
+
+          {/*
+            The two questions this page cannot answer by itself, each placed
+            directly under the rows it settles rather than in a corner nobody
+            scrolls to. Both exist because a probe that could not complete was
+            being printed as a fault it never observed — the cure for which is
+            not a better guess but asking from somewhere that can answer: the
+            browser for CORS, and every plausible host for the mail server.
+          */}
+          {group === 'Configuration' && <R2BrowserCheck />}
+          {group === 'Latence' && <SmtpHostTest />}
         </section>
       ))}
     </div>

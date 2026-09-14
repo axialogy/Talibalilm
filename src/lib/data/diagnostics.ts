@@ -646,17 +646,26 @@ export async function runDiagnostics(): Promise<Check[]> {
     checks.push({
       group: 'Configuration',
       name: 'R2 — autorisation d’envoi depuis le navigateur (CORS)',
-      state: cors.ok ? 'ok' : 'error',
-      detail: cors.ok
-        ? `le bucket accepte un PUT depuis ${origin}` +
-          (cors.allowHeaders ? ` — en-têtes autorisés : ${cors.allowHeaders}` : '')
-        : cors.error
-          ? `la vérification a échoué : ${cors.error}`
-          : `le bucket a répondu ${cors.status ?? '?'} et n’autorise pas ${origin}. ` +
-            `Ajoutez la règle CORS au bucket (voir .env.example) : AllowedOrigins ["${origin}"], ` +
-            'AllowedMethods ["PUT"], AllowedHeaders ["content-type"]. ' +
-            'Sans elle, tout envoi de diapositive ou de vidéo échoue dans le navigateur ' +
-            'avec « refusé ou interrompu » et rien d’autre.',
+      // `unverifiable` is GREY, not red. The preflight never reached
+      // Cloudflare, so this code saw nothing — and a row that reports a fault
+      // it did not observe sends the office to fix a bucket that was correct
+      // all along. The raw reason stays on screen, and the button underneath
+      // asks the only party that can actually answer.
+      state:
+        cors.outcome === 'allowed' ? 'ok' : cors.outcome === 'refused' ? 'error' : 'unset',
+      detail:
+        cors.outcome === 'allowed'
+          ? `le bucket accepte un PUT depuis ${origin}` +
+            (cors.allowHeaders ? ` — en-têtes autorisés : ${cors.allowHeaders}` : '')
+          : cors.outcome === 'refused'
+            ? `le bucket a répondu ${cors.status ?? '?'} et n’autorise pas ${origin}. ` +
+              `Ajoutez la règle CORS au bucket (voir .env.example) : AllowedOrigins ["${origin}"], ` +
+              'AllowedMethods ["PUT"], AllowedHeaders ["content-type"]. ' +
+              'Sans elle, tout envoi de diapositive ou de vidéo échoue dans le navigateur ' +
+              'avec « refusé ou interrompu » et rien d’autre.'
+            : `non vérifiable depuis le serveur : ${cors.error ?? 'raison inconnue'} — ` +
+              'cela ne dit rien de la règle du bucket. Utilisez le bouton ' +
+              '« Tester l’envoi depuis le navigateur » plus bas, qui fait un vrai envoi.',
     });
   }
 

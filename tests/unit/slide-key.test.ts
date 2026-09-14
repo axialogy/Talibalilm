@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  corsProbeKey,
   isSlideKeyFor,
   safeFilename,
   slideKey,
   slideName,
+  CORS_PROBE_KEY_PATTERN,
   SLIDE_KEY_PATTERN,
+  VIDEO_KEY_PATTERN,
 } from '@/lib/storage/key';
 
 const SESSION = '11110000-0000-4000-8000-000000000001';
@@ -66,5 +69,28 @@ describe('safeFilename', () => {
   it('strips control characters and bounds the length', () => {
     expect(safeFilename('pl\u0000an\u001f.png')).toBe('plan.png');
     expect(safeFilename('a'.repeat(300)).length).toBe(120);
+  });
+});
+
+/**
+ * The diagnostics page writes a real object to prove a real upload works.
+ *
+ * That object must live somewhere no read path can ever reach. Every slide and
+ * every video is fetched through a key that has been matched against one of the
+ * two patterns above; if the probe's key could pass either, a future bug could
+ * adopt it and serve eight bytes of test data to a student as a lesson.
+ */
+describe('the CORS probe key', () => {
+  const key = corsProbeKey('0123456789abcdef0123456789abcdef');
+
+  it('matches neither the slide nor the video pattern', () => {
+    expect(SLIDE_KEY_PATTERN.test(key)).toBe(false);
+    expect(VIDEO_KEY_PATTERN.test(key)).toBe(false);
+  });
+
+  it('is recognised as one of ours, and a key we did not mint is not', () => {
+    expect(CORS_PROBE_KEY_PATTERN.test(key)).toBe(true);
+    expect(CORS_PROBE_KEY_PATTERN.test('cors-probe/../../etc/passwd.bin')).toBe(false);
+    expect(CORS_PROBE_KEY_PATTERN.test('lessons/a/b.mp4')).toBe(false);
   });
 });
