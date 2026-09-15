@@ -17,7 +17,7 @@ test.describe('locale routing', () => {
   test('switching language keeps you on the same page', async ({ page }) => {
     // The failure this catches is a switcher that always lands on the home
     // page, which is what a naive implementation does.
-    await page.goto('/courses/sciences-du-coran');
+    await page.goto('/courses/fiqh-al-ibadat');
 
     // Below `sm` the switcher lives inside the drawer, so open it first. The
     // test runs at both viewports and has to work at either.
@@ -28,11 +28,11 @@ test.describe('locale routing', () => {
 
     await openDrawer();
     await page.getByRole('button', { name: /English/ }).click();
-    await expect(page).toHaveURL(/\/en\/courses\/sciences-du-coran$/);
+    await expect(page).toHaveURL(/\/en\/courses\/fiqh-al-ibadat$/);
 
     await openDrawer();
     await page.getByRole('button', { name: /Français/ }).click();
-    await expect(page).toHaveURL(/\/courses\/sciences-du-coran$/);
+    await expect(page).toHaveURL(/\/courses\/fiqh-al-ibadat$/);
   });
 
   test('English pages are actually translated, not French text under a new lang', async ({

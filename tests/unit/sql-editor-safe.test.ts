@@ -14,7 +14,10 @@ import { describe, expect, it } from 'vitest';
 const PSQL_ONLY = /^\s*\\(echo|set|i|ir|copy|c|d|timing|pset|gexec)\b/m;
 
 function bundle(): string {
-  return execFileSync('./supabase/bundle.sh', { encoding: 'utf8' });
+  // Run through bash rather than exec'ing the script directly: on Windows a
+  // `.sh` file is not executable, and `spawnSync … EFTYPE` named nothing a
+  // developer could act on. Git Bash is already required for the RLS runner.
+  return execFileSync('bash', ['supabase/bundle.sh'], { encoding: 'utf8' });
 }
 
 describe('SQL meant for the Supabase editor', () => {
