@@ -45,9 +45,14 @@ npm run build       # production build
 npm run typecheck   # tsc --noEmit
 npm run lint
 npm test            # vitest
-npm run test:e2e    # playwright, against a production build
+npm run test:e2e    # playwright, against a production build and the seeded local stack
 npm run test:rls    # policy tests against a scratch Postgres
 ```
+
+The e2e suite walks a fixed catalogue — `fiqh-al-ibadat`, `sciences-du-coran`
+and the rest of `supabase/seed.e2e.sql` — so it needs the local stack up
+(`npx supabase start && npx supabase db reset`) and its keys in `.env.local`
+before the build. CI starts the same stack; see `.github/workflows/ci.yml`.
 
 ---
 
