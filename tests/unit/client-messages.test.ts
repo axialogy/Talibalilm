@@ -21,13 +21,19 @@ function walk(dir: string): string[] {
 
 const sources = walk('src').map((path) => ({ path, code: readFileSync(path, 'utf8') }));
 
+/** Paths are compared with `/`, whatever separator the OS used to build them. */
+function posix(path: string): string {
+  return path.replaceAll('\\', '/');
+}
+
 /** Namespaces requested from inside a file marked `'use client'`. */
 function clientNamespaces(onlyUnder?: string): Set<string> {
   const found = new Set<string>();
   for (const { path, code } of sources) {
+    const normalized = posix(path);
     if (!code.includes("'use client'")) continue;
-    if (onlyUnder && !path.includes(onlyUnder)) continue;
-    if (!onlyUnder && path.includes('/admin/')) continue;
+    if (onlyUnder && !normalized.includes(onlyUnder)) continue;
+    if (!onlyUnder && normalized.includes('/admin/')) continue;
     for (const match of code.matchAll(/useTranslations\('([a-zA-Z]+)/g)) {
       const namespace = match[1];
       if (namespace) found.add(namespace);

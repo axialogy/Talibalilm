@@ -61,7 +61,17 @@ test.describe('SEO', () => {
     const parsed = JSON.parse(raw ?? '{}') as Record<string, unknown>;
     expect(parsed['@type']).toBe('Course');
     expect(parsed['provider']).toMatchObject({ '@type': 'EducationalOrganization' });
-    expect(parsed['offers']).toMatchObject({ priceCurrency: 'EUR' });
+
+    // One Offer per price line — a module is sold in both delivery modes and
+    // both time slots — so `offers` is an array once the catalogue is seeded.
+    // Every entry is checked, not the first: a euro-less second offer is
+    // exactly the kind of thing this test exists to catch.
+    const offers = parsed['offers'];
+    expect(Array.isArray(offers)).toBe(true);
+    expect(offers).not.toHaveLength(0);
+    for (const offer of offers as Record<string, unknown>[]) {
+      expect(offer).toMatchObject({ '@type': 'Offer', priceCurrency: 'EUR' });
+    }
   });
 
   test('sitemap and robots are served', async ({ request }) => {

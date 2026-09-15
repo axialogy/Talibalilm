@@ -33,6 +33,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    // A cold dynamic import on a Windows laptop can pass five seconds while
+    // doing nothing wrong (`prisma-lazy`, `cors-probe`): the default turns a
+    // slow machine into a red suite. Fifteen is still short enough to catch a
+    // real hang.
+    testTimeout: 15_000,
     // Playwright owns tests/e2e; Vitest must not try to run those.
     include: ['tests/unit/**/*.test.ts'],
   },

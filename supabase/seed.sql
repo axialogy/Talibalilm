@@ -13,11 +13,15 @@
 --
 -- What it sets up, from the school's own planning page:
 --   * Two disciplines — Sciences du Coran and Sciences du Fiqh.
---   * Two cursus — Base (à la carte) and Approfondi (four years, two subjects
---     a year).
+--   * The first year of the Approfondi, over both disciplines.
 --   * Each discipline offered in both delivery modes and both time slots, at
 --     300 € as a starting price.
 --   * One example offer, to show the shape.
+--
+-- The two cursus themselves are NOT here: migration 20260914120000 creates
+-- them, because the checkout and the `cursus_kind` enum assume they exist even
+-- on a project that never runs this demo catalogue. This file fills their
+-- programme, looking them up by kind.
 -- ---------------------------------------------------------------------------
 
 -- --- the two disciplines ---------------------------------------------------
@@ -43,30 +47,13 @@ values
    '["Connaître les règles des actes cultuels", "Remonter d’une règle à sa source", "Distinguer les avis des écoles reconnues"]'::jsonb)
 on conflict (id) do nothing;
 
--- --- the two cursus --------------------------------------------------------
-
-insert into public.cursus (id, slug, kind, title, subtitle, description, year_count, status, display_order)
-values
-  ('7f000000-0000-4000-8000-000000000001', 'cursus-de-base', 'module',
-   'Cursus de Base',
-   'Les matières à la carte, pour un an',
-   'Vous choisissez les matières qui vous intéressent et vous les suivez pendant 365 jours, en présentiel ou en visioconférence.',
-   1, 'published', 1),
-
-  ('7f000000-0000-4000-8000-000000000002', 'cursus-approfondi', 'approfondi',
-   'Cursus Approfondi',
-   'Formation sur quatre ans',
-   'Accessible aux personnes ayant déjà suivi des cours en sciences islamiques ou sur validation par test. Seules deux matières sont étudiées par année, pour approfondir les connaissances.',
-   4, 'published', 2)
-on conflict (id) do nothing;
-
 -- --- the programme ---------------------------------------------------------
 -- Year 1 of the Approfondi covers both disciplines, in either mode. The school
 -- fills in years 2 to 4 as the syllabus is published — the planning page calls
 -- them "bientôt disponible" today.
 
 insert into public.cursus_courses (cursus_id, course_id, delivery, year_index, position)
-select '7f000000-0000-4000-8000-000000000002', course_id, delivery, 1, position
+select (select id from public.cursus where kind = 'approfondi'), course_id, delivery, 1, position
 from (values
   ('7c000000-0000-4000-8000-000000000001'::uuid, 1),
   ('7c000000-0000-4000-8000-000000000002'::uuid, 2)
@@ -102,7 +89,7 @@ insert into public.products
   (kind, cursus_id, year_index, delivery, time_slot, schedule_label,
    hours_per_year, hours_per_week, language, price_cents, duration_days, status, display_order)
 select
-  'cursus', '7f000000-0000-4000-8000-000000000002', 1, d.delivery,
+  'cursus', (select id from public.cursus where kind = 'approfondi'), 1, d.delivery,
   'dimanche', 'Dimanche 9h-13h', 120, 40, 'fr', 60000, 365, 'published', 1
 from (values ('presentiel'::public.delivery_mode), ('online'::public.delivery_mode)) as d (delivery)
 on conflict do nothing;

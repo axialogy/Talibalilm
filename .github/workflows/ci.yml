@@ -54,7 +54,26 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # A real Supabase stack, not a mock: PostgREST, GoTrue and RLS policies
+      # behave here exactly as they do in the hosted project, and the seed in
+      # supabase/config.toml gives every test the same catalogue to navigate.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
       - run: npm ci
+      - name: Start Supabase and apply migrations + seeds
+        run: |
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+          supabase db reset
+      - name: Export the local stack's keys for the build and the tests
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3100"
+          } >> "$GITHUB_ENV"
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
