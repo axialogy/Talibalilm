@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { CursusImageUpload } from '@/components/admin/CursusImageUpload';
 import { saveCursus } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -16,6 +17,10 @@ export interface CursusView {
   title: string;
   subtitle: string;
   description: string;
+  /** The written programme, one entry per line, shown on the home page. */
+  details: string;
+  /** Poster shown in the "Voir le cursus" accordion. */
+  image_url: string | null;
   year_count: number;
   status: 'draft' | 'published' | 'archived';
   display_order: number;
@@ -80,6 +85,22 @@ export function CursusForm({ cursus }: { cursus?: CursusView }) {
           className="w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 text-sm text-ink outline-none focus:border-brand-400"
         />
       </label>
+
+      {/* The programme the student reads inside the cursus card. One entry per
+          line — the card keeps the line breaks and bolds the section lines. */}
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('cursusProgramme')}</span>
+        <textarea
+          name="details"
+          rows={12}
+          defaultValue={cursus?.details ?? ''}
+          placeholder={t('cursusProgrammeHint')}
+          className="w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 font-mono text-[13px] text-ink outline-none focus:border-brand-400"
+        />
+        <span className="mt-1.5 block text-[11px] text-ink-muted">{t('cursusProgrammeHint')}</span>
+      </label>
+
+      {cursus && <CursusImageUpload cursusId={cursus.id} imageUrl={cursus.image_url} />}
 
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm">

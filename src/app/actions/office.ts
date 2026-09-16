@@ -7,6 +7,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
 import { slugifyBatch } from '@/lib/commerce/batch';
+import { deleteObject } from '@/lib/storage/r2';
 import type { AdminState } from '@/app/actions/admin';
 import { errorDetail } from '@/lib/supabase/error-detail';
 
@@ -130,13 +131,37 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
       userId: z.string().uuid(),
       fullName: z.string().trim().max(120).default(''),
       phone: z.string().trim().max(32).default(''),
+      phoneLandline: z.string().trim().max(32).default(''),
       locale: z.enum(['fr', 'en']).default('fr'),
+      // The enrolment form's fields. The office can correct a typo a student
+      // made; the shape constraints in the database still hold.
+      civility: z.enum(['', 'madame', 'monsieur']).default(''),
+      firstName: z.string().trim().max(60).default(''),
+      lastName: z.string().trim().max(60).default(''),
+      birthDate: z
+        .string()
+        .trim()
+        .regex(/^$|^\d{4}-\d{2}-\d{2}$/)
+        .default(''),
+      address: z.string().trim().max(200).default(''),
+      postalCode: z.string().trim().max(16).default(''),
+      city: z.string().trim().max(120).default(''),
+      department: z.string().trim().max(120).default(''),
     })
     .safeParse({
       userId: formData.get('userId'),
       fullName: formData.get('fullName') ?? '',
       phone: formData.get('phone') ?? '',
+      phoneLandline: formData.get('phoneLandline') ?? '',
       locale: formData.get('locale') ?? 'fr',
+      civility: formData.get('civility') ?? '',
+      firstName: formData.get('firstName') ?? '',
+      lastName: formData.get('lastName') ?? '',
+      birthDate: formData.get('birthDate') ?? '',
+      address: formData.get('address') ?? '',
+      postalCode: formData.get('postalCode') ?? '',
+      city: formData.get('city') ?? '',
+      department: formData.get('department') ?? '',
     });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -147,7 +172,16 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
       full_name: parsed.data.fullName,
       // The constraint wants null rather than an empty string.
       phone: parsed.data.phone || null,
+      phone_landline: parsed.data.phoneLandline || null,
       locale: parsed.data.locale,
+      civility: parsed.data.civility || null,
+      first_name: parsed.data.firstName,
+      last_name: parsed.data.lastName,
+      birth_date: parsed.data.birthDate || null,
+      address: parsed.data.address,
+      postal_code: parsed.data.postalCode,
+      city: parsed.data.city,
+      department: parsed.data.department,
     })
     .eq('id', parsed.data.userId);
   if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
@@ -330,12 +364,26 @@ export async function anonymiseStudent(_prev: AdminState, formData: FormData): P
 
   const { userId, reason } = parsed.data;
 
+  // Read the photo's key BEFORE the scrub clears it: Postgres cannot reach R2,
+  // so the object is this action's to delete, and after the RPC the pointer is
+  // gone.
+  const adminClient = createAdminClient();
+  const { data: profileRow } = await adminClient
+    .from('profiles')
+    .select('avatar_key')
+    .eq('id', userId)
+    .maybeSingle();
+
   const supabase = await admin();
   const { data, error } = await supabase.rpc('admin_anonymise_user', {
     target_user: userId,
     reason,
   });
   if (error || data !== true) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+  // Best-effort: the person's photo should not survive the erasure, but a
+  // storage hiccup must not fail the erasure that has already committed.
+  if (profileRow?.avatar_key) await deleteObject(profileRow.avatar_key);
 
   // The email and login live in auth.users, which only the auth admin may
   // write. `.invalid` is a reserved, unroutable TLD, so the token can never be

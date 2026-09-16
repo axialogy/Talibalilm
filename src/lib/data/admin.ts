@@ -211,8 +211,20 @@ export interface StudentSummary {
 /** The extra detail the account panel needs, on the detail screen only. */
 export interface StudentAccountDetail {
   phone: string;
+  phoneLandline: string;
   locale: string;
   hasOrders: boolean;
+  /** The enrolment form's fields, as the student filled them in at checkout. */
+  civility: string | null;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+  address: string;
+  postalCode: string;
+  city: string;
+  department: string;
+  /** R2 key of the photo; the page signs it before display. */
+  avatarKey: string | null;
 }
 
 export async function listStudents(search?: string): Promise<StudentSummary[]> {
@@ -305,7 +317,11 @@ export async function getStudent(userId: string): Promise<{
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, role, created_at, anonymised_at, reviewed_at, phone, locale')
+    .select(
+      `id, full_name, role, created_at, anonymised_at, reviewed_at, phone, locale,
+       phone_landline, civility, first_name, last_name, birth_date,
+       address, postal_code, city, department, avatar_key`,
+    )
     .eq('id', userId)
     .maybeSingle();
   if (!profile) return null;
@@ -331,8 +347,18 @@ export async function getStudent(userId: string): Promise<{
   return {
     account: {
       phone: profile.phone ?? '',
+      phoneLandline: profile.phone_landline ?? '',
       locale: profile.locale,
       hasOrders: (orderCount ?? 0) > 0,
+      civility: profile.civility,
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      birthDate: profile.birth_date,
+      address: profile.address,
+      postalCode: profile.postal_code,
+      city: profile.city,
+      department: profile.department,
+      avatarKey: profile.avatar_key,
     },
     student: {
       userId: profile.id,

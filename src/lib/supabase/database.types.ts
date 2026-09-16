@@ -39,6 +39,16 @@ export interface Database {
           id: string;
           full_name: string;
           phone: string | null;
+          civility: string | null;
+          first_name: string;
+          last_name: string;
+          phone_landline: string | null;
+          birth_date: string | null;
+          address: string;
+          postal_code: string;
+          city: string;
+          department: string;
+          avatar_key: string | null;
           locale: AppLocale;
           role: UserRole;
           reviewed_at: string | null;
@@ -50,6 +60,16 @@ export interface Database {
           id: string;
           full_name?: string;
           phone?: string | null;
+          civility?: string | null;
+          first_name?: string;
+          last_name?: string;
+          phone_landline?: string | null;
+          birth_date?: string | null;
+          address?: string;
+          postal_code?: string;
+          city?: string;
+          department?: string;
+          avatar_key?: string | null;
           locale?: AppLocale;
           role?: UserRole;
           anonymised_at?: string | null;
@@ -64,6 +84,16 @@ export interface Database {
         Update: {
           full_name?: string;
           phone?: string | null;
+          civility?: string | null;
+          first_name?: string;
+          last_name?: string;
+          phone_landline?: string | null;
+          birth_date?: string | null;
+          address?: string;
+          postal_code?: string;
+          city?: string;
+          department?: string;
+          avatar_key?: string | null;
           locale?: AppLocale;
         };
         Relationships: [
@@ -456,6 +486,8 @@ export interface Database {
           title: string;
           subtitle: string;
           description: string;
+          details: string;
+          image_url: string | null;
           year_count: number;
           status: CatalogStatus;
           display_order: number;
@@ -468,6 +500,8 @@ export interface Database {
           title: string;
           subtitle?: string;
           description?: string;
+          details?: string;
+          image_url?: string | null;
           year_count?: number;
           status?: CatalogStatus;
           display_order?: number;
@@ -478,6 +512,8 @@ export interface Database {
           title: string;
           subtitle: string;
           description: string;
+          details: string;
+          image_url: string | null;
           year_count: number;
           status: CatalogStatus;
           display_order: number;

@@ -7,6 +7,8 @@ import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin, requireStaff } from '@/lib/auth/guards';
 import type { AdminState } from '@/app/actions/admin';
 import { errorDetail } from '@/lib/supabase/error-detail';
+import { reportError } from '@/lib/observability/report';
+import { checkImage } from '@/lib/media/image';
 import { pickFreeSlug, slugify } from '@/lib/content/slug';
 
 /**
@@ -20,6 +22,9 @@ import { pickFreeSlug, slugify } from '@/lib/content/slug';
  */
 
 const OK: AdminState = { ok: true };
+
+/** The public media bucket: course covers, event images, cursus posters. */
+const BUCKET = 'course-covers';
 
 async function client() {
   if (!supabaseConfigured) throw new Error('unavailable');
@@ -521,6 +526,11 @@ const cursusSchema = z.object({
   title: z.string().min(2).max(200),
   subtitle: z.string().max(300).default(''),
   description: z.string().max(4000).default(''),
+  /**
+   * The written programme shown in the "Voir le cursus" accordion on the home
+   * page. One entry per line; the card keeps the line breaks.
+   */
+  details: z.string().max(8000).default(''),
   year_count: z.coerce.number().int().min(1).max(10).default(1),
   status: z.enum(['draft', 'published', 'archived']).default('draft'),
   display_order: z.coerce.number().int().min(0).max(9999).default(0),
@@ -533,6 +543,7 @@ export async function saveCursus(_prev: AdminState, formData: FormData): Promise
     title: formData.get('title'),
     subtitle: formData.get('subtitle') ?? '',
     description: formData.get('description') ?? '',
+    details: formData.get('details') ?? '',
     year_count: formData.get('year_count') || 1,
     status: formData.get('status') ?? 'draft',
     display_order: formData.get('display_order') || 0,
@@ -567,6 +578,68 @@ export async function saveCursus(_prev: AdminState, formData: FormData): Promise
       error: error.code === '23505' ? 'slugTaken' : 'saveFailed',
       detail: errorDetail(error),
     };
+
+  revalidatePath('/[locale]/admin/cursus', 'page');
+  refresh();
+  return OK;
+}
+
+/**
+ * The programme poster for one cursus.
+ *
+ * Same shape as an event image: the bytes are checked before anything is
+ * stored, the file goes to the public course-media bucket, and the row keeps
+ * the resulting URL. The home page shows it inside the "Voir le cursus"
+ * accordion, so the refresh below is what makes a new poster appear.
+ */
+export async function uploadCursusImage(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  const file = formData.get('file');
+  if (!id.success) return { ok: false, error: 'invalid' };
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'noFile' };
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const check = checkImage(bytes);
+  if (!check.ok) return { ok: false, error: check.error };
+
+  const supabase = await client();
+  const path = `cursus/${id.data}-${Date.now()}.${check.extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, bytes, { contentType: check.contentType, upsert: true });
+  if (uploadError) {
+    reportError('catalog.cursus.image.upload', uploadError, { id: id.data });
+    return { ok: false, error: 'uploadFailed', detail: errorDetail(uploadError) };
+  }
+
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const { error } = await supabase
+    .from('cursus')
+    .update({ image_url: pub.publicUrl })
+    .eq('id', id.data);
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+  revalidatePath('/[locale]/admin/cursus', 'page');
+  refresh();
+  return OK;
+}
+
+export async function removeCursusImage(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  if (!id.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await client();
+  const { error } = await supabase
+    .from('cursus')
+    .update({ image_url: null })
+    .eq('id', id.data);
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
 
   revalidatePath('/[locale]/admin/cursus', 'page');
   refresh();

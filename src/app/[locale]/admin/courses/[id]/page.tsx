@@ -4,7 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { CourseSettingsForm } from '@/components/admin/CourseSettingsForm';
 import { CoverUpload } from '@/components/admin/CoverUpload';
-import { readBullets, readHighlights } from '@/lib/content/presentation';
+import { GalleryUpload } from '@/components/admin/GalleryUpload';
+import { readBullets, readGallery, readHighlights } from '@/lib/content/presentation';
 import { CourseOutline } from '@/components/admin/CourseOutline';
 import { PublishControls } from '@/components/admin/PublishControls';
 import { Tabs } from '@/components/ui/tabs';
@@ -179,6 +180,7 @@ export default async function CourseBuilderPage({
                   <CourseOutline courseId={course.id} modules={modules} />
                   <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
                     <CoverUpload courseId={course.id} coverUrl={course.cover_url} />
+                    <GalleryUpload courseId={course.id} images={readGallery(course.gallery)} />
                     <CourseSettingsForm
                       course={{
                         id: course.id,

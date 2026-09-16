@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   BookOpen,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -20,6 +21,7 @@ import {
 import { Link, usePathname } from '@/i18n/navigation';
 import { Logo } from '@/components/layout/Logo';
 import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
+import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
 
@@ -47,13 +49,15 @@ const NAV = [
     section: 'navGroupSetup',
     items: [
       { href: '/admin/courses', icon: BookOpen, key: 'courses', admin: false },
+      // Cursus came back to the sidebar when the programme text and poster
+      // became something the office edits: it is now a screen with content of
+      // its own, not only the other side of a module's checkbox.
+      { href: '/admin/cursus', icon: GraduationCap, key: 'cursusNav', admin: false },
       { href: '/admin/live', icon: Radio, key: 'liveNav', admin: false },
       { href: '/admin/site', icon: Globe, key: 'siteNav', admin: false },
-      // Cursus and Diagnostic are deliberately absent from this list, not
-      // deleted. A module's own page is where its cursus is set, so a second
-      // door to the same setting was one more thing to scan past; and the
-      // diagnostic is for the two minutes after a deploy, not for every day.
-      // Both remain reachable at /admin/cursus and /admin/diagnostics.
+      // Diagnostic is deliberately absent from this list, not deleted: it is
+      // for the two minutes after a deploy, not for every day. It remains
+      // reachable at /admin/diagnostics.
     ],
   },
 ] as const;
@@ -219,6 +223,7 @@ export function AdminShell({
         type="submit"
         className="mt-3 inline-flex items-center gap-2 text-[12px] text-ink-muted transition-colors hover:text-red-600"
       >
+        <PendingSpinner className="size-3.5" />
         <LogOut className="size-3.5" aria-hidden="true" />
         {t('signOut')}
       </button>
@@ -282,6 +287,7 @@ export function AdminShell({
                     title={t('signOut')}
                     className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-red-50 hover:text-red-600"
                   >
+                    <PendingSpinner className="size-4" />
                     <LogOut className="size-4" aria-hidden="true" />
                     <span className="sr-only">{t('signOut')}</span>
                   </button>

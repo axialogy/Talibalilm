@@ -19,6 +19,7 @@ export async function PageHero({
   crumb?: string;
 }) {
   const t = await getTranslations('nav');
+  const tCommon = await getTranslations('common');
 
   return (
     <section className="hero-wash relative isolate -mt-18 overflow-hidden rounded-br-[56px] pt-18 lg:rounded-br-[110px]">
@@ -32,7 +33,7 @@ export async function PageHero({
 
       <div className="shell relative py-14 sm:py-16 lg:py-20">
         {crumb && (
-          <nav aria-label="fil d'ariane" className="mb-5 flex items-center gap-1.5 text-xs">
+          <nav aria-label={tCommon('breadcrumb')} className="mb-5 flex items-center gap-1.5 text-xs">
             <Link href="/" className="text-ink-muted transition-colors hover:text-brand-600">
               {t('home')}
             </Link>

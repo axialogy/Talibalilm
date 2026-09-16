@@ -2,8 +2,10 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { fromPayPalAmount, toPayPalAmount } from './amount';
+import type { PayPalPublicConfig } from './types';
 
 export { fromPayPalAmount, toPayPalAmount };
+export type { PayPalPublicConfig };
 
 /**
  * PayPal, server-side only.
@@ -51,6 +53,24 @@ function fromEnvironment(): PayPalConfig | null {
     clientSecret,
     webhookId: process.env.PAYPAL_WEBHOOK_ID ?? '',
     currency: process.env.PAYPAL_CURRENCY ?? 'EUR',
+  };
+}
+
+/**
+ * What the browser needs to load PayPal's buttons.
+ *
+ * Only the client id, the currency and the environment — the client id is
+ * public by design and is the one thing the SDK cannot work without. The
+ * secret stays here: this function exists so the payment component can be
+ * handed exactly these three fields and never the config itself.
+ */
+export async function getPayPalPublicConfig(): Promise<PayPalPublicConfig | null> {
+  const config = await getPayPalConfig();
+  if (!config) return null;
+  return {
+    clientId: config.clientId,
+    currency: config.currency,
+    environment: config.environment,
   };
 }
 
