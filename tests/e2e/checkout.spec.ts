@@ -55,7 +55,7 @@ test.describe('checkout', () => {
 
     // The mode choice is a submit button; `aria-pressed` is what tells it apart
     // from the step nav above it.
-    await card.locator('button[aria-pressed]').filter({ hasText: 'En ligne' }).click();
+    await card.locator('button[aria-pressed]').filter({ hasText: 'Distanciel' }).click();
 
     // The flow advances to the details step, which is where a first-time
     // student fills in their enrolment.
