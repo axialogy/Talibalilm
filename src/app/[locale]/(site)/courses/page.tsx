@@ -74,7 +74,7 @@ export default async function CoursesPage({
         lead={t('lead')}
       />
 
-      <section className="py-14 sm:py-16">
+      <section className="pattern-islamic py-14 sm:py-16">
         <div className="shell">
           <CourseFilters categories={categories} activeCategory={category} />
 

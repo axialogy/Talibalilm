@@ -34,7 +34,8 @@
     "search": "Rechercher",
     "close": "Fermer",
     "required": "obligatoire",
-    "optional": "facultatif"
+    "optional": "facultatif",
+    "breadcrumb": "Fil d’Ariane"
   },
   "home": {
     "hero": {
@@ -55,8 +56,8 @@
       "title": "Trois étapes, puis vous étudiez",
       "step1Title": "Créez votre compte",
       "step1Body": "Quelques secondes, une adresse e-mail, et vous pouvez déjà parcourir tout le catalogue et lire les leçons d’essai.",
-      "step2Title": "Prenez l’abonnement annuel",
-      "step2Body": "Un seul abonnement ouvre tous les cours, y compris ceux publiés après votre inscription. En ligne, ou en réglant sur place à l’institut.",
+      "step2Title": "Choisissez votre formule",
+      "step2Body": "Un module, pour une année, ou le Cursus Approfondi sur trois ans. Vous réglez en ligne, ou en espèces à l’institut.",
       "step3Title": "Suivez les cours à votre rythme",
       "step3Body": "Leçons vidéo et écrites, classes en direct, replays, quiz et devoirs corrigés — en présentiel comme en visioconférence."
     },
@@ -102,7 +103,9 @@
       "title": "Actualités & événements",
       "lead": "Les annonces et les rendez-vous de l’institut.",
       "cta": "En savoir plus",
-      "empty": "Aucune actualité pour le moment."
+      "empty": "Aucune actualité pour le moment.",
+      "imageLabel": "Agrandir l’image",
+      "imageClose": "Fermer l’image"
     },
     "previews": {
       "title": "Assistez à une leçon",
@@ -117,13 +120,19 @@
     },
     "cursus": {
       "title": "Nos cursus",
-      "titleAr": "مساراتنا",
       "lead": "Deux façons d’étudier à l’institut : à la carte, ou un programme complet sur plusieurs années.",
-      "cta": "Voir ce cursus"
+      "cta": "Voir le cursus",
+      "ctaClose": "Masquer le cursus",
+      "enrol": "S’inscrire",
+      "programme": "Programme"
     },
     "reviews": {
       "title": "Ce que disent nos étudiants",
-      "lead": "Des témoignages recueillis auprès des étudiants de l’institut."
+      "lead": "Des témoignages recueillis auprès des étudiants de l’institut.",
+      "readMore": "Lire la suite",
+      "readLess": "Réduire",
+      "previous": "Témoignage précédent",
+      "next": "Témoignage suivant"
     }
   },
   "courses": {
@@ -175,9 +184,9 @@
       "module": "Chapitre {number}",
       "previewBadge": "Leçon d’essai",
       "previewCta": "Regarder l’extrait",
-      "lockedLabel": "Réservé aux membres",
-      "lockedHint": "Cette leçon fait partie de l’abonnement annuel.",
-      "enrollCta": "S’abonner pour accéder",
+      "lockedLabel": "Réservé aux inscrits",
+      "lockedHint": "Cette leçon fait partie du module : votre inscription l’ouvre.",
+      "enrollCta": "S’inscrire pour accéder",
       "continueCta": "Continuer le module",
       "facts": {
         "duration": "Durée",
@@ -270,11 +279,36 @@
     "step": "Étape {current} sur {total}",
     "steps": {
       "cursus": "Votre cursus",
-      "mode": "Présentiel ou en ligne",
+      "mode": "Présentiel ou distanciel",
       "modules": "Vos modules",
+      "info": "Informations",
       "review": "Récapitulatif",
       "payment": "Paiement"
     },
+    "infoHeading": "Vos informations",
+    "infoLead": "Ces informations figurent sur votre inscription à l’institut. Vous ne les saisissez qu’une fois.",
+    "department": "Département",
+    "departmentSciencesIslamiques": "Sciences Islamiques",
+    "civility": "Civilité",
+    "civilityChoose": "Choisissez…",
+    "civilityMadame": "Madame",
+    "civilityMonsieur": "Monsieur",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "emailLabel": "Email",
+    "emailFixedHint": "L’email est votre identifiant de connexion et ne se modifie pas ici.",
+    "phoneMobile": "Téléphone portable",
+    "phoneLandline": "Téléphone fixe (facultatif)",
+    "birthDate": "Date de naissance",
+    "address": "Adresse (numéro et type de voie)",
+    "postalCode": "Code postal",
+    "city": "Ville",
+    "saveInfo": "Enregistrer et continuer",
+    "infoSaved": "Informations enregistrées.",
+    "profileRequired": "Complétez vos informations avant de payer.",
+    "couponApplied": "Code {code} appliqué : −{amount}",
+    "paypalNote": "Vous réglez chez PayPal, dans une fenêtre sécurisée. Le montant est calculé par nos serveurs.",
+    "paypalOpening": "Ouverture de PayPal…",
     "cursusLead": "Deux façons d’étudier à l’institut. Vous pourrez changer tant que vous n’avez pas payé.",
     "cursusModuleName": "À la carte",
     "cursusModuleBody": "Vous choisissez les modules qui vous intéressent et vous les suivez pendant un an.",
@@ -284,7 +318,7 @@
     "modeLead": "Le programme et le tarif diffèrent selon le mode. Choisissez celui qui vous convient.",
     "modePresentiel": "Présentiel",
     "modePresentielBody": "À l’institut, à Montereau-Fault-Yonne, aux horaires annoncés.",
-    "modeOnline": "En ligne",
+    "modeOnline": "Distanciel",
     "modeOnlineBody": "En visioconférence, avec les replays disponibles ensuite.",
     "modulesLeadModule": "Sélectionnez les modules que vous souhaitez suivre. Les offres en cours s’appliquent automatiquement.",
     "modulesLeadApprofondi": "Voici le programme du cursus. Choisissez l’année à laquelle vous vous inscrivez.",
@@ -310,6 +344,7 @@
     "backStep": "Revenir",
     "startOver": "Recommencer",
     "emptyBasket": "Votre sélection est vide.",
+    "moduleNotSoldInMode": "Ce module n’est pas proposé dans ce mode. Revenez à l’étape précédente pour choisir l’autre mode, ou écrivez-nous.",
     "loginRequired": "Connectez-vous pour finaliser votre inscription.",
     "loginCta": "Se connecter",
     "registerCta": "Créer mon compte",
@@ -348,7 +383,7 @@
     "loginTitle": "Connexion",
     "loginLead": "Retrouvez vos cours, vos classes en direct et vos replays.",
     "registerTitle": "Créer un compte",
-    "registerLead": "Le compte est gratuit. Il vous donne accès au catalogue et aux leçons d’essai ; l’abonnement s’ajoute quand vous le souhaitez.",
+    "registerLead": "Le compte est gratuit. Il vous donne accès au catalogue et aux leçons d’essai ; votre module ou votre cursus s’ajoute quand vous le souhaitez.",
     "forgotTitle": "Mot de passe oublié",
     "forgotLead": "Indiquez votre adresse e-mail : nous vous envoyons un lien de réinitialisation.",
     "resetTitle": "Nouveau mot de passe",
@@ -391,7 +426,13 @@
     "phoneInvalid": "Ce numéro de téléphone n’est pas valide.",
     "termsRequired": "Vous devez accepter les conditions pour continuer.",
     "messageShort": "Votre message est trop court.",
-    "tooLong": "C’est trop long."
+    "tooLong": "C’est trop long.",
+    "civilityRequired": "Indiquez Madame ou Monsieur.",
+    "departmentRequired": "Choisissez un département.",
+    "dateInvalid": "Cette date n’est pas valide.",
+    "addressShort": "Indiquez votre adresse complète.",
+    "postalInvalid": "Ce code postal n’est pas valide.",
+    "cityShort": "Indiquez votre ville."
   },
   "authErrors": {
     "accountOpenedSignInFailed": "Votre compte a bien été créé, mais la connexion automatique n’a pas abouti. Connectez-vous avec l’adresse et le mot de passe que vous venez de choisir.",
@@ -420,14 +461,15 @@
     "terms": "Conditions générales",
     "privacy": "Politique de confidentialité",
     "cookies": "Cookies",
-    "rights": "Tous droits réservés."
+    "rights": "Tous droits réservés.",
+    "madeBy": "Made By Axialogy"
   },
   "legal": {
     "termsTitle": "Conditions générales",
     "privacyTitle": "Politique de confidentialité",
     "cookiesTitle": "Gestion des cookies",
     "lastUpdated": "Dernière mise à jour : {date}",
-    "placeholder": "Ce document est en cours de rédaction avec le conseil juridique de l’institut. Il sera publié avant l’ouverture des abonnements."
+    "placeholder": "Ce document est en cours de rédaction avec le conseil juridique de l’institut. Il sera publié avant l’ouverture des inscriptions."
   },
   "cookies": {
     "title": "Cookies",
@@ -438,9 +480,9 @@
   },
   "learn": {
     "breadcrumb": "Mon espace",
-    "lockedTitle": "Leçon réservée aux membres",
-    "lockedBody": "L’abonnement annuel ouvre cette leçon et toutes les autres, y compris les cours publiés pendant votre année.",
-    "playerPending": "La lecture vidéo arrive avec la phase 5 : le fichier sera servi par une URL signée à durée limitée.",
+    "lockedTitle": "Leçon réservée aux inscrits",
+    "lockedBody": "Votre inscription à ce module ouvre cette leçon et toutes les autres, y compris celles publiées pendant votre année.",
+    "playerPending": "La vidéo de cette séance n’est pas encore disponible. Réessayez dans un instant, ou écrivez à l’institut si cela persiste.",
     "noBody": "Cette leçon n’a pas encore de support écrit.",
     "markComplete": "Marquer comme terminée",
     "completed": "Terminée",
@@ -452,12 +494,12 @@
     "myCourses": "Mes cours",
     "noCourses": "Vous n’avez encore ouvert aucun cours.",
     "browseCourses": "Parcourir le catalogue",
-    "membershipActive": "Abonnement actif",
-    "membershipNone": "Aucun abonnement actif",
+    "membershipActive": "Accès actif",
+    "membershipNone": "Aucun accès actif",
     "expiresIn": "{days} jours restants",
     "renew": "Renouveler",
     "staffCardTitle": "Compte du personnel",
-    "staffCardBody": "Vous accédez à tous les modules sans abonnement. Les inscriptions et les paiements se gèrent depuis l’administration.",
+    "staffCardBody": "Vous accédez à tous les modules sans inscription. Les inscriptions et les paiements se gèrent depuis l’administration.",
     "staffCardCta": "Administration",
     "roleAdmin": "Administration",
     "roleInstructor": "Enseignant"
@@ -486,7 +528,7 @@
     "lessonTitle": "Titre de la leçon",
     "lessonType": "Type",
     "duration": "Durée (minutes)",
-    "isPreview": "Leçon d’essai (visible sans abonnement)",
+    "isPreview": "Leçon d’essai (visible sans inscription)",
     "content": "Contenu de la leçon",
     "videoId": "Lien de l’enregistrement (YouTube ou Google Drive)",
     "videoIdHint": "Collez le lien complet de la séance enregistrée. Les étudiants voient le lecteur dans la leçon ; seuls les acheteurs du module peuvent ouvrir la page.",

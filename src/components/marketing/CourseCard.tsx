@@ -74,7 +74,7 @@ export async function CourseCard({ course, className }: { course: Course; classN
           </span>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           {instructor && (
             <span className="inline-flex items-center gap-2 text-xs text-ink-muted">
               <span
@@ -86,7 +86,7 @@ export async function CourseCard({ course, className }: { course: Course; classN
               {t('card.by', { name: instructor.full_name })}
             </span>
           )}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/courses/${course.slug}`}
               className="rounded-md border border-brand-500 px-3 py-1.5 text-[11px] font-semibold text-brand-600 transition-colors hover:bg-brand-500 hover:text-white"
@@ -101,7 +101,7 @@ export async function CourseCard({ course, className }: { course: Course; classN
             */}
             <Link
               href={`/courses/${course.slug}#inscription`}
-              className="rounded-md bg-brand-500 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-600"
+              className="rounded-md bg-brand-500 px-5 py-2.5 text-[12px] font-semibold text-white shadow-brand transition-colors hover:bg-brand-600"
             >
               {t('card.enrol')}
             </Link>

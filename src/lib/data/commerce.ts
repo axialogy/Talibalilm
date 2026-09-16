@@ -19,6 +19,10 @@ export interface CursusSummary {
   title: string;
   subtitle: string;
   description: string;
+  /** The written programme, one entry per line. Empty when none is written. */
+  details: string;
+  /** The programme poster, uploaded by the office. Null when none is set. */
+  imageUrl: string | null;
   yearCount: number;
 }
 
@@ -37,7 +41,7 @@ export async function listCursus(): Promise<CursusSummary[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('cursus')
-    .select('id, slug, kind, title, subtitle, description, year_count')
+    .select('id, slug, kind, title, subtitle, description, details, image_url, year_count')
     .eq('status', 'published')
     .order('display_order', { ascending: true });
 
@@ -48,6 +52,8 @@ export async function listCursus(): Promise<CursusSummary[]> {
     title: row.title,
     subtitle: row.subtitle,
     description: row.description,
+    details: row.details ?? '',
+    imageUrl: row.image_url,
     yearCount: row.year_count,
   }));
 }

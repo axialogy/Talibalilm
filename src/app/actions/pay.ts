@@ -2,11 +2,11 @@
 
 import { z } from 'zod';
 import { headers } from 'next/headers';
-import { redirect as nextRedirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
+import { getStudentProfile, profileComplete } from '@/lib/data/profile';
 import { loadBasket } from '@/lib/commerce/basket';
 import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
 import { clearSelection } from '@/lib/commerce/selection';
@@ -14,10 +14,15 @@ import {
   createPendingOrder,
   attachProviderOrder,
   settleFreeOrder,
+  settleOrder,
   releaseHolds,
   PackExhaustedError,
 } from '@/lib/commerce/orders';
-import { createPayPalOrder, getPayPalConfig } from '@/lib/paypal/client';
+import {
+  capturePayPalOrder,
+  createPayPalOrder,
+  getPayPalConfig,
+} from '@/lib/paypal/client';
 import { siteUrl } from '@/lib/env';
 
 /**
@@ -111,34 +116,50 @@ async function claimCoupon(
 }
 
 /**
- * Open a PayPal order and send the student to PayPal's own approval page.
+ * Open the order, in two steps the browser SDK can drive.
  *
- * A redirect rather than PayPal's browser SDK: no key, no amount and no order
- * id ends up in the page, and the capture happens entirely server-side when
- * the student comes back.
+ * `begin` prices the basket server-side, saves nothing about the amount in the
+ * page, and hands back only PayPal's order id. `complete` captures that order
+ * when PayPal's popup reports approval. The amount never crosses into the
+ * browser, and neither does the secret: the SDK is loaded with the public
+ * client id alone.
+ *
+ * A popup that cannot open falls back to PayPal's own page — the return_url
+ * below is the same route the redirect flow used, so both paths settle
+ * through the same server-side capture.
  */
-export async function startPayPalCheckout(
-  _previous: PayState,
-  _formData: FormData,
-): Promise<PayState> {
-  const locale = await getLocale();
+export type BeginPayState =
+  | { ok: true; free: true; orderId: string }
+  | { ok: true; free: false; orderId: string; paypalOrderId: string }
+  | { ok: false; error: string };
+
+export async function beginPayPalCheckout(): Promise<BeginPayState> {
   const user = await requireUser();
 
   // Opening a PayPal order claims a coupon and a pack seat; cap how fast one
   // caller can churn through those holds.
-  if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+  if (!(await throttle('checkout-start', 20, user.id))) return { ok: false, error: 'rateLimited' };
+
+  // The enrolment details are required before money moves. The wizard only
+  // reaches this step once they are saved, but a hand-posted action must not
+  // be able to pay on a half-filled profile.
+  if (!profileComplete(await getStudentProfile())) {
+    return { ok: false, error: 'profileRequired' };
+  }
 
   const { selection, quote } = await loadBasket();
-
-  if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
+  if (!quote || !selection.delivery) return { ok: false, error: 'emptyBasket' };
 
   // Checked after the basket is priced, not before: a basket that costs nothing
   // has no business being turned away because PayPal is unconfigured. The
   // zero-total branch below settles it without ever calling PayPal.
   const config = await getPayPalConfig();
-  if (!config && quote.totalCents !== 0) return { error: 'unavailable' };
+  if (!config && quote.totalCents !== 0) return { ok: false, error: 'unavailable' };
 
-  const afterOffers = quote.subtotalCents - quote.discountCents;
+  // The coupon is taken off the subtotal AFTER any offer, which is what the
+  // claim and the pricing both assume. `quote.discountCents` may already hold
+  // the previewed coupon, so it is taken back out here.
+  const afterOffers = quote.subtotalCents - (quote.discountCents - quote.couponDiscountCents);
   const coupon = await claimCoupon(selection.couponCode, afterOffers);
 
   let order;
@@ -155,8 +176,8 @@ export async function startPayPalCheckout(
     // The order never opened, so nothing will ever release the coupon this
     // request claimed a moment ago. Hand it straight back.
     if (coupon) await releaseCoupon(coupon.id);
-    if (cause instanceof PackExhaustedError) return { error: 'packExhausted' };
-    if (cause instanceof MixedCurrencyError) return { error: 'mixedCurrency' };
+    if (cause instanceof PackExhaustedError) return { ok: false, error: 'packExhausted' };
+    if (cause instanceof MixedCurrencyError) return { ok: false, error: 'mixedCurrency' };
     throw cause;
   }
 
@@ -165,13 +186,12 @@ export async function startPayPalCheckout(
   if (order.totalCents === 0) {
     await settleFreeOrder(order.id);
     await clearSelection();
-    redirect({ href: `/checkout/confirmation?order=${order.id}`, locale });
+    return { ok: true, free: true, orderId: order.id };
   }
 
-  if (!config) return { error: 'unavailable' };
+  if (!config) return { ok: false, error: 'unavailable' };
 
   const base = siteUrl();
-  let approveUrl: string;
   try {
     const created = await createPayPalOrder({
       config,
@@ -183,7 +203,7 @@ export async function startPayPalCheckout(
       description: quote.lines.map((l) => l.title).join(', ') || 'Institut Talib Alim',
     });
     await attachProviderOrder(order.id, created.id);
-    approveUrl = created.approveUrl;
+    return { ok: true, free: false, orderId: order.id, paypalOrderId: created.id };
   } catch {
     // The order exists and is holding a coupon and a pack redemption. Nothing
     // downstream will ever release them, because the student is never going to
@@ -192,12 +212,74 @@ export async function startPayPalCheckout(
     await markOrderFailed(order.id, 'PayPal would not open the order');
     // Deliberately vague to the student, because the detail here is about our
     // credentials rather than anything they can act on.
-    return { error: 'paypalRefused' };
+    return { ok: false, error: 'paypalRefused' };
+  }
+}
+
+/**
+ * Take the money once the popup reports approval.
+ *
+ * The browser sends only PayPal's order id. It is matched against our own
+ * pending row — which must belong to the caller — before anything is captured,
+ * and the captured amount is checked against that row by `settleOrder`. An id
+ * alone is not authority to take money or hand out access.
+ */
+export async function completePayPalCheckout(
+  paypalOrderId: string,
+): Promise<{ ok: true; orderId: string } | { ok: false; error: string }> {
+  const user = await requireUser();
+
+  // Every call is a round trip to PayPal; an authenticated client must not be
+  // able to turn the capture endpoint into a free amplifier.
+  if (!(await throttle('checkout-complete', 30, user.id))) {
+    return { ok: false, error: 'rateLimited' };
   }
 
-  // PayPal's own domain, so this leaves the app and cannot use the
-  // locale-aware redirect.
-  nextRedirect(approveUrl);
+  const parsed = z.string().min(6).max(64).safeParse(paypalOrderId);
+  if (!parsed.success) return { ok: false, error: 'payUnexpected' };
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from('orders')
+    .select('id, user_id, status')
+    .eq('provider_order_id', parsed.data)
+    .maybeSingle();
+
+  if (!order || order.user_id !== user.id) return { ok: false, error: 'payUnexpected' };
+
+  if (order.status === 'paid') {
+    await clearSelection();
+    return { ok: true, orderId: order.id };
+  }
+
+  const config = await getPayPalConfig();
+  if (!config) return { ok: false, error: 'unavailable' };
+
+  try {
+    const capture = await capturePayPalOrder(config, parsed.data);
+    const settled = await settleOrder({
+      orderId: order.id,
+      capturedCents: capture.amountCents,
+      currency: capture.currency,
+      captureId: capture.captureId,
+      status: capture.status,
+    });
+
+    if (!settled.ok) {
+      const error =
+        settled.reason === 'amount_mismatch'
+          ? 'payMismatch'
+          : settled.reason === 'not_completed'
+            ? 'payNotCompleted'
+            : 'payUnexpected';
+      return { ok: false, error };
+    }
+  } catch {
+    return { ok: false, error: 'paypalRefused' };
+  }
+
+  await clearSelection();
+  return { ok: true, orderId: order.id };
 }
 
 /**
@@ -222,11 +304,12 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
   const user = await requireUser();
 
   if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+  if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
 
   const { selection, quote } = await loadBasket();
   if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
 
-  const afterOffers = quote.subtotalCents - quote.discountCents;
+  const afterOffers = quote.subtotalCents - (quote.discountCents - quote.couponDiscountCents);
   const coupon = await claimCoupon(selection.couponCode, afterOffers);
 
   let order;
@@ -280,6 +363,7 @@ export async function redeemOfficeCode(_previous: PayState, formData: FormData):
   // The one path where guessing pays: a valid office code is a year of access
   // for free. A shared, durable counter is what makes brute force uneconomical.
   if (!(await throttle('office-code', 10, user.id))) return { error: 'rateLimited' };
+  if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
 
   const parsed = codeSchema.safeParse(formData.get('code') ?? '');
   if (!parsed.success) return { error: 'codeInvalid' };
@@ -287,7 +371,7 @@ export async function redeemOfficeCode(_previous: PayState, formData: FormData):
   const { selection, quote } = await loadBasket();
   if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
 
-  const afterOffers = quote.subtotalCents - quote.discountCents;
+  const afterOffers = quote.subtotalCents - (quote.discountCents - quote.couponDiscountCents);
   const coupon = await claimCoupon(parsed.data, afterOffers);
   if (!coupon) return { error: 'codeRefused' };
 

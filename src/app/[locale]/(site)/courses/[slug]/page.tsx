@@ -9,7 +9,6 @@ import { CourseCard } from '@/components/marketing/CourseCard';
 import { PlanningTarifs } from '@/components/marketing/PlanningTarifs';
 import { InfoCarousel } from '@/components/courses/InfoCarousel';
 import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
-import { selectModuleCourse } from '@/app/actions/checkout';
 import { getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
 import { listCursus, listProducts } from '@/lib/data/commerce';
 import { listLiveSessions } from '@/lib/data/live';
@@ -81,6 +80,7 @@ export default async function CoursePage({
   if (!course || course.status !== 'published') notFound();
 
   const t = await getTranslations('courses');
+  const tCommon = await getTranslations('common');
   const tMeta = await getTranslations('meta');
   const tNav = await getTranslations('nav');
   const tLive = await getTranslations('live');
@@ -162,7 +162,7 @@ export default async function CoursePage({
 
         <div className="shell relative py-14 text-center sm:py-16 lg:py-20">
           <nav
-            aria-label="fil d'ariane"
+            aria-label={tCommon('breadcrumb')}
             className="mb-6 flex flex-wrap items-center justify-center gap-1.5 text-xs text-white/60"
           >
             <Link href="/" className="transition-colors hover:text-gold-300">
@@ -206,7 +206,7 @@ export default async function CoursePage({
 
       {/* Département — Conditions d'accès */}
       {(hasDepartment || course.requirements.length > 0 || course.description) && (
-        <section className="py-14 sm:py-16">
+        <section className="pattern-islamic py-14 sm:py-16">
           <div className="shell grid gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
               <h2 className="font-display text-[22px] font-semibold text-gold-600 sm:text-[26px]">
@@ -227,22 +227,24 @@ export default async function CoursePage({
                 {t('detail.requirements')}
               </h2>
               {course.requirements.length > 0 ? (
-                <ul className="mt-4 space-y-3">
-                  {course.requirements.map((requirement) => (
+                <ol className="mt-4 space-y-3">
+                  {course.requirements.map((requirement, index) => (
                     <li
                       key={requirement}
                       className="flex items-start gap-3 text-sm leading-relaxed text-ink-muted"
                     >
+                      {/* Numbered, because the conditions are read in order —
+                          each one assumes the one before it. */}
                       <span
-                        className="mt-1 flex size-4 shrink-0 items-center justify-center rounded-full bg-gold-500 text-white"
+                        className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-50 font-display text-[11px] font-semibold text-brand-700"
                         aria-hidden="true"
                       >
-                        <Check className="size-2.5" />
+                        {index + 1}.
                       </span>
                       {requirement}
                     </li>
                   ))}
-                </ul>
+                </ol>
               ) : (
                 <p className="mt-4 text-sm leading-relaxed text-ink-muted">
                   {t('detail.requirementsEmpty')}
@@ -464,27 +466,16 @@ export default async function CoursePage({
             {t('detail.enrolmentLead')}
           </p>
 
-          {/* ONE button, not one per delivery mode.
-              There used to be two — "on site, €300" beside "online, €300" —
-              which asked the presentiel-or-online question here, and then the
-              wizard asked it again at step two. This answers only what the page
-              actually knows (which module, sold à la carte) and lets the mode
-              step do its job. The form posts ids; the price is read from the
-              published list server-side, never from the browser. */}
-          {entries.length > 0 && (
-            <div className="mt-8 flex justify-center">
-              <form action={selectModuleCourse}>
-                <input type="hidden" name="courseId" value={course.id} />
-                <input type="hidden" name="cursusId" value={moduleCursusId} />
-                <Button type="submit" size="md">
-                  {t('detail.quickEnrol')}
-                </Button>
-              </form>
-            </div>
-          )}
-
+          {/* The card knows which module it is standing on, so it does not ask
+              — no "which cursus", no list of every module the school sells.
+              The mode step resolves this course into its published product;
+              the price is read from the products table server-side and the
+              browser never posts one. */}
           <div className="mt-8">
-            <CheckoutFlow locale={locale} />
+            <CheckoutFlow
+              locale={locale}
+              moduleContext={{ courseId: course.id, cursusId: moduleCursusId }}
+            />
           </div>
         </div>
       </section>

@@ -27,7 +27,18 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('a0000000-0000-4000-8000-000000000003', 'admin@test.fr',   '{"full_name":"Direction"}'::jsonb);
 update public.profiles set role = 'instructor' where id = 'a0000000-0000-4000-8000-000000000002';
 update public.profiles set role = 'admin' where id = 'a0000000-0000-4000-8000-000000000003';
-update public.profiles set phone = '+33600000000' where id = 'a0000000-0000-4000-8000-000000000001';
+update public.profiles
+   set phone = '+33600000000',
+       civility = 'monsieur',
+       first_name = 'Étudiant',
+       last_name = 'Réel',
+       phone_landline = '+33100000000',
+       birth_date = '1995-10-03',
+       address = '1 rue de la Mosquée',
+       postal_code = '77130',
+       city = 'Montereau-Fault-Yonne',
+       department = 'sciences-islamiques'
+ where id = 'a0000000-0000-4000-8000-000000000001';
 
 insert into public.courses (id, slug, title, status, published_at) values
   ('c0000000-0000-4000-8000-000000000001', 'fiqh', 'Fiqh', 'published', now());
@@ -129,6 +140,22 @@ begin
   perform public.assert(
     (select phone from public.profiles where id = 'a0000000-0000-4000-8000-000000000001') is null,
     'the phone is gone');
+  -- Every identifying column, checked together. A column added to `profiles`
+  -- without touching `admin_anonymise_user` survives an erasure, which is the
+  -- one failure here that is both silent and serious — so the eraser's list is
+  -- asserted, not trusted.
+  perform public.assert(
+    (select civility is null
+        and first_name = ''
+        and last_name = ''
+        and phone_landline is null
+        and birth_date is null
+        and address = ''
+        and postal_code = ''
+        and city = ''
+        and department = ''
+     from public.profiles where id = 'a0000000-0000-4000-8000-000000000001'),
+    'every enrolment field is scrubbed, not only the name and phone');
   select anonymised_at into stamp from public.profiles
    where id = 'a0000000-0000-4000-8000-000000000001';
   perform public.assert(stamp is not null, 'the account is stamped as erased');

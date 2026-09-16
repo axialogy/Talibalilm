@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { headers } from 'next/headers';
 import {
   EMPTY_SELECTION,
   readSelection,
@@ -8,6 +9,7 @@ import {
   type Selection,
 } from '@/lib/commerce/selection';
 import { listProducts } from '@/lib/data/commerce';
+import { clientKey, rateLimit } from '@/lib/rate-limit';
 
 /**
  * The checkout steps.
@@ -28,7 +30,17 @@ const kindSchema = z.object({
   cursusId: z.string().uuid(),
 });
 
-const deliverySchema = z.object({ delivery: z.enum(['presentiel', 'online']) });
+const deliverySchema = z.object({
+  delivery: z.enum(['presentiel', 'online']),
+  /**
+   * Present when the card sits on a module's page. The module is then already
+   * chosen, and the answer carries it so the action does not depend on a
+   * previous click having written the cookie.
+   */
+  courseId: z.string().uuid().nullable().catch(null),
+  cursusId: z.string().uuid().nullable().catch(null),
+  kind: z.enum(['module', 'approfondi']).nullable().catch(null),
+});
 
 export async function chooseCursus(formData: FormData): Promise<void> {
   const parsed = kindSchema.safeParse({
@@ -50,18 +62,48 @@ export async function chooseCursus(formData: FormData): Promise<void> {
 }
 
 export async function chooseDelivery(formData: FormData): Promise<void> {
-  const parsed = deliverySchema.safeParse({ delivery: formData.get('delivery') });
+  const parsed = deliverySchema.safeParse({
+    delivery: formData.get('delivery'),
+    courseId: formData.get('courseId'),
+    cursusId: formData.get('cursusId'),
+    kind: formData.get('kind'),
+  });
   if (!parsed.success) return;
 
   const current = await readSelection();
+
+  const kind = parsed.data.kind ?? current.kind;
+  const cursusId = parsed.data.cursusId ?? current.cursusId;
+  const courseId = parsed.data.courseId ?? current.courseId;
+
   // Prices and programmes are per delivery mode, so switching modes drops the
   // basket rather than carrying ids that belong to the other price list.
-  const next: Selection =
-    current.delivery === parsed.data.delivery
-      ? { ...current, ...parsed.data }
-      : { ...current, ...parsed.data, productIds: [] };
+  let productIds = current.delivery === parsed.data.delivery ? current.productIds : [];
 
-  await writeSelection(next);
+  // The enrol card on a module's page holds the COURSE, not a product, because
+  // a product belongs to one mode. Now that the mode is answered, the course
+  // becomes the matching product here — so the student does not then have to
+  // find that same module in a list of everything the school sells. The id is
+  // checked against the published price list first, exactly as a hand-posted
+  // one would be.
+  //
+  // `courseId` stays on the selection: it is what tells the module's own page
+  // that this basket belongs to it, and switching mode re-resolves it against
+  // the other price list.
+  if (kind === 'module' && courseId) {
+    const offered = await listProducts(parsed.data.delivery);
+    const match = offered.find((p) => p.kind === 'module' && p.courseId === courseId);
+    if (match) productIds = [match.id];
+  }
+
+  await writeSelection({
+    ...current,
+    kind,
+    cursusId,
+    delivery: parsed.data.delivery,
+    productIds,
+    courseId,
+  });
 }
 
 /**
@@ -110,11 +152,20 @@ export async function chooseCursusYear(formData: FormData): Promise<void> {
 
 export async function applyCoupon(formData: FormData): Promise<void> {
   const raw = z.string().max(32).safeParse(formData.get('code'));
+
+  // The payment step reads the stored code back — read-only — to show what it
+  // takes off, which makes applying one the way to probe for codes. The read
+  // itself never spends anything; this cap is what keeps guessing slow.
+  const { ok } = await rateLimit(clientKey(await headers(), 'coupon-apply'), {
+    limit: 12,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!ok) return;
+
   const selection = await readSelection();
 
-  // Stored, not validated. A coupon is checked and spent server-side at the
-  // moment of payment; telling the student here whether a code exists would
-  // turn the review step into an oracle for guessing them.
+  // Stored, not claimed. `redeem_coupon` still spends it atomically when the
+  // order opens; this only decides what the payment screen shows.
   await writeSelection({
     ...selection,
     couponCode: raw.success && raw.data.trim() !== '' ? raw.data.trim().toUpperCase() : null,
@@ -123,80 +174,4 @@ export async function applyCoupon(formData: FormData): Promise<void> {
 
 export async function resetCheckout(): Promise<void> {
   await writeSelection(EMPTY_SELECTION);
-}
-
-/**
- * Start the flow already holding one module.
- *
- * The enrolment card on a module's page is the same wizard, opened with that
- * module in the basket — the student should not have to find in a list the
- * thing whose page they are standing on. The id still goes through the
- * published price list before it is stored.
- */
-/**
- * Start a checkout on this module without deciding how it is taught.
- *
- * The module page used to offer one button per delivery mode — "on site, €300"
- * beside "online, €300" — which asked a question the wizard asks anyway, twice,
- * with the same price on both. Now there is one button: it answers the CURSUS
- * step (this module is sold à la carte) and remembers which module, and leaves
- * presentiel-or-online to the mode step that already exists for it.
- *
- * No delivery means no product id yet, because a product belongs to one mode.
- * The module is carried as `courseId` and turned into a product once the mode
- * is known — the browser never posts a price, here or anywhere.
- */
-export async function selectModuleCourse(formData: FormData): Promise<void> {
-  const parsed = z
-    .object({
-      courseId: z.string().uuid(),
-      cursusId: z.string().uuid().nullable().catch(null),
-    })
-    .safeParse({
-      courseId: formData.get('courseId'),
-      cursusId: formData.get('cursusId') || null,
-    });
-  if (!parsed.success) return;
-
-  const { courseId, cursusId } = parsed.data;
-  const current = await readSelection();
-  await writeSelection({
-    ...current,
-    kind: 'module',
-    cursusId: cursusId ?? current.cursusId,
-    // Deliberately cleared: a mode chosen on a previous visit must not silently
-    // decide this one, and the wizard's mode step is the thing that asks.
-    delivery: null,
-    productIds: [],
-    courseId,
-  });
-}
-
-export async function selectModuleProduct(formData: FormData): Promise<void> {
-  const parsed = z
-    .object({
-      productId: z.string().uuid(),
-      delivery: z.enum(['presentiel', 'online']),
-      cursusId: z.string().uuid().nullable().catch(null),
-    })
-    .safeParse({
-      productId: formData.get('productId'),
-      delivery: formData.get('delivery'),
-      cursusId: formData.get('cursusId') || null,
-    });
-  if (!parsed.success) return;
-
-  const { productId, delivery, cursusId } = parsed.data;
-  const offered = await listProducts(delivery);
-  const product = offered.find((p) => p.id === productId && p.kind === 'module');
-  if (!product) return;
-
-  const current = await readSelection();
-  await writeSelection({
-    ...current,
-    kind: 'module',
-    cursusId: cursusId ?? current.cursusId,
-    delivery,
-    productIds: [product.id],
-  });
 }
