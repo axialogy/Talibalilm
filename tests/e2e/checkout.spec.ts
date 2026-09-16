@@ -45,9 +45,13 @@ test.describe('checkout', () => {
     const card = page.locator('#inscription');
     const steps = card.locator('nav[aria-label="Inscription"]');
 
-    await expect(steps.getByRole('button', { name: 'Présentiel ou en ligne' })).toBeVisible();
-    await expect(steps.getByRole('button', { name: 'Vos modules' })).toHaveCount(0);
-    await expect(steps.getByRole('button', { name: 'Votre cursus' })).toHaveCount(0);
+    // Three steps, not five: the cursus and module-list questions are gone.
+    // The headings are asserted rather than the nav labels because below `sm`
+    // the labels are hidden and the numbered buttons carry no accessible name.
+    await expect(steps.getByRole('button')).toHaveCount(3);
+    await expect(card.getByRole('heading', { name: 'Présentiel ou en ligne' })).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Vos modules' })).toHaveCount(0);
+    await expect(card.getByRole('heading', { name: 'Votre cursus' })).toHaveCount(0);
 
     // The mode choice is a submit button; `aria-pressed` is what tells it apart
     // from the step nav above it.
