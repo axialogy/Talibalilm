@@ -405,6 +405,7 @@ model profiles {
   postal_code      String             @default("")
   city             String             @default("")
   department       String             @default("")
+  avatar_key       String?
   locale           app_locale         @default(fr)
   role             user_role          @default(student)
   created_at       DateTime           @default(now()) @db.Timestamptz(6)

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { supabaseConfigured } from '@/lib/env';
 
@@ -23,9 +24,18 @@ export interface HeaderViewer {
  * away the static rendering the catalogue depends on for SEO. Chrome is not
  * worth that.
  *
- * The cost is one frame where a signed-in visitor still sees "Connexion".
- * `signedIn: null` marks that moment so the header can hold the space instead
- * of flipping layout underneath a cursor.
+ * Two reads, not one. `getSession()` answers from the stored cookie with no
+ * network round trip, so the header flips to "Mon espace" the instant the
+ * session exists — which is what a student who has just confirmed their email
+ * expects. `getUser()` then revalidates against the auth server and corrects
+ * the answer if the stored session was stale. The first is presentation, the
+ * second is the truth, and the gap between them is a frame.
+ *
+ * The session can also change in a page we are not navigating: an email
+ * confirmed in another tab, or a magic link opened in a second window. So the
+ * read is repeated when the tab regains focus, when it becomes visible again,
+ * and on every route change — otherwise the header keeps offering a login to
+ * somebody who has already signed in.
  *
  * This is presentation only. Nothing here guards anything: the dashboard is
  * protected by the middleware and by the RLS policies, both of which hold
@@ -33,6 +43,7 @@ export interface HeaderViewer {
  */
 export function useViewer(): HeaderViewer {
   const [viewer, setViewer] = useState<HeaderViewer>({ signedIn: null });
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -43,23 +54,37 @@ export function useViewer(): HeaderViewer {
     const supabase = createClient();
     let alive = true;
 
-    const read = (userId: string | undefined) => {
+    const read = (userId: string | undefined | null) => {
       if (alive) setViewer({ signedIn: Boolean(userId) });
     };
 
-    void supabase.auth.getUser().then(({ data }) => read(data.user?.id));
+    const check = () => {
+      void supabase.auth.getSession().then(({ data }) => read(data.session?.user?.id));
+      void supabase.auth.getUser().then(({ data }) => read(data.user?.id));
+    };
+
+    check();
 
     // Signing out in another tab has to be reflected here too, or the header
     // keeps offering a dashboard that now redirects to the login page.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      void read(session?.user?.id);
+      read(session?.user?.id);
     });
+
+    const onFocus = () => check();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       alive = false;
       sub.subscription.unsubscribe();
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [pathname]);
 
   return viewer;
 }

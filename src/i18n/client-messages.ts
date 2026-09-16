@@ -26,6 +26,7 @@ const CLIENT_NAMESPACES = [
   'courses',
   'learn',
   'checkout',
+  'profile',
   'contact',
   'live',
 ] as const;

@@ -504,6 +504,35 @@
     "roleAdmin": "Administrator",
     "roleInstructor": "Teacher"
   },
+  "profile": {
+    "title": "My space",
+    "roleStudent": "Student",
+    "detailsTitle": "My details",
+    "detailsLead": "These details appear on your enrolment at the institute. You can change them at any time.",
+    "saveDetails": "Save",
+    "detailsSaved": "Details saved.",
+    "coursesTitle": "My courses",
+    "coursesEmpty": "You have not opened any course yet.",
+    "progress": "{done} of {total} lessons finished",
+    "accessTitle": "My access",
+    "accessEmpty": "No access yet.",
+    "accessCourse": "Module",
+    "accessCursus": "Cursus",
+    "accessSite": "The whole institute",
+    "accessUntil": "Until {date}",
+    "avatarChange": "Change the photo",
+    "avatarHint": "PNG, JPEG or WebP, up to 5 MB.",
+    "avatarRemove": "Remove the photo",
+    "errors": {
+      "storageUnavailable": "Photo upload is not configured at the moment.",
+      "notAnImage": "That file is not a valid image (PNG, JPEG or WebP).",
+      "tooLarge": "The image is over 5 MB.",
+      "uploadFailed": "The upload did not complete. Try again in a moment.",
+      "saveFailed": "Could not save.",
+      "rateLimited": "Too many attempts. Try again in a few minutes.",
+      "auth": "Sign in again to continue."
+    }
+  },
   "admin": {
     "title": "Administration",
     "courses": "Modules",

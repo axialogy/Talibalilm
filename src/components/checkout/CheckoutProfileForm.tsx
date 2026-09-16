@@ -1,8 +1,9 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
+import { useRouter } from '@/i18n/navigation';
 import { Field } from '@/components/ui/field';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { saveCheckoutProfile, type ProfileState } from '@/app/actions/profile';
@@ -26,13 +27,27 @@ const selectClass =
 export function CheckoutProfileForm({
   profile,
   email,
+  submitLabel,
+  savedLabel,
 }: {
   profile: StudentProfile | null;
   email: string | null;
+  /** The dashboard says "Enregistrer" where the checkout says "continuer". */
+  submitLabel?: string;
+  savedLabel?: string;
 }) {
   const t = useTranslations('checkout');
+  const router = useRouter();
   const [state, action] = useActionState(saveCheckoutProfile, EMPTY);
   const errors = state.fieldErrors ?? {};
+
+  // The action re-renders the route it was called from, so the wizard normally
+  // advances by itself. This is the belt to that braces: if the client is
+  // holding a cached payload, the refresh is what makes the saved profile
+  // visible to the step logic.
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state.ok, router]);
 
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -173,11 +188,17 @@ export function CheckoutProfileForm({
       {state.ok && (
         <p role="status" className="flex items-center gap-2 text-[13px] text-brand-600">
           <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
-          {t('infoSaved')}
+          {savedLabel ?? t('infoSaved')}
         </p>
       )}
 
-      <SubmitButton block>{t('saveInfo')}</SubmitButton>
+      {state.message && !state.ok && (
+        <p role="alert" className="text-[13px] text-red-600">
+          {state.message}
+        </p>
+      )}
+
+      <SubmitButton block>{submitLabel ?? t('saveInfo')}</SubmitButton>
     </form>
   );
 }

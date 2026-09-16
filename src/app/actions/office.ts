@@ -7,6 +7,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
 import { slugifyBatch } from '@/lib/commerce/batch';
+import { deleteObject } from '@/lib/storage/r2';
 import type { AdminState } from '@/app/actions/admin';
 import { errorDetail } from '@/lib/supabase/error-detail';
 
@@ -330,12 +331,26 @@ export async function anonymiseStudent(_prev: AdminState, formData: FormData): P
 
   const { userId, reason } = parsed.data;
 
+  // Read the photo's key BEFORE the scrub clears it: Postgres cannot reach R2,
+  // so the object is this action's to delete, and after the RPC the pointer is
+  // gone.
+  const adminClient = createAdminClient();
+  const { data: profileRow } = await adminClient
+    .from('profiles')
+    .select('avatar_key')
+    .eq('id', userId)
+    .maybeSingle();
+
   const supabase = await admin();
   const { data, error } = await supabase.rpc('admin_anonymise_user', {
     target_user: userId,
     reason,
   });
   if (error || data !== true) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+  // Best-effort: the person's photo should not survive the erasure, but a
+  // storage hiccup must not fail the erasure that has already committed.
+  if (profileRow?.avatar_key) await deleteObject(profileRow.avatar_key);
 
   // The email and login live in auth.users, which only the auth admin may
   // write. `.invalid` is a reserved, unroutable TLD, so the token can never be

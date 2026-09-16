@@ -504,6 +504,35 @@
     "roleAdmin": "Administration",
     "roleInstructor": "Enseignant"
   },
+  "profile": {
+    "title": "Mon espace",
+    "roleStudent": "Étudiant",
+    "detailsTitle": "Mes informations",
+    "detailsLead": "Ces informations figurent sur votre inscription à l’institut. Vous pouvez les modifier à tout moment.",
+    "saveDetails": "Enregistrer",
+    "detailsSaved": "Informations enregistrées.",
+    "coursesTitle": "Mes formations",
+    "coursesEmpty": "Vous n’avez encore ouvert aucune formation.",
+    "progress": "{done} sur {total} leçons terminées",
+    "accessTitle": "Mes accès",
+    "accessEmpty": "Aucun accès pour l’instant.",
+    "accessCourse": "Module",
+    "accessCursus": "Cursus",
+    "accessSite": "Tout l’institut",
+    "accessUntil": "Jusqu’au {date}",
+    "avatarChange": "Changer la photo",
+    "avatarHint": "PNG, JPEG ou WebP, jusqu’à 5 Mo.",
+    "avatarRemove": "Retirer la photo",
+    "errors": {
+      "storageUnavailable": "L’envoi de photo n’est pas configuré pour le moment.",
+      "notAnImage": "Ce fichier n’est pas une image valide (PNG, JPEG ou WebP).",
+      "tooLarge": "L’image dépasse 5 Mo.",
+      "uploadFailed": "L’envoi n’a pas abouti. Réessayez dans un instant.",
+      "saveFailed": "Enregistrement impossible.",
+      "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+      "auth": "Reconnectez-vous pour continuer."
+    }
+  },
   "admin": {
     "title": "Administration",
     "courses": "Modules",

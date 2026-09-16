@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
+import { signDownload } from '@/lib/storage/r2';
 
 /**
  * The student's own enrolment details.
@@ -24,6 +25,20 @@ export interface StudentProfile {
   postalCode: string;
   city: string;
   department: string;
+  /** R2 object key of the photo, never a URL. */
+  avatarKey: string | null;
+}
+
+/**
+ * A URL for one stored photo, minted when a page needs it.
+ *
+ * The bucket is private, so this is a short-lived signature — the same rule
+ * slides and lesson videos follow. The key never leaves the server; only the
+ * signed link does, and it stops working within the hour.
+ */
+export async function avatarUrl(key: string | null): Promise<string | null> {
+  if (!key) return null;
+  return signDownload(key, 3600);
 }
 
 export async function getStudentProfile(): Promise<StudentProfile | null> {
@@ -38,7 +53,7 @@ export async function getStudentProfile(): Promise<StudentProfile | null> {
   const { data } = await supabase
     .from('profiles')
     .select(
-      'civility, first_name, last_name, phone, phone_landline, birth_date, address, postal_code, city, department',
+      'civility, first_name, last_name, phone, phone_landline, birth_date, address, postal_code, city, department, avatar_key',
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -57,6 +72,7 @@ export async function getStudentProfile(): Promise<StudentProfile | null> {
     postalCode: data.postal_code,
     city: data.city,
     department: data.department,
+    avatarKey: data.avatar_key,
   };
 }
 

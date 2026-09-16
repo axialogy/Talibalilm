@@ -101,3 +101,29 @@ export function corsProbeKey(random: string): string {
 
 /** Mirrors `corsProbeKey`. Used to refuse a key the browser did not get from us. */
 export const CORS_PROBE_KEY_PATTERN = /^cors-probe\/[A-Za-z0-9_-]{8,64}\.bin$/;
+
+/**
+ * Where one profile photo lives: `avatars/<user id>/<random>.<ext>`.
+ *
+ * The user id is the prefix, so a key naming another student's photo is not a
+ * key this code can construct and have accepted. The random name matters for
+ * the same reason it does everywhere else: a predictable key plus a signed URL
+ * is a way to read a file the paywall or the privacy rule was meant to cover.
+ */
+export const AVATAR_KEY_PATTERN = /^avatars\/[0-9a-f-]{36}\/[A-Za-z0-9_-]{8,64}\.(png|jpg|webp)$/;
+
+export function avatarKey(userId: string, extension: string, random: string): string {
+  return `avatars/${userId}/${random}.${extension}`;
+}
+
+/** Is this a key we issued for this user? */
+export function isAvatarKeyFor(key: string, userId: string): boolean {
+  return AVATAR_KEY_PATTERN.test(key) && key.startsWith(`avatars/${userId}/`);
+}
+
+/** A random, URL-safe object name. Shared by every upload path. */
+export function objectName(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}

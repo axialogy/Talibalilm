@@ -4,8 +4,12 @@ import { headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
+import { getStudentProfile, profileComplete } from '@/lib/data/profile';
 import { profileDetailsSchema } from '@/lib/validation/profile';
 import { reportError } from '@/lib/observability/report';
+import { avatarKey, isAvatarKeyFor, objectName } from '@/lib/storage/key';
+import { deleteObject, readObjectHead, r2Configured, signUpload } from '@/lib/storage/r2';
+import { checkImage, MAX_IMAGE_BYTES } from '@/lib/media/image';
 
 /**
  * Saving the student's enrolment details.
@@ -99,5 +103,156 @@ export async function saveCheckoutProfile(
     return { ok: false, message: (await getTranslations('common'))('error') };
   }
 
+  // Read back rather than trust the write. An UPDATE that matches no row
+  // reports no error, and a column grant that is missing reports one only for
+  // the columns it covers — either way the form would say "saved" over a row
+  // that still cannot pay. If the profile is not complete after this, the
+  // student is told, not left staring at a disabled button.
+  const saved = await getStudentProfile();
+  if (!profileComplete(saved)) {
+    reportError('profile.save.incomplete', new Error('profile still incomplete after update'), {
+      userId: user.id,
+    });
+    return { ok: false, message: (await getTranslations('checkout'))('profileRequired') };
+  }
+
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Profile photo (Cloudflare R2)
+// ---------------------------------------------------------------------------
+
+export type AvatarBegin =
+  | { ok: true; key: string; uploadUrl: string }
+  | { ok: false; error: string };
+
+export type AvatarResult = { ok: true; key: string | null } | { ok: false; error: string };
+
+/** What a browser may PUT to us, mapped to the extension the key carries. */
+const AVATAR_TYPES: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+};
+
+/**
+ * Step one: a signed URL for one photo, under this user's own prefix.
+ *
+ * The upload goes straight to Cloudflare rather than through a Server Action,
+ * for the same reason a slide does. The key is minted HERE, from the user id,
+ * so a caller cannot ask us to sign a URL for somebody else's prefix — and the
+ * signature pins the content type, so the URL cannot be reused for anything
+ * but an image.
+ */
+export async function beginAvatarUpload(input: {
+  contentType: string;
+}): Promise<AvatarBegin> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'auth' };
+
+  if (!r2Configured) return { ok: false, error: 'storageUnavailable' };
+
+  const extension = AVATAR_TYPES[input.contentType];
+  if (!extension) return { ok: false, error: 'notAnImage' };
+
+  if (!(await avatarThrottle(user.id))) return { ok: false, error: 'rateLimited' };
+
+  const key = avatarKey(user.id, extension, objectName());
+  const uploadUrl = await signUpload(key, input.contentType, 300);
+  if (!uploadUrl) return { ok: false, error: 'storageUnavailable' };
+
+  return { ok: true, key, uploadUrl };
+}
+
+/**
+ * Step two: adopt the object the browser just wrote.
+ *
+ * The bytes decide, not the key and not the declared type. A few bytes are
+ * read back server-side and sniffed; an object that is not really a PNG, JPEG
+ * or WebP is deleted and never becomes a photo. Only then is the key stored —
+ * and the previous object is removed, so replacing a photo does not leave the
+ * old one behind in the bucket.
+ */
+export async function confirmAvatarUpload(key: string): Promise<AvatarResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'auth' };
+
+  // The key came from the browser. It must be one we issued for THIS user, or
+  // a crafted one could adopt another student's object.
+  if (!isAvatarKeyFor(key, user.id)) return { ok: false, error: 'notAnImage' };
+
+  const head = await readObjectHead(key);
+  if (!head) {
+    await deleteObject(key);
+    return { ok: false, error: 'uploadFailed' };
+  }
+
+  const check = checkImage(head.head);
+  if (!check.ok || head.size > MAX_IMAGE_BYTES) {
+    await deleteObject(key);
+    return { ok: false, error: check.ok ? 'tooLarge' : 'notAnImage' };
+  }
+
+  const { data: previous } = await supabase
+    .from('profiles')
+    .select('avatar_key')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_key: key })
+    .eq('id', user.id);
+
+  if (error) {
+    await deleteObject(key);
+    reportError('profile.avatar.save', error, { userId: user.id });
+    return { ok: false, error: 'saveFailed' };
+  }
+
+  if (previous?.avatar_key && previous.avatar_key !== key) {
+    await deleteObject(previous.avatar_key);
+  }
+
+  return { ok: true, key };
+}
+
+/** Remove the photo, from the row and from the bucket. */
+export async function removeAvatar(): Promise<AvatarResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'auth' };
+
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('avatar_key')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_key: null })
+    .eq('id', user.id);
+
+  if (error) {
+    reportError('profile.avatar.remove', error, { userId: user.id });
+    return { ok: false, error: 'saveFailed' };
+  }
+
+  if (current?.avatar_key) await deleteObject(current.avatar_key);
+  return { ok: true, key: null };
+}
+
+async function avatarThrottle(userId: string): Promise<boolean> {
+  const { ok } = await rateLimit(`avatar:${userId}`, { limit: 12, windowMs: 15 * 60 * 1000 });
+  return ok;
 }

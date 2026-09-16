@@ -48,6 +48,7 @@ export interface Database {
           postal_code: string;
           city: string;
           department: string;
+          avatar_key: string | null;
           locale: AppLocale;
           role: UserRole;
           reviewed_at: string | null;
@@ -68,6 +69,7 @@ export interface Database {
           postal_code?: string;
           city?: string;
           department?: string;
+          avatar_key?: string | null;
           locale?: AppLocale;
           role?: UserRole;
           anonymised_at?: string | null;
@@ -91,6 +93,7 @@ export interface Database {
           postal_code?: string;
           city?: string;
           department?: string;
+          avatar_key?: string | null;
           locale?: AppLocale;
         };
         Relationships: [

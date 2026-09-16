@@ -154,6 +154,28 @@ begin
   perform public.assert(not escalated,
     'civility only accepts madame or monsieur');
 
+  -- The photo is stored as an R2 key, and the key's shape is a security rule:
+  -- the user id is its prefix, so a key naming somebody else's object is not
+  -- one this row could hold even if a caller crafted it.
+  update public.profiles
+     set avatar_key = 'avatars/11111111-1111-1111-1111-111111111111/abcdef1234567890.jpg'
+   where id = '11111111-1111-1111-1111-111111111111';
+  perform public.assert(
+    (select avatar_key is not null from public.profiles
+      where id = '11111111-1111-1111-1111-111111111111'),
+    'a student can set their own photo key');
+
+  begin
+    update public.profiles
+       set avatar_key = 'avatars/22222222-2222-2222-2222-222222222222/abcdef1234567890.jpg'
+     where id = '11111111-1111-1111-1111-111111111111';
+    escalated := true;
+  exception when check_violation then
+    escalated := false;
+  end;
+  perform public.assert(not escalated,
+    'a photo key under another student''s prefix is refused by the shape constraint');
+
   -- THE one that matters. RLS alone would allow this: the row still belongs to
   -- the caller, so `using (id = auth.uid())` passes. Only the column grant
   -- stops it.

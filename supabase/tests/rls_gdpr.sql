@@ -37,7 +37,8 @@ update public.profiles
        address = '1 rue de la Mosquée',
        postal_code = '77130',
        city = 'Montereau-Fault-Yonne',
-       department = 'sciences-islamiques'
+       department = 'sciences-islamiques',
+       avatar_key = 'avatars/a0000000-0000-4000-8000-000000000001/abcdef1234567890.jpg'
  where id = 'a0000000-0000-4000-8000-000000000001';
 
 insert into public.courses (id, slug, title, status, published_at) values
@@ -154,6 +155,7 @@ begin
         and postal_code = ''
         and city = ''
         and department = ''
+        and avatar_key is null
      from public.profiles where id = 'a0000000-0000-4000-8000-000000000001'),
     'every enrolment field is scrubbed, not only the name and phone');
   select anonymised_at into stamp from public.profiles
