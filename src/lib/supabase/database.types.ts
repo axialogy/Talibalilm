@@ -456,6 +456,8 @@ export interface Database {
           title: string;
           subtitle: string;
           description: string;
+          details: string;
+          image_url: string | null;
           year_count: number;
           status: CatalogStatus;
           display_order: number;
@@ -468,6 +470,8 @@ export interface Database {
           title: string;
           subtitle?: string;
           description?: string;
+          details?: string;
+          image_url?: string | null;
           year_count?: number;
           status?: CatalogStatus;
           display_order?: number;
@@ -478,6 +482,8 @@ export interface Database {
           title: string;
           subtitle: string;
           description: string;
+          details: string;
+          image_url: string | null;
           year_count: number;
           status: CatalogStatus;
           display_order: number;

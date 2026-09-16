@@ -34,7 +34,8 @@
     "search": "Search",
     "close": "Close",
     "required": "required",
-    "optional": "optional"
+    "optional": "optional",
+    "breadcrumb": "Breadcrumb"
   },
   "home": {
     "hero": {
@@ -55,8 +56,8 @@
       "title": "Three steps, then you study",
       "step1Title": "Create your account",
       "step1Body": "A few seconds and an email address, and you can already browse the whole catalogue and read the trial lessons.",
-      "step2Title": "Take the annual membership",
-      "step2Body": "One membership opens every course, including those published after you join. Online, or by paying at the institute.",
+      "step2Title": "Choose your option",
+      "step2Body": "One module for a year, or the Cursus Approfondi over three years. Pay online, or in cash at the institute.",
       "step3Title": "Study at your own pace",
       "step3Body": "Video and written lessons, live classes, replays, quizzes and marked assignments — on site as well as by video conference."
     },
@@ -102,7 +103,9 @@
       "title": "News & events",
       "lead": "Announcements and dates from the institute.",
       "cta": "Find out more",
-      "empty": "No news at the moment."
+      "empty": "No news at the moment.",
+      "imageLabel": "Enlarge the image",
+      "imageClose": "Close the image"
     },
     "previews": {
       "title": "Sit in on a lesson",
@@ -117,13 +120,19 @@
     },
     "cursus": {
       "title": "Our programmes",
-      "titleAr": "مساراتنا",
       "lead": "Two ways to study at the institute: module by module, or a full programme over several years.",
-      "cta": "See this programme"
+      "cta": "See the programme",
+      "ctaClose": "Hide the programme",
+      "enrol": "Enrol",
+      "programme": "Programme"
     },
     "reviews": {
       "title": "What our students say",
-      "lead": "Testimonials gathered from students at the institute."
+      "lead": "Testimonials gathered from students at the institute.",
+      "readMore": "Read more",
+      "readLess": "Show less",
+      "previous": "Previous testimonial",
+      "next": "Next testimonial"
     }
   },
   "courses": {
@@ -175,9 +184,9 @@
       "module": "Chapter {number}",
       "previewBadge": "Trial lesson",
       "previewCta": "Watch the extract",
-      "lockedLabel": "Members only",
-      "lockedHint": "This lesson is part of the annual membership.",
-      "enrollCta": "Subscribe to get access",
+      "lockedLabel": "Enrolled students only",
+      "lockedHint": "This lesson is part of the module: your enrolment opens it.",
+      "enrollCta": "Enrol to get access",
       "continueCta": "Continue the module",
       "facts": {
         "duration": "Length",
@@ -310,6 +319,7 @@
     "backStep": "Go back",
     "startOver": "Start again",
     "emptyBasket": "Your selection is empty.",
+    "moduleNotSoldInMode": "This module is not offered in that mode. Go back a step to choose the other mode, or write to us.",
     "loginRequired": "Log in to complete your enrolment.",
     "loginCta": "Log in",
     "registerCta": "Create my account",
@@ -348,7 +358,7 @@
     "loginTitle": "Log in",
     "loginLead": "Find your courses, your live classes and your replays.",
     "registerTitle": "Create an account",
-    "registerLead": "The account is free. It gives you the catalogue and the trial lessons; membership comes later, whenever you want it.",
+    "registerLead": "The account is free. It gives you the catalogue and the trial lessons; your module or cursus comes later, whenever you want it.",
     "forgotTitle": "Forgotten password",
     "forgotLead": "Give us your email address and we will send you a reset link.",
     "resetTitle": "New password",
@@ -420,14 +430,15 @@
     "terms": "Terms and conditions",
     "privacy": "Privacy policy",
     "cookies": "Cookies",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "madeBy": "Made By Axialogy"
   },
   "legal": {
     "termsTitle": "Terms and conditions",
     "privacyTitle": "Privacy policy",
     "cookiesTitle": "Cookie settings",
     "lastUpdated": "Last updated: {date}",
-    "placeholder": "This document is being drafted with the institute’s legal counsel. It will be published before memberships open."
+    "placeholder": "This document is being drafted with the institute’s legal counsel. It will be published before enrolment opens."
   },
   "cookies": {
     "title": "Cookies",
@@ -438,9 +449,9 @@
   },
   "learn": {
     "breadcrumb": "My space",
-    "lockedTitle": "This lesson is for members",
-    "lockedBody": "The annual membership opens this lesson and every other one, including courses published during your year.",
-    "playerPending": "Video playback arrives with phase 5: the file will be served by a signed URL with a short lifetime.",
+    "lockedTitle": "This lesson is for enrolled students",
+    "lockedBody": "Your enrolment in this module opens this lesson and every other one, including those published during your year.",
+    "playerPending": "This session’s video is not available yet. Try again in a moment, or write to the institute if it persists.",
     "noBody": "This lesson has no written material yet.",
     "markComplete": "Mark as finished",
     "completed": "Finished",
@@ -452,12 +463,12 @@
     "myCourses": "My courses",
     "noCourses": "You have not opened any course yet.",
     "browseCourses": "Browse the catalogue",
-    "membershipActive": "Membership active",
-    "membershipNone": "No active membership",
+    "membershipActive": "Access active",
+    "membershipNone": "No active access",
     "expiresIn": "{days} days left",
     "renew": "Renew",
     "staffCardTitle": "Staff account",
-    "staffCardBody": "You reach every module without a subscription. Enrolments and payments are handled from the admin panel.",
+    "staffCardBody": "You reach every module without enrolling. Enrolments and payments are handled from the admin panel.",
     "staffCardCta": "Admin panel",
     "roleAdmin": "Administrator",
     "roleInstructor": "Teacher"
@@ -486,7 +497,7 @@
     "lessonTitle": "Lesson title",
     "lessonType": "Type",
     "duration": "Length (minutes)",
-    "isPreview": "Trial lesson (visible without a membership)",
+    "isPreview": "Trial lesson (visible without enrolling)",
     "content": "Lesson content",
     "videoId": "Recording link (YouTube or Google Drive)",
     "videoIdHint": "Paste the full link to the recorded session. Students see the player inside the lesson; only people who bought the module can open the page.",

@@ -1,43 +1,16 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { ArrowRight, Award, GraduationCap, Layers, PlayCircle } from 'lucide-react';
+import { GraduationCap, Layers } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/marketing/CourseCard';
+import { CursusCard } from '@/components/marketing/CursusCard';
 import { EventsSection } from '@/components/marketing/EventsSection';
 import { ReviewsSection } from '@/components/marketing/ReviewsSection';
 import { listCourses } from '@/lib/data/courses';
 import { listCursus } from '@/lib/data/commerce';
 import { listEvents, listReviews } from '@/lib/data/site';
 import { institut } from '@/lib/content/institut';
-import type { Course } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
-
-interface Preview {
-  courseSlug: string;
-  courseTitle: string;
-  lessonId: string;
-  lessonTitle: string;
-}
-
-/** The free lessons, across the catalogue, that anyone may watch. */
-function freeLessons(courses: Course[], limit: number): Preview[] {
-  const found: Preview[] = [];
-  for (const course of courses) {
-    for (const chapter of course.modules) {
-      for (const lesson of chapter.lessons) {
-        if (!lesson.is_preview) continue;
-        found.push({
-          courseSlug: course.slug,
-          courseTitle: course.title,
-          lessonId: lesson.id,
-          lessonTitle: lesson.title,
-        });
-        if (found.length >= limit) return found;
-      }
-    }
-  }
-  return found;
-}
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -52,10 +25,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     listCourses(),
     listCursus(),
     listEvents(6),
-    listReviews(6),
+    listReviews(9),
   ]);
-
-  const previews = freeLessons(courses, 3);
 
   const orgJsonLd = {
     '@context': 'https://schema.org',
@@ -125,7 +96,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           computed honestly from the catalogue, which is how it came to read
           "0 modules, 0 chapitres, 0 séances" — an accurate advertisement for
           having nothing. Numbers go back when there is something to count. */}
-      <section className="py-16 sm:py-20">
+      <section className="pattern-islamic border-y border-line/70 py-16 sm:py-20">
         <div className="shell max-w-3xl text-center">
           <h2 className="font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
             {t('brief.title')}
@@ -177,115 +148,47 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </section>
       )}
 
-      {/* Les cursus — the two ways through the school. */}
+      {/* Les cursus — the two ways through the school. The programme itself
+          (an image or a written outline the office uploads) opens inside the
+          card, so reading what a cursus covers never leaves the page. */}
       {cursusList.length > 0 && (
-        <section className="py-16 sm:py-20">
+        <section className="pattern-islamic py-16 sm:py-20">
           <div className="shell">
             <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
               {t('cursus.title')}
             </h2>
-            <p lang="ar" dir="rtl" className="mt-2 text-center font-arabic text-2xl text-ink">
-              {t('cursus.titleAr')}
+            <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
+              {t('cursus.lead')}
             </p>
 
             <ul className="mt-10 grid gap-6 md:grid-cols-2">
               {cursusList.map((cursus) => {
                 const Icon = cursus.kind === 'approfondi' ? GraduationCap : Layers;
                 return (
-                  <li
+                  <CursusCard
                     key={cursus.id}
-                    className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-white"
-                  >
-                    <div className="flex items-center gap-4 bg-ink px-6 py-6 text-white">
-                      <span
-                        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gold-500"
-                        aria-hidden="true"
-                      >
-                        <Icon className="size-6" />
-                      </span>
-                      <div className="min-w-0">
-                        <h3 className="font-display text-[18px] font-semibold">{cursus.title}</h3>
-                        {cursus.yearCount > 1 && (
-                          <p className="mt-0.5 text-[12px] text-gold-300">
-                            {tCourses('card.years', { count: cursus.yearCount })}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-6">
-                      <p className="text-[13px] leading-relaxed text-ink-muted">
-                        {cursus.description || cursus.subtitle}
-                      </p>
-                      {/* The same line the checkout shows on the same choice.
-                          Said in both places on purpose: it is the difference
-                          people actually ask about, and a visitor should not
-                          have to reach the payment screen to learn it. */}
-                      <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
-                        <Award className="size-3.5" aria-hidden="true" />
-                        {tCheckout(
-                          cursus.kind === 'approfondi'
-                            ? 'certificationApprofondi'
-                            : 'certificationModule',
-                        )}
-                      </p>
-                      <div className="mt-5">
-                        <Button asChild size="sm" variant="gold">
-                          <Link href="/checkout">{t('cursus.cta')}</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </li>
+                    title={cursus.title}
+                    subtitle={cursus.subtitle}
+                    description={cursus.description}
+                    details={cursus.details}
+                    imageUrl={cursus.imageUrl}
+                    yearCount={cursus.yearCount}
+                    icon={<Icon className="size-6" aria-hidden="true" />}
+                    certification={tCheckout(
+                      cursus.kind === 'approfondi'
+                        ? 'certificationApprofondi'
+                        : 'certificationModule',
+                    )}
+                    labels={{
+                      years: tCourses('card.years', { count: cursus.yearCount }),
+                      view: t('cursus.cta'),
+                      hide: t('cursus.ctaClose'),
+                      enrol: t('cursus.enrol'),
+                      programme: t('cursus.programme'),
+                    }}
+                  />
                 );
               })}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {/* The free lessons. Real content, openly readable — `is_preview` is what
-          the database itself uses to decide, so nothing here is a promise the
-          lesson page will then refuse. */}
-      {previews.length > 0 && (
-        <section className="py-16 sm:py-20">
-          <div className="shell">
-            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-              {t('previews.title')}
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-[13px] leading-relaxed text-ink-muted">
-              {t('previews.lead')}
-            </p>
-
-            <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {previews.map((preview) => (
-                <li
-                  key={preview.lessonId}
-                  className="rounded-[var(--radius-card)] border border-line bg-white p-6"
-                >
-                  <span
-                    className="flex size-11 items-center justify-center rounded-full bg-gold-50 text-gold-600"
-                    aria-hidden="true"
-                  >
-                    <PlayCircle className="size-5" />
-                  </span>
-                  <p className="mt-4 text-[11px] tracking-[0.08em] text-ink-muted uppercase">
-                    {preview.courseTitle}
-                  </p>
-                  <h3 className="mt-1 font-display text-[16px] font-semibold text-ink">
-                    {preview.lessonTitle}
-                  </h3>
-                  <Link
-                    href={`/courses/${preview.courseSlug}`}
-                    className="group mt-4 inline-flex items-center gap-2 text-[12px] font-semibold tracking-[0.1em] text-gold-700 uppercase transition-colors hover:text-gold-600"
-                  >
-                    {t('previews.cta')}
-                    <ArrowRight
-                      className="size-4 transition-transform duration-300 group-hover:translate-x-0.5"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                </li>
-              ))}
             </ul>
           </div>
         </section>
@@ -304,7 +207,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <ol className="mt-12 grid gap-8 md:grid-cols-3">
             {([1, 2, 3] as const).map((n) => (
               <li key={n} className="text-center">
-                <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-gold-500 font-display text-lg font-semibold text-white">
+                <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-500 font-display text-lg font-semibold text-white shadow-brand">
                   {n}
                 </span>
                 <h3 className="mt-4 font-display text-[16px] font-semibold text-ink">
@@ -325,8 +228,21 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           review is published. */}
       <ReviewsSection reviews={reviews} />
 
-      {/* Closing band */}
+      {/* Closing band. The mosque line drawing sits behind the emerald wash,
+          darkened rather than lit, so the band reads as one deep surface and
+          the text keeps its contrast. */}
       <section className="relative isolate overflow-hidden bg-brand-900">
+        {/* eslint-disable-next-line @next/next/no-img-element -- decorative SVG, no optimisation to gain */}
+        <img
+          src="/media/hero-mosque.svg"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 size-full object-cover opacity-20 select-none"
+        />
+        <div
+          className="absolute inset-0 bg-linear-to-b from-brand-900/80 via-brand-900/60 to-brand-900/90"
+          aria-hidden="true"
+        />
         <div className="shell relative py-16 text-center sm:py-20">
           <h2 className="mx-auto max-w-2xl font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-white">
             {t('closing.title')}

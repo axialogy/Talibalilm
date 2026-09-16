@@ -126,9 +126,9 @@ export function PaymentForms({
               className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm tracking-wide text-ink uppercase outline-none focus:border-brand-400"
             />
           </label>
-          <Button type="submit" variant="outline" size="md">
+          <SubmitButton variant="outline" size="md" block={false}>
             {t('officeCodeApply')}
-          </Button>
+          </SubmitButton>
         </form>
 
         {codeError && (

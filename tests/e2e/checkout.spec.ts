@@ -35,6 +35,30 @@ test.describe('checkout', () => {
     await expect(page.getByText('Step 1 of 5')).toBeVisible();
   });
 
+  test('a module page enrols without asking which module', async ({ page }) => {
+    // The card on a module's own page knows the module. It must not ask which
+    // cursus or which modules, and choosing a mode must put THAT module in the
+    // basket — the failure this catches is a card that silently holds nothing
+    // until the student finds the module again in a list.
+    await page.goto('/courses/fiqh-al-ibadat#inscription');
+
+    const card = page.locator('#inscription');
+    const steps = card.locator('nav[aria-label="Inscription"]');
+
+    await expect(steps.getByRole('button', { name: 'Présentiel ou en ligne' })).toBeVisible();
+    await expect(steps.getByRole('button', { name: 'Vos modules' })).toHaveCount(0);
+    await expect(steps.getByRole('button', { name: 'Votre cursus' })).toHaveCount(0);
+
+    // The mode choice is a submit button; `aria-pressed` is what tells it apart
+    // from the step nav above it.
+    await card.locator('button[aria-pressed]').filter({ hasText: 'En ligne' }).click();
+
+    // The seeded price for this module is 300 € in both modes. Seeing it means
+    // the course was resolved into its product server-side. Only the visible
+    // panel counts: the review step stays mounted behind the payment step.
+    await expect(card.getByText(/300\s*€/).filter({ visible: true }).first()).toBeVisible();
+  });
+
   test('no amount is posted from the browser', async ({ page }) => {
     // Prices are recomputed server-side on every step. A hidden input carrying
     // cents would be a way to pay less, so there must not be one anywhere in

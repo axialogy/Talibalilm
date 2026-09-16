@@ -92,6 +92,8 @@ model cursus {
   title          String
   subtitle       String           @default("")
   description    String           @default("")
+  details        String           @default("")
+  image_url      String?
   year_count     Int              @default(1)
   status         catalog_status   @default(draft)
   display_order  Int              @default(0)

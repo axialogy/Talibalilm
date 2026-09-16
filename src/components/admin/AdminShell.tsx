@@ -20,6 +20,7 @@ import {
 import { Link, usePathname } from '@/i18n/navigation';
 import { Logo } from '@/components/layout/Logo';
 import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
+import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
 
@@ -219,6 +220,7 @@ export function AdminShell({
         type="submit"
         className="mt-3 inline-flex items-center gap-2 text-[12px] text-ink-muted transition-colors hover:text-red-600"
       >
+        <PendingSpinner className="size-3.5" />
         <LogOut className="size-3.5" aria-hidden="true" />
         {t('signOut')}
       </button>
@@ -282,6 +284,7 @@ export function AdminShell({
                     title={t('signOut')}
                     className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-red-50 hover:text-red-600"
                   >
+                    <PendingSpinner className="size-4" />
                     <LogOut className="size-4" aria-hidden="true" />
                     <span className="sr-only">{t('signOut')}</span>
                   </button>

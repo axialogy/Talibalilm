@@ -1,19 +1,17 @@
 'use client';
 
-import { useFormStatus } from 'react-dom';
-import { Button, type ButtonProps } from '@/components/ui/button';
+import { SubmitButton as PendingButton } from '@/components/ui/submit-button';
+import type { ButtonProps } from '@/components/ui/button';
 
 /**
- * Disables itself while the action is in flight.
- *
- * `useFormStatus` only reports for the form this is *inside*, which is why it
- * is its own component rather than a prop threaded down from the form.
+ * The auth forms' button: full width, large, and it spins while the action is
+ * in flight. The spinner itself lives in `@/components/ui/submit-button` so
+ * every form on the site reports the same way.
  */
 export function SubmitButton({ children, ...props }: ButtonProps) {
-  const { pending } = useFormStatus();
   return (
-    <Button type="submit" block size="lg" disabled={pending} aria-busy={pending} {...props}>
+    <PendingButton block size="lg" {...props}>
       {children}
-    </Button>
+    </PendingButton>
   );
 }

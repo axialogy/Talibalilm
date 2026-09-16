@@ -160,9 +160,19 @@ export function CheckoutWizard({
               key={s.key}
               hidden={index !== active}
               className={cn(
-                'transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none motion-reduce:duration-150',
+                // `translate`, not `transform`: Tailwind v4's translate
+                // utilities set the `translate` property, and a transition on
+                // `transform` alone leaves the panel sliding instantly.
+                'transition-[opacity,translate] duration-300 ease-out motion-reduce:translate-none motion-reduce:duration-150',
                 index === active
-                  ? 'translate-x-0 opacity-100'
+                  ? // The panel was `display: none` a frame ago, so a normal
+                    // transition never fires. `starting:` supplies the first
+                    // frame it animates away from — in from the right going
+                    // forward, from the left coming back.
+                    cn(
+                      'translate-x-0 opacity-100 starting:opacity-0',
+                      forward ? 'starting:translate-x-4' : 'starting:-translate-x-4',
+                    )
                   : forward
                     ? 'translate-x-4 opacity-0'
                     : '-translate-x-4 opacity-0',
