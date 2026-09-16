@@ -22,9 +22,10 @@ const LONG_QUOTE = 200;
  *
  * A horizontally scrollable track with snap points, so it swipes natively on a
  * phone and the arrows are only an affordance on a pointer device. The cards
- * are flex children with `items-stretch`, which is what keeps them all the
- * same height whatever their text; a long quote is clamped behind "Lire la
- * suite" rather than stretching the row.
+ * share a minimum height so they line up while collapsed; `items-start` is
+ * deliberate — with `items-stretch` a flex row makes every card as tall as the
+ * tallest, so opening one quote appeared to open them all. Only the card whose
+ * "Lire la suite" was pressed grows.
  */
 export function ReviewsCarousel({
   reviews,
@@ -78,7 +79,7 @@ export function ReviewsCarousel({
     <div className="relative">
       <ul
         ref={trackRef}
-        className="flex snap-x snap-mandatory items-stretch gap-6 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory items-start gap-6 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {reviews.map((review) => {
           const isLong = review.quote.length > LONG_QUOTE;
@@ -86,7 +87,7 @@ export function ReviewsCarousel({
           return (
             <li
               key={review.id}
-              className="flex w-[86%] shrink-0 snap-start flex-col rounded-[var(--radius-card)] border border-line bg-white p-6 shadow-card sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]"
+              className="flex min-h-[19rem] w-[86%] shrink-0 snap-start flex-col rounded-[var(--radius-card)] border border-line bg-white p-6 shadow-card sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]"
             >
               <Quote className="size-6 shrink-0 text-gold-400" aria-hidden="true" />
 
