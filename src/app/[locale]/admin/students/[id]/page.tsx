@@ -8,6 +8,7 @@ import { RevokeButton } from '@/components/admin/RevokeButton';
 import { AnonymiseButton } from '@/components/admin/AnonymiseButton';
 import { StudentAccount } from '@/components/admin/StudentAccount';
 import { getStudent } from '@/lib/data/admin';
+import { avatarUrl } from '@/lib/data/profile';
 import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 
@@ -31,6 +32,9 @@ export default async function AdminStudentDetailPage({
   const isAdmin = viewer?.role === 'admin';
   const { student, account, entitlements } = data;
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+
+  // The photo lives in a private bucket; the link is signed for this render.
+  const photo = await avatarUrl(account.avatarKey);
 
   // Options for the grant form, read through the same staff-scoped client.
   let courses: { id: string; title: string }[] = [];
@@ -61,18 +65,38 @@ export default async function AdminStudentDetailPage({
         {t('backToStudents')}
       </Link>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-2xl font-semibold text-ink">
-          {student.fullName || student.email || t('studentDetail')}
-        </h1>
-        {student.role !== 'student' && <Badge variant="soft">{student.role}</Badge>}
-        {student.anonymisedAt && <Badge variant="muted">{t('anonymised')}</Badge>}
+      <div className="mt-4 flex items-center gap-4">
+        <span className="relative flex size-16 shrink-0 overflow-hidden rounded-full border border-line bg-brand-50">
+          {photo ? (
+            // A short-lived R2 signature on a private bucket; next/image cannot
+            // cache it.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo} alt="" className="size-full object-cover" />
+          ) : (
+            <span
+              className="flex size-full items-center justify-center font-display text-xl font-semibold text-brand-700"
+              aria-hidden="true"
+            >
+              {(student.fullName || student.email || '?').charAt(0).toUpperCase()}
+            </span>
+          )}
+        </span>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-display text-2xl font-semibold text-ink">
+              {student.fullName || student.email || t('studentDetail')}
+            </h1>
+            {student.role !== 'student' && <Badge variant="soft">{student.role}</Badge>}
+            {student.anonymisedAt && <Badge variant="muted">{t('anonymised')}</Badge>}
+          </div>
+          <p className="mt-1 text-[13px] text-ink-muted">
+            {student.anonymisedAt
+              ? t('anonymisedOn', { date: dateFmt.format(new Date(student.anonymisedAt)) })
+              : student.email}
+          </p>
+        </div>
       </div>
-      <p className="mt-1 text-[13px] text-ink-muted">
-        {student.anonymisedAt
-          ? t('anonymisedOn', { date: dateFmt.format(new Date(student.anonymisedAt)) })
-          : student.email}
-      </p>
 
       {isAdmin && (
         <section className="mt-8">
@@ -82,9 +106,20 @@ export default async function AdminStudentDetailPage({
               userId={student.userId}
               fullName={student.fullName}
               phone={account.phone}
+              phoneLandline={account.phoneLandline}
               locale={account.locale}
               hasOrders={account.hasOrders}
               reviewed={student.reviewedAt !== null}
+              details={{
+                civility: account.civility,
+                firstName: account.firstName,
+                lastName: account.lastName,
+                birthDate: account.birthDate,
+                address: account.address,
+                postalCode: account.postalCode,
+                city: account.city,
+                department: account.department,
+              }}
             />
           </div>
         </section>

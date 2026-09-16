@@ -4,6 +4,7 @@ import { BackLink } from '@/components/admin/BackLink';
 import { Badge } from '@/components/ui/badge';
 import { LiveSessionControls } from '@/components/admin/LiveSessionControls';
 import { SlideDeck } from '@/components/admin/SlideDeck';
+import { JoinRequestActions } from '@/components/admin/JoinRequestActions';
 import { Tabs } from '@/components/ui/tabs';
 import { getLiveSession, listSlides, listJoinRequests } from '@/lib/data/live';
 import { r2Configured, r2Missing } from '@/lib/storage/r2';
@@ -112,6 +113,13 @@ export default async function AdminLiveSessionPage({
                             new Date(request.requestedAt),
                           )}
                         </p>
+                        {request.status === 'pending' ? (
+                          <JoinRequestActions requestId={request.id} />
+                        ) : (
+                          <Badge variant={request.status === 'approved' ? 'success' : 'muted'}>
+                            {request.status === 'approved' ? t('liveAdmit') : t('liveRefuse')}
+                          </Badge>
+                        )}
                       </li>
                     ))}
                   </ul>

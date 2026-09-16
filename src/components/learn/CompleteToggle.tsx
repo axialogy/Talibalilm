@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { setLessonComplete, type ProgressState } from '@/app/actions/progress';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +34,9 @@ export function CompleteToggle({ lessonId, completed }: { lessonId: string; comp
             : 'border-line text-ink-muted hover:border-brand-300 hover:text-brand-600',
         )}
       >
-        {completed ? (
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        ) : completed ? (
           <CheckCircle2 className="size-4" aria-hidden="true" />
         ) : (
           <Circle className="size-4" aria-hidden="true" />
