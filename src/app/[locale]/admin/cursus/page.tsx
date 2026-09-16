@@ -36,7 +36,9 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
     await Promise.all([
       supabase
         .from('cursus')
-        .select('id, slug, kind, title, subtitle, description, year_count, status, display_order')
+        .select(
+          'id, slug, kind, title, subtitle, description, details, image_url, year_count, status, display_order',
+        )
         .order('display_order'),
       supabase.from('courses').select('id, title').order('display_order'),
       supabase.from('cursus_courses').select('cursus_id, course_id, delivery, year_index'),

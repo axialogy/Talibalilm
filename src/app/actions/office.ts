@@ -131,13 +131,37 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
       userId: z.string().uuid(),
       fullName: z.string().trim().max(120).default(''),
       phone: z.string().trim().max(32).default(''),
+      phoneLandline: z.string().trim().max(32).default(''),
       locale: z.enum(['fr', 'en']).default('fr'),
+      // The enrolment form's fields. The office can correct a typo a student
+      // made; the shape constraints in the database still hold.
+      civility: z.enum(['', 'madame', 'monsieur']).default(''),
+      firstName: z.string().trim().max(60).default(''),
+      lastName: z.string().trim().max(60).default(''),
+      birthDate: z
+        .string()
+        .trim()
+        .regex(/^$|^\d{4}-\d{2}-\d{2}$/)
+        .default(''),
+      address: z.string().trim().max(200).default(''),
+      postalCode: z.string().trim().max(16).default(''),
+      city: z.string().trim().max(120).default(''),
+      department: z.string().trim().max(120).default(''),
     })
     .safeParse({
       userId: formData.get('userId'),
       fullName: formData.get('fullName') ?? '',
       phone: formData.get('phone') ?? '',
+      phoneLandline: formData.get('phoneLandline') ?? '',
       locale: formData.get('locale') ?? 'fr',
+      civility: formData.get('civility') ?? '',
+      firstName: formData.get('firstName') ?? '',
+      lastName: formData.get('lastName') ?? '',
+      birthDate: formData.get('birthDate') ?? '',
+      address: formData.get('address') ?? '',
+      postalCode: formData.get('postalCode') ?? '',
+      city: formData.get('city') ?? '',
+      department: formData.get('department') ?? '',
     });
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -148,7 +172,16 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
       full_name: parsed.data.fullName,
       // The constraint wants null rather than an empty string.
       phone: parsed.data.phone || null,
+      phone_landline: parsed.data.phoneLandline || null,
       locale: parsed.data.locale,
+      civility: parsed.data.civility || null,
+      first_name: parsed.data.firstName,
+      last_name: parsed.data.lastName,
+      birth_date: parsed.data.birthDate || null,
+      address: parsed.data.address,
+      postal_code: parsed.data.postalCode,
+      city: parsed.data.city,
+      department: parsed.data.department,
     })
     .eq('id', parsed.data.userId);
   if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };

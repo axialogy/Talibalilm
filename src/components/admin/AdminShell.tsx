@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   BookOpen,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -48,13 +49,15 @@ const NAV = [
     section: 'navGroupSetup',
     items: [
       { href: '/admin/courses', icon: BookOpen, key: 'courses', admin: false },
+      // Cursus came back to the sidebar when the programme text and poster
+      // became something the office edits: it is now a screen with content of
+      // its own, not only the other side of a module's checkbox.
+      { href: '/admin/cursus', icon: GraduationCap, key: 'cursusNav', admin: false },
       { href: '/admin/live', icon: Radio, key: 'liveNav', admin: false },
       { href: '/admin/site', icon: Globe, key: 'siteNav', admin: false },
-      // Cursus and Diagnostic are deliberately absent from this list, not
-      // deleted. A module's own page is where its cursus is set, so a second
-      // door to the same setting was one more thing to scan past; and the
-      // diagnostic is for the two minutes after a deploy, not for every day.
-      // Both remain reachable at /admin/cursus and /admin/diagnostics.
+      // Diagnostic is deliberately absent from this list, not deleted: it is
+      // for the two minutes after a deploy, not for every day. It remains
+      // reachable at /admin/diagnostics.
     ],
   },
 ] as const;
