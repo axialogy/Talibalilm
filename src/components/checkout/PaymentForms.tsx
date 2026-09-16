@@ -5,12 +5,9 @@ import { useTranslations } from 'next-intl';
 import { Gift, Lock, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/auth/SubmitButton';
-import {
-  claimFreeCourse,
-  redeemOfficeCode,
-  startPayPalCheckout,
-  type PayState,
-} from '@/app/actions/pay';
+import { PayPalButton } from '@/components/checkout/PayPalButton';
+import { claimFreeCourse, redeemOfficeCode, type PayState } from '@/app/actions/pay';
+import type { PayPalPublicConfig } from '@/lib/paypal/types';
 
 const EMPTY: PayState = {};
 
@@ -26,6 +23,7 @@ const MESSAGE: Record<
   | 'mixedCurrency'
   | 'rateLimited'
   | 'notFree'
+  | 'profileRequired'
 > = {
   unavailable: 'payUnavailable',
   paypalRefused: 'payRefused',
@@ -36,29 +34,31 @@ const MESSAGE: Record<
   mixedCurrency: 'mixedCurrency',
   rateLimited: 'rateLimited',
   notFree: 'notFree',
+  profileRequired: 'profileRequired',
 };
 
 /**
  * The two ways to pay.
  *
- * Neither form carries an amount. The PayPal button posts an empty form: the
- * server reprices the basket, opens the order and redirects to PayPal. The
- * office form posts only a code, which the database spends atomically.
+ * Neither form carries an amount. PayPal is opened by the SDK with an order id
+ * the server minted after repricing the basket; the office form posts only a
+ * code, which the database spends atomically.
  */
 export function PaymentForms({
-  paypalAvailable,
+  paypal,
   free = false,
+  locale,
 }: {
-  paypalAvailable: boolean;
+  /** Public config only — the secret stays on the server. */
+  paypal: PayPalPublicConfig | null;
   /** The basket totals zero once repriced from the catalogue. */
   free?: boolean;
+  locale: string;
 }) {
   const t = useTranslations('checkout');
-  const [payState, payAction] = useActionState(startPayPalCheckout, EMPTY);
   const [codeState, codeAction] = useActionState(redeemOfficeCode, EMPTY);
   const [freeState, freeAction] = useActionState(claimFreeCourse, EMPTY);
 
-  const payError = payState.error ? MESSAGE[payState.error] : undefined;
   const codeError = codeState.error ? MESSAGE[codeState.error] : undefined;
   const freeError = freeState.error ? MESSAGE[freeState.error] : undefined;
 
@@ -83,18 +83,11 @@ export function PaymentForms({
 
   return (
     <div className="space-y-6">
-      {paypalAvailable ? (
-        <form action={payAction}>
-          <SubmitButton>
-            <Lock className="size-4" aria-hidden="true" />
-            {t('payWithPaypal')}
-          </SubmitButton>
-          {payError && (
-            <p role="alert" className="mt-3 text-[12px] text-red-600">
-              {t(payError)}
-            </p>
-          )}
-        </form>
+      {paypal ? (
+        <div>
+          <PayPalButton clientId={paypal.clientId} currency={paypal.currency} locale={locale} />
+          <p className="mt-3 text-[12px] leading-relaxed text-ink-muted">{t('paypalNote')}</p>
+        </div>
       ) : (
         <div>
           <Button block size="lg" disabled>

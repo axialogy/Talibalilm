@@ -18,6 +18,7 @@ import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutWizard, type WizardStep } from '@/components/checkout/CheckoutWizard';
 import { PaymentForms } from '@/components/checkout/PaymentForms';
+import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
 import {
   applyCoupon,
   chooseCursus,
@@ -34,7 +35,8 @@ import {
   programmeByYear,
   type ProgrammeEntry,
 } from '@/lib/data/commerce';
-import { getPayPalConfig } from '@/lib/paypal/client';
+import { getStudentProfile, profileComplete } from '@/lib/data/profile';
+import { getPayPalPublicConfig } from '@/lib/paypal/client';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 
@@ -118,9 +120,15 @@ export async function CheckoutFlow({
     signedIn = user !== null;
   }
 
-  // Resolved server-side and reduced to a boolean before it crosses into the
-  // client component: the config carries the PayPal secret.
-  const paypalAvailable = (await getPayPalConfig()) !== null;
+  // The student's enrolment details, asked once and required before payment.
+  // Fetched here rather than in the panel so the wizard knows whether the step
+  // is answered before it renders anything.
+  const profile = signedIn ? await getStudentProfile() : null;
+  const detailsComplete = profileComplete(profile);
+
+  // Public config only — the client id, the currency and the environment. The
+  // secret never leaves the server module it is read in.
+  const paypal = await getPayPalPublicConfig();
   const errorKey = returnError ? RETURN_ERRORS[returnError] : undefined;
 
   const allSteps: WizardStep[] = [
@@ -353,15 +361,56 @@ export async function CheckoutFlow({
       ),
     },
     {
-      key: 'review',
-      label: t('steps.review'),
-      heading: t('steps.review'),
-      lead: t('reviewLead'),
-      complete: priced !== null,
+      key: 'info',
+      label: t('steps.info'),
+      heading: t('infoHeading'),
+      lead: t('infoLead'),
+      complete: detailsComplete,
+      panel: !signedIn ? (
+        /* Accounts first, then details and payment — an entitlement has to
+           belong to somebody, and the basket survives the round trip in its
+           cookie. */
+        <div className="rounded-[var(--radius-card)] border border-line bg-surface/50 p-5">
+          <p className="text-[13px] text-ink-muted">{t('loginRequired')}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button asChild size="md">
+              <Link href="/register?next=%2Fcheckout">{t('registerCta')}</Link>
+            </Button>
+            <Button asChild size="md" variant="outline">
+              <Link href="/login?next=%2Fcheckout">{t('loginCta')}</Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <CheckoutProfileForm profile={profile} email={profile?.email ?? null} />
+      ),
+    },
+    {
+      key: 'payment',
+      label: t('steps.payment'),
+      heading: t('payTitle'),
+      lead: t('payLead'),
+      complete: priced !== null && detailsComplete,
       panel: !priced ? (
         <Empty>{moduleContext && delivery ? t('moduleNotSoldInMode') : t('emptyBasket')}</Empty>
       ) : (
         <>
+          {errorKey && (
+            <p
+              role="alert"
+              className="mb-5 flex items-start gap-2 rounded-[var(--radius-card)] border border-line bg-surface/60 p-4 text-[13px] leading-relaxed text-ink"
+            >
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+              {t(errorKey)}
+            </p>
+          )}
+
+          {/*
+            What is being bought, on the same screen as the button that buys
+            it. This used to be its own step — a "Récapitulatif" that asked the
+            student to confirm a list before showing the payment, which is one
+            screen more than the decision needs.
+          */}
           <div className="rounded-[var(--radius-card)] border border-line">
             <ul className="divide-y divide-line">
               {priced.lines.map((line) => (
@@ -414,10 +463,11 @@ export async function CheckoutFlow({
           </div>
 
           {/*
-            The code is stored, not checked. Telling a visitor here whether a
-            code exists would turn this form into an oracle for guessing the
-            front desk's cash codes, each worth a year of teaching. It is
-            validated and spent server-side at the moment of payment instead.
+            The code is stored, and the total above is priced with it only when
+            the database recognises it. Claiming it is still atomic and still
+            happens when the order opens; this read is what lets the student
+            see the discount before they commit, rather than discovering it on
+            the receipt.
           */}
           <form
             action={applyCoupon}
@@ -444,78 +494,23 @@ export async function CheckoutFlow({
           </form>
 
           {selection.couponCode && (
-            <p role="status" className="mt-2 text-[12px] text-brand-600">
-              {t('couponStored', { code: selection.couponCode })}
-            </p>
-          )}
-        </>
-      ),
-    },
-    {
-      key: 'payment',
-      label: t('steps.payment'),
-      heading: t('payTitle'),
-      lead: t('payLead'),
-      complete: priced !== null,
-      panel: !priced ? (
-        <Empty>{moduleContext && delivery ? t('moduleNotSoldInMode') : t('emptyBasket')}</Empty>
-      ) : (
-        <>
-          {errorKey && (
             <p
-              role="alert"
-              className="mb-5 flex items-start gap-2 rounded-[var(--radius-card)] border border-line bg-surface/60 p-4 text-[13px] leading-relaxed text-ink"
+              role="status"
+              className={
+                priced.coupon ? 'mt-2 text-[12px] text-brand-600' : 'mt-2 text-[12px] text-red-600'
+              }
             >
-              <AlertCircle className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden="true" />
-              {t(errorKey)}
+              {priced.coupon
+                ? t('couponApplied', {
+                    code: priced.coupon.code,
+                    amount: formatPrice(priced.couponDiscountCents, locale),
+                  })
+                : t('codeRefused')}
             </p>
           )}
-
-          <div className="rounded-[var(--radius-card)] border border-line p-5">
-            <dl className="flex items-baseline justify-between">
-              <dt className="font-display text-[14px] font-semibold text-ink">{t('total')}</dt>
-              <dd className="font-display text-3xl font-semibold text-brand-600">
-                {formatPrice(priced.totalCents, locale)}
-              </dd>
-            </dl>
-            <ul className="mt-4 space-y-1 border-t border-line pt-4">
-              {priced.lines.map((line) => (
-                <li
-                  key={line.productId}
-                  className="flex justify-between text-[13px] text-ink-muted"
-                >
-                  <span>{line.title}</span>
-                  <span>
-                    {line.isFree ? t('offerFree') : formatPrice(line.unitPriceCents, locale)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {selection.couponCode && (
-              <p className="mt-4 text-[12px] text-ink-muted">
-                {t('couponStored', { code: selection.couponCode })} — {t('couponHint')}
-              </p>
-            )}
-          </div>
 
           <div className="mt-5">
-            {signedIn ? (
-              <PaymentForms paypalAvailable={paypalAvailable} free={priced.totalCents === 0} />
-            ) : (
-              /* Accounts first, then payment — an entitlement has to belong to
-                 somebody, and the basket survives the round trip in its cookie. */
-              <div className="rounded-[var(--radius-card)] border border-line bg-surface/50 p-5">
-                <p className="text-[13px] text-ink-muted">{t('loginRequired')}</p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Button asChild size="md">
-                    <Link href="/register?next=%2Fcheckout">{t('registerCta')}</Link>
-                  </Button>
-                  <Button asChild size="md" variant="outline">
-                    <Link href="/login?next=%2Fcheckout">{t('loginCta')}</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
+            <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
           </div>
         </>
       ),
@@ -523,7 +518,7 @@ export async function CheckoutFlow({
   ];
 
   // On a module's own page neither the cursus question nor the module list is
-  // a question: the module is the subject. What remains is mode, review and
+  // a question: the module is the subject. What remains is mode, details and
   // payment.
   const steps = moduleContext
     ? allSteps.filter((step) => step.key !== 'modules' && step.key !== 'cursus')

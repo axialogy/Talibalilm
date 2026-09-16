@@ -49,7 +49,7 @@ test.describe('checkout', () => {
     // The headings are asserted rather than the nav labels because below `sm`
     // the labels are hidden and the numbered buttons carry no accessible name.
     await expect(steps.getByRole('button')).toHaveCount(3);
-    await expect(card.getByRole('heading', { name: 'Présentiel ou en ligne' })).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Présentiel ou distanciel' })).toBeVisible();
     await expect(card.getByRole('heading', { name: 'Vos modules' })).toHaveCount(0);
     await expect(card.getByRole('heading', { name: 'Votre cursus' })).toHaveCount(0);
 
@@ -57,10 +57,15 @@ test.describe('checkout', () => {
     // from the step nav above it.
     await card.locator('button[aria-pressed]').filter({ hasText: 'En ligne' }).click();
 
-    // The seeded price for this module is 300 € in both modes. Seeing it means
-    // the course was resolved into its product server-side. Only the visible
-    // panel counts: the review step stays mounted behind the payment step.
-    await expect(card.getByText(/300\s*€/).filter({ visible: true }).first()).toBeVisible();
+    // The flow advances to the details step, which is where a first-time
+    // student fills in their enrolment.
+    await expect(card.getByRole('heading', { name: 'Vos informations' })).toBeVisible();
+
+    // And the module is in the basket: the payment panel is mounted behind
+    // the current step and already carries the server-computed total. If the
+    // course had not been resolved into its product, that panel would hold the
+    // empty-basket message and no figure at all.
+    await expect(card.getByText(/300\s*€/).first()).toHaveText(/300\s*€/);
   });
 
   test('no amount is posted from the browser', async ({ page }) => {

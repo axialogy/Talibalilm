@@ -46,10 +46,12 @@ export async function createPendingOrder(input: CreateOrderInput): Promise<Creat
   const { userId, delivery, route, quote, couponId = null, couponDiscountCents = 0 } = input;
   const supabase = createAdminClient();
 
-  // The coupon is applied here rather than inside `priceSelection` because it
-  // is only claimed at this point — the review page shows the pre-coupon
-  // figure on purpose.
-  const discountCents = Math.min(quote.discountCents + couponDiscountCents, quote.subtotalCents);
+  // `quote` may already carry a PREVIEWED coupon, because the payment step
+  // shows the discounted total before the student commits. What is charged
+  // here is the CLAIMED coupon's discount, so the preview is taken back out
+  // first rather than counted twice.
+  const offerDiscountCents = quote.discountCents - quote.couponDiscountCents;
+  const discountCents = Math.min(offerDiscountCents + couponDiscountCents, quote.subtotalCents);
   const totalCents = quote.subtotalCents - discountCents;
 
   // A limited offer is only limited if something takes a redemption. The
