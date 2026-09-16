@@ -7,14 +7,16 @@ import { getSiteSettings } from '@/lib/data/site';
 import { logoLockupSrc } from '@/lib/artwork';
 
 /**
- * The footer, centred.
+ * The footer.
  *
- * It used to be three columns — logo, blurb, contact — which read as a page
- * inside a page and left the eye nowhere to land. Now it is one centred
- * column: the lockup large at the top, the school in a sentence, how to reach
- * it, then the menu laid out horizontally across the full width above the
- * rule, and the copyright under it. On a phone everything is already centred,
- * which is what a narrow footer wants.
+ * Three columns on a desk — the lockup, the school in a sentence, how to
+ * reach it — the way it has always been laid out. A centred stack made the
+ * page end with a screen of empty space, so the shape came back; what stays
+ * from the pass that followed is the horizontal menu across the full width
+ * above the rule, and the centred copyright with the studio credit.
+ *
+ * On a phone the columns become one, and the whole footer centres — which is
+ * what a narrow footer wants.
  */
 export async function SiteFooter() {
   const t = await getTranslations('footer');
@@ -27,63 +29,72 @@ export async function SiteFooter() {
 
   return (
     <footer className="mt-24 border-t border-line bg-surface/60">
-      <div className="shell py-16 text-center">
-        <Link href="/" aria-label={tMeta('siteName')} className="inline-block">
-          <Logo
-            className="mx-auto h-24 w-auto sm:h-28"
-            sizes="(max-width: 640px) 280px, 360px"
-            src={logoLockupSrc()}
-            label={tMeta('siteName')}
-          />
-        </Link>
-
-        <h2 className="mt-6 font-display text-xl text-ink">{t('tagline')}</h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-ink-muted">
-          {t('body')}
-        </p>
-
-        <dl className="mt-10 grid gap-8 text-sm sm:grid-cols-3">
+      <div className="shell py-12 sm:py-14">
+        <div className="grid gap-10 text-center lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10 lg:text-start">
           <div>
-            <dt className="font-medium text-ink">{t('address')}</dt>
-            <dd className="mt-1 text-ink-muted">
-              {institut.addressLines.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </dd>
+            <Link href="/" aria-label={tMeta('siteName')} className="inline-block">
+              <Logo
+                className="mx-auto h-20 w-auto sm:h-24 lg:mx-0"
+                sizes="(max-width: 640px) 240px, 300px"
+                src={logoLockupSrc()}
+                label={tMeta('siteName')}
+              />
+            </Link>
           </div>
-          <div>
-            <dt className="font-medium text-ink">{t('phone')}</dt>
-            <dd className="mt-1">
-              <a
-                href={`tel:${institut.phone.replace(/\s/g, '')}`}
-                dir="ltr"
-                className="text-ink-muted transition-colors hover:text-brand-600"
-              >
-                {institut.phone}
-              </a>
-            </dd>
-          </div>
-          <div>
-            <dt className="font-medium text-ink">{t('email')}</dt>
-            <dd className="mt-1">
-              <a
-                href={`mailto:${institut.email}`}
-                className="break-all text-ink-muted transition-colors hover:text-brand-600"
-              >
-                {institut.email}
-              </a>
-            </dd>
-          </div>
-        </dl>
 
-        <SocialLinks values={settings.social} className="mt-8 justify-center" />
+          <div>
+            <h2 className="font-display text-xl text-ink">{t('tagline')}</h2>
+            <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink-muted lg:mx-0">
+              {t('body')}
+            </p>
+            <SocialLinks values={settings.social} className="mt-6 justify-center lg:justify-start" />
+          </div>
+
+          <div>
+            <h2 className="font-display text-xl text-ink">{t('contactTitle')}</h2>
+
+            <dl className="mt-5 space-y-4 text-sm">
+              <div>
+                <dt className="font-medium text-ink">{t('address')}</dt>
+                <dd className="mt-0.5 text-ink-muted">
+                  {institut.addressLines.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">{t('phone')}</dt>
+                <dd className="mt-0.5">
+                  <a
+                    href={`tel:${institut.phone.replace(/\s/g, '')}`}
+                    dir="ltr"
+                    className="text-ink-muted transition-colors hover:text-brand-600"
+                  >
+                    {institut.phone}
+                  </a>
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">{t('email')}</dt>
+                <dd className="mt-0.5">
+                  <a
+                    href={`mailto:${institut.email}`}
+                    className="break-all text-ink-muted transition-colors hover:text-brand-600"
+                  >
+                    {institut.email}
+                  </a>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
 
         {/* The menu: horizontal, centred, full footer width, above the rule. */}
         <nav
           aria-label={t('navTitle')}
-          className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-line pt-8 text-sm"
+          className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-line pt-7 text-sm"
         >
           <Link href="/courses" className="text-ink-muted transition-colors hover:text-brand-600">
             {tNav('courses')}
@@ -101,7 +112,7 @@ export async function SiteFooter() {
 
         <nav
           aria-label={t('legalTitle')}
-          className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs"
+          className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs"
         >
           <Link
             href="/legal/terms"
@@ -125,7 +136,7 @@ export async function SiteFooter() {
       </div>
 
       <div className="border-t border-line">
-        <div className="shell py-6 text-center text-xs text-ink-muted">
+        <p className="shell py-5 text-center text-xs text-ink-muted">
           © {year} {tMeta('siteName')}.{' '}
           <a
             href="https://axialogy.com"
@@ -145,7 +156,7 @@ export async function SiteFooter() {
             axialogy.com
           </a>
           )
-        </div>
+        </p>
       </div>
     </footer>
   );
