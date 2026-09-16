@@ -35,6 +35,39 @@ test.describe('checkout', () => {
     await expect(page.getByText('Step 1 of 5')).toBeVisible();
   });
 
+  test('a module page enrols without asking which module', async ({ page }) => {
+    // The card on a module's own page knows the module. It must not ask which
+    // cursus or which modules, and choosing a mode must put THAT module in the
+    // basket — the failure this catches is a card that silently holds nothing
+    // until the student finds the module again in a list.
+    await page.goto('/courses/fiqh-al-ibadat#inscription');
+
+    const card = page.locator('#inscription');
+    const steps = card.locator('nav[aria-label="Inscription"]');
+
+    // Three steps, not five: the cursus and module-list questions are gone.
+    // The headings are asserted rather than the nav labels because below `sm`
+    // the labels are hidden and the numbered buttons carry no accessible name.
+    await expect(steps.getByRole('button')).toHaveCount(3);
+    await expect(card.getByRole('heading', { name: 'Présentiel ou distanciel' })).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Vos modules' })).toHaveCount(0);
+    await expect(card.getByRole('heading', { name: 'Votre cursus' })).toHaveCount(0);
+
+    // The mode choice is a submit button; `aria-pressed` is what tells it apart
+    // from the step nav above it.
+    await card.locator('button[aria-pressed]').filter({ hasText: 'Distanciel' }).click();
+
+    // The flow advances to the details step, which is where a first-time
+    // student fills in their enrolment.
+    await expect(card.getByRole('heading', { name: 'Vos informations' })).toBeVisible();
+
+    // And the module is in the basket: the payment panel is mounted behind
+    // the current step and already carries the server-computed total. If the
+    // course had not been resolved into its product, that panel would hold the
+    // empty-basket message and no figure at all.
+    await expect(card.getByText(/300\s*€/).first()).toHaveText(/300\s*€/);
+  });
+
   test('no amount is posted from the browser', async ({ page }) => {
     // Prices are recomputed server-side on every step. A hidden input carrying
     // cents would be a way to pay less, so there must not be one anywhere in

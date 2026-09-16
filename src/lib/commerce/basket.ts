@@ -1,6 +1,7 @@
 import { readSelection, type Selection } from '@/lib/commerce/selection';
 import { listPacks, listProducts } from '@/lib/data/commerce';
 import { priceSelection, type Quote } from '@/lib/commerce/quote';
+import { previewCoupon } from '@/lib/commerce/coupons';
 
 /**
  * The basket, priced.
@@ -28,10 +29,17 @@ export async function loadBasket(): Promise<Basket> {
   const chosen = offered.filter((product) => productIds.includes(product.id));
   if (chosen.length === 0) return { selection, quote: null };
 
+  // Priced once without the coupon to learn what the coupon comes off, then
+  // again with it. The preview is read-only — the code is still claimed
+  // atomically by `redeem_coupon` when the order opens, and this only lets the
+  // payment step show the figure the student will actually be charged.
+  const priced = priceSelection({ products: chosen, packs, delivery });
+  const preview = await previewCoupon(selection.couponCode, priced.subtotalCents - priced.discountCents);
+
   return {
     selection,
-    // The coupon is deliberately not applied here. It is checked and spent
-    // server-side at the moment of payment — see the note in the review page.
-    quote: priceSelection({ products: chosen, packs, delivery }),
+    quote: preview
+      ? priceSelection({ products: chosen, packs, delivery, coupon: preview.coupon })
+      : priced,
   };
 }

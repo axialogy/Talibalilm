@@ -57,34 +57,41 @@ export function AnnouncementBar({ text, href }: { text: string; href?: string })
   );
 
   return (
-    <div className="relative z-60 bg-brand-700 text-white">
-      <div className="shell flex min-h-11 items-center justify-center py-2 pe-10 text-[13px] font-medium">
-        {!href ? (
-          body
-        ) : external ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline-offset-4 hover:underline"
-          >
-            {body}
-          </a>
-        ) : (
-          <Link href={href} className="underline-offset-4 hover:underline">
-            {body}
-          </Link>
-        )}
-      </div>
+    <div className="relative z-60 w-full bg-brand-700 text-white">
+      {/* The same `shell` rails as the header, with the close button inside
+          them rather than floating at the viewport edge — so the strip and the
+          header below it share one left and right margin at every width. */}
+      <div className="shell grid min-h-12 grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 text-[13px] font-medium">
+        <span aria-hidden="true" />
 
-      <button
-        type="button"
-        onClick={close}
-        aria-label={t('close')}
-        className="absolute end-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/15 hover:text-white"
-      >
-        <X className="size-4" aria-hidden="true" />
-      </button>
+        <div className="min-w-0 text-center">
+          {!href ? (
+            body
+          ) : external ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-4 hover:underline"
+            >
+              {body}
+            </a>
+          ) : (
+            <Link href={href} className="underline-offset-4 hover:underline">
+              {body}
+            </Link>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t('close')}
+          className="flex size-8 items-center justify-center justify-self-end rounded-full text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 }

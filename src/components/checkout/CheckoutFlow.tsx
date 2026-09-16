@@ -13,9 +13,12 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
+import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutWizard, type WizardStep } from '@/components/checkout/CheckoutWizard';
 import { PaymentForms } from '@/components/checkout/PaymentForms';
+import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
 import {
   applyCoupon,
   chooseCursus,
@@ -32,7 +35,8 @@ import {
   programmeByYear,
   type ProgrammeEntry,
 } from '@/lib/data/commerce';
-import { getPayPalConfig } from '@/lib/paypal/client';
+import { getStudentProfile, profileComplete } from '@/lib/data/profile';
+import { getPayPalPublicConfig } from '@/lib/paypal/client';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 
@@ -47,7 +51,8 @@ const RETURN_ERRORS: Record<string, string> = {
   paypalRefused: 'payRefused',
 };
 
-const CARD = 'rounded-[var(--radius-card)] border p-5 text-start transition-colors';
+const CARD =
+  'relative rounded-[var(--radius-card)] border p-5 text-start transition-colors';
 const CARD_ON = 'border-brand-400 bg-brand-50/60';
 const CARD_OFF = 'border-line bg-white hover:border-brand-300';
 
@@ -66,19 +71,33 @@ const CARD_OFF = 'border-line bg-white hover:border-brand-300';
 export async function CheckoutFlow({
   locale,
   returnError,
+  moduleContext,
 }: {
   locale: string;
   /** `?error=` from the PayPal return route. */
   returnError?: string;
+  /**
+   * Set when the card is rendered on a module's own page. The module is then
+   * the subject rather than a choice: the "which cursus" and "which modules"
+   * steps are dropped, and the mode step resolves this course into its product.
+   * A selection left over from another module (or an earlier visit) is ignored
+   * until that happens, so this page never shows somebody else's basket.
+   */
+  moduleContext?: { courseId: string; cursusId: string };
 }) {
   const t = await getTranslations('checkout');
 
   const [{ selection, quote }, cursusList] = await Promise.all([loadBasket(), listCursus()]);
-  const { kind, delivery, cursusId } = selection;
+
+  const stale = moduleContext !== undefined && selection.courseId !== moduleContext.courseId;
+  const kind = stale ? 'module' : selection.kind;
+  const delivery = stale ? null : selection.delivery;
+  const cursusId = stale ? moduleContext.cursusId : selection.cursusId;
+  const priced = stale ? null : quote;
 
   const products = delivery ? await listProducts(delivery) : [];
   const isApprofondi = kind === 'approfondi';
-  const chosen = new Set(selection.productIds);
+  const chosen = new Set(stale ? [] : selection.productIds);
 
   const modules = products.filter((p) => p.kind === 'module');
   const years = products
@@ -101,12 +120,18 @@ export async function CheckoutFlow({
     signedIn = user !== null;
   }
 
-  // Resolved server-side and reduced to a boolean before it crosses into the
-  // client component: the config carries the PayPal secret.
-  const paypalAvailable = (await getPayPalConfig()) !== null;
+  // The student's enrolment details, asked once and required before payment.
+  // Fetched here rather than in the panel so the wizard knows whether the step
+  // is answered before it renders anything.
+  const profile = signedIn ? await getStudentProfile() : null;
+  const detailsComplete = profileComplete(profile);
+
+  // Public config only — the client id, the currency and the environment. The
+  // secret never leaves the server module it is read in.
+  const paypal = await getPayPalPublicConfig();
   const errorKey = returnError ? RETURN_ERRORS[returnError] : undefined;
 
-  const steps: WizardStep[] = [
+  const allSteps: WizardStep[] = [
     {
       key: 'cursus',
       label: t('steps.cursus'),
@@ -163,6 +188,7 @@ export async function CheckoutFlow({
                           {t('yearLabel', { year: option.yearCount })}
                         </span>
                       )}
+                      <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
                     </button>
                   </form>
                 </li>
@@ -195,6 +221,16 @@ export async function CheckoutFlow({
               <li key={value}>
                 <form action={chooseDelivery} className="h-full">
                   <input type="hidden" name="delivery" value={value} />
+                  {/* On a module page the module itself travels with the
+                      answer, so the action can resolve it without depending on
+                      a previous click having written the cookie. */}
+                  {moduleContext && (
+                    <>
+                      <input type="hidden" name="courseId" value={moduleContext.courseId} />
+                      <input type="hidden" name="cursusId" value={moduleContext.cursusId} />
+                      <input type="hidden" name="kind" value="module" />
+                    </>
+                  )}
                   <button
                     type="submit"
                     aria-pressed={on}
@@ -210,6 +246,7 @@ export async function CheckoutFlow({
                       {name}
                     </span>
                     <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">{body}</span>
+                    <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
                   </button>
                 </form>
               </li>
@@ -267,13 +304,12 @@ export async function CheckoutFlow({
 
                 <form action={chooseCursusYear} className="mt-5">
                   <input type="hidden" name="productId" value={year.id} />
-                  <Button
-                    type="submit"
+                  <SubmitButton
                     size="md"
                     variant={chosen.has(year.id) ? 'outline' : 'primary'}
                   >
                     {chosen.has(year.id) ? t('selected') : t('select')}
-                  </Button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -311,6 +347,7 @@ export async function CheckoutFlow({
                       <span className="font-display text-[14px] font-semibold text-ink">
                         {formatPrice(product.priceCents, locale)}
                       </span>
+                      <PendingSpinner className="text-brand-600" />
                     </button>
                   </form>
                 </li>
@@ -324,18 +361,59 @@ export async function CheckoutFlow({
       ),
     },
     {
-      key: 'review',
-      label: t('steps.review'),
-      heading: t('steps.review'),
-      lead: t('reviewLead'),
-      complete: quote !== null,
-      panel: !quote ? (
-        <Empty>{t('emptyBasket')}</Empty>
+      key: 'info',
+      label: t('steps.info'),
+      heading: t('infoHeading'),
+      lead: t('infoLead'),
+      complete: detailsComplete,
+      panel: !signedIn ? (
+        /* Accounts first, then details and payment — an entitlement has to
+           belong to somebody, and the basket survives the round trip in its
+           cookie. */
+        <div className="rounded-[var(--radius-card)] border border-line bg-surface/50 p-5">
+          <p className="text-[13px] text-ink-muted">{t('loginRequired')}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button asChild size="md">
+              <Link href="/register?next=%2Fcheckout">{t('registerCta')}</Link>
+            </Button>
+            <Button asChild size="md" variant="outline">
+              <Link href="/login?next=%2Fcheckout">{t('loginCta')}</Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <CheckoutProfileForm profile={profile} email={profile?.email ?? null} />
+      ),
+    },
+    {
+      key: 'payment',
+      label: t('steps.payment'),
+      heading: t('payTitle'),
+      lead: t('payLead'),
+      complete: priced !== null && detailsComplete,
+      panel: !priced ? (
+        <Empty>{moduleContext && delivery ? t('moduleNotSoldInMode') : t('emptyBasket')}</Empty>
       ) : (
         <>
+          {errorKey && (
+            <p
+              role="alert"
+              className="mb-5 flex items-start gap-2 rounded-[var(--radius-card)] border border-line bg-surface/60 p-4 text-[13px] leading-relaxed text-ink"
+            >
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+              {t(errorKey)}
+            </p>
+          )}
+
+          {/*
+            What is being bought, on the same screen as the button that buys
+            it. This used to be its own step — a "Récapitulatif" that asked the
+            student to confirm a list before showing the payment, which is one
+            screen more than the decision needs.
+          */}
           <div className="rounded-[var(--radius-card)] border border-line">
             <ul className="divide-y divide-line">
-              {quote.lines.map((line) => (
+              {priced.lines.map((line) => (
                 <li key={line.productId} className="flex flex-wrap items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-[14px] font-semibold text-ink">{line.title}</p>
@@ -359,36 +437,37 @@ export async function CheckoutFlow({
               ))}
             </ul>
 
-            {quote.pack && (
+            {priced.pack && (
               <p className="flex items-center gap-2 border-t border-line bg-brand-50/60 px-4 py-3 text-[13px] text-brand-700">
                 <Gift className="size-4 shrink-0" aria-hidden="true" />
-                {t('offerApplied', { name: quote.pack.title })}
+                {t('offerApplied', { name: priced.pack.title })}
               </p>
             )}
 
             <dl className="space-y-2 border-t border-line p-4 text-[13px]">
               <div className="flex justify-between text-ink-muted">
                 <dt>{t('subtotal')}</dt>
-                <dd>{formatPrice(quote.subtotalCents, locale)}</dd>
+                <dd>{formatPrice(priced.subtotalCents, locale)}</dd>
               </div>
-              {quote.discountCents > 0 && (
+              {priced.discountCents > 0 && (
                 <div className="flex justify-between text-brand-600">
                   <dt>{t('discount')}</dt>
-                  <dd>−{formatPrice(quote.discountCents, locale)}</dd>
+                  <dd>−{formatPrice(priced.discountCents, locale)}</dd>
                 </div>
               )}
               <div className="flex justify-between border-t border-line pt-2 font-display text-lg font-semibold text-ink">
                 <dt>{t('total')}</dt>
-                <dd>{formatPrice(quote.totalCents, locale)}</dd>
+                <dd>{formatPrice(priced.totalCents, locale)}</dd>
               </div>
             </dl>
           </div>
 
           {/*
-            The code is stored, not checked. Telling a visitor here whether a
-            code exists would turn this form into an oracle for guessing the
-            front desk's cash codes, each worth a year of teaching. It is
-            validated and spent server-side at the moment of payment instead.
+            The code is stored, and the total above is priced with it only when
+            the database recognises it. Claiming it is still atomic and still
+            happens when the order opens; this read is what lets the student
+            see the discount before they commit, rather than discovering it on
+            the receipt.
           */}
           <form
             action={applyCoupon}
@@ -409,89 +488,41 @@ export async function CheckoutFlow({
               />
               <span className="mt-1.5 block text-[11px] text-ink-muted">{t('couponHint')}</span>
             </label>
-            <Button type="submit" variant="outline" size="md">
+            <SubmitButton variant="outline" size="md">
               {t('couponApply')}
-            </Button>
+            </SubmitButton>
           </form>
 
           {selection.couponCode && (
-            <p role="status" className="mt-2 text-[12px] text-brand-600">
-              {t('couponStored', { code: selection.couponCode })}
-            </p>
-          )}
-        </>
-      ),
-    },
-    {
-      key: 'payment',
-      label: t('steps.payment'),
-      heading: t('payTitle'),
-      lead: t('payLead'),
-      complete: quote !== null,
-      panel: !quote ? (
-        <Empty>{t('emptyBasket')}</Empty>
-      ) : (
-        <>
-          {errorKey && (
             <p
-              role="alert"
-              className="mb-5 flex items-start gap-2 rounded-[var(--radius-card)] border border-line bg-surface/60 p-4 text-[13px] leading-relaxed text-ink"
+              role="status"
+              className={
+                priced.coupon ? 'mt-2 text-[12px] text-brand-600' : 'mt-2 text-[12px] text-red-600'
+              }
             >
-              <AlertCircle className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden="true" />
-              {t(errorKey)}
+              {priced.coupon
+                ? t('couponApplied', {
+                    code: priced.coupon.code,
+                    amount: formatPrice(priced.couponDiscountCents, locale),
+                  })
+                : t('codeRefused')}
             </p>
           )}
-
-          <div className="rounded-[var(--radius-card)] border border-line p-5">
-            <dl className="flex items-baseline justify-between">
-              <dt className="font-display text-[14px] font-semibold text-ink">{t('total')}</dt>
-              <dd className="font-display text-3xl font-semibold text-brand-600">
-                {formatPrice(quote.totalCents, locale)}
-              </dd>
-            </dl>
-            <ul className="mt-4 space-y-1 border-t border-line pt-4">
-              {quote.lines.map((line) => (
-                <li
-                  key={line.productId}
-                  className="flex justify-between text-[13px] text-ink-muted"
-                >
-                  <span>{line.title}</span>
-                  <span>
-                    {line.isFree ? t('offerFree') : formatPrice(line.unitPriceCents, locale)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {selection.couponCode && (
-              <p className="mt-4 text-[12px] text-ink-muted">
-                {t('couponStored', { code: selection.couponCode })} — {t('couponHint')}
-              </p>
-            )}
-          </div>
 
           <div className="mt-5">
-            {signedIn ? (
-              <PaymentForms paypalAvailable={paypalAvailable} free={quote.totalCents === 0} />
-            ) : (
-              /* Accounts first, then payment — an entitlement has to belong to
-                 somebody, and the basket survives the round trip in its cookie. */
-              <div className="rounded-[var(--radius-card)] border border-line bg-surface/50 p-5">
-                <p className="text-[13px] text-ink-muted">{t('loginRequired')}</p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Button asChild size="md">
-                    <Link href="/register?next=%2Fcheckout">{t('registerCta')}</Link>
-                  </Button>
-                  <Button asChild size="md" variant="outline">
-                    <Link href="/login?next=%2Fcheckout">{t('loginCta')}</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
+            <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
           </div>
         </>
       ),
     },
   ];
+
+  // On a module's own page neither the cursus question nor the module list is
+  // a question: the module is the subject. What remains is mode, details and
+  // payment.
+  const steps = moduleContext
+    ? allSteps.filter((step) => step.key !== 'modules' && step.key !== 'cursus')
+    : allSteps;
 
   return (
     <CheckoutWizard

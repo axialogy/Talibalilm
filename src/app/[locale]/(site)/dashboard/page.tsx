@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { BookOpen, ShieldCheck, Wrench } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { PageHero } from '@/components/marketing/PageHero';
 import { UpcomingClasses } from '@/components/live/UpcomingClasses';
 import { requireViewer } from '@/lib/auth/guards';
@@ -181,6 +182,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
             <form action={signOut}>
               <Button type="submit" variant="ghost" size="sm">
+                <PendingSpinner />
                 {tNav('logout')}
               </Button>
             </form>

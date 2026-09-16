@@ -122,6 +122,38 @@ begin
     where id = '22222222-2222-2222-2222-222222222222';
   perform public.assert(not found, 'a student cannot edit another profile');
 
+  -- The checkout's enrolment form writes these. Each new column needs its own
+  -- UPDATE grant or the form silently saves nothing.
+  update public.profiles
+     set civility = 'madame',
+         first_name = 'Amina',
+         last_name = 'B.',
+         phone = '0611223344',
+         phone_landline = '0134567890',
+         birth_date = '1995-10-03',
+         address = '1 rue de la Mosquée',
+         postal_code = '77130',
+         city = 'Montereau-Fault-Yonne',
+         department = 'sciences-islamiques'
+   where id = '11111111-1111-1111-1111-111111111111';
+  perform public.assert(
+    (select first_name = 'Amina' and last_name = 'B.' and city = 'Montereau-Fault-Yonne'
+        and department = 'sciences-islamiques' and birth_date = date '1995-10-03'
+     from public.profiles where id = '11111111-1111-1111-1111-111111111111'),
+    'a student can fill in their own enrolment details');
+
+  -- Shape enforced in the database as well as the form: civility is a value
+  -- the office groups by, not free text.
+  begin
+    update public.profiles set civility = 'docteur'
+      where id = '11111111-1111-1111-1111-111111111111';
+    escalated := true;
+  exception when check_violation then
+    escalated := false;
+  end;
+  perform public.assert(not escalated,
+    'civility only accepts madame or monsieur');
+
   -- THE one that matters. RLS alone would allow this: the row still belongs to
   -- the caller, so `using (id = auth.uid())` passes. Only the column grant
   -- stops it.

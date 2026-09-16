@@ -176,6 +176,15 @@
   .hero-wash {
     background-image: linear-gradient(135deg, #edf2f1 0%, #f5f8f7 55%, #e7eeec 100%);
   }
+
+  /* The "islamic touch" on sections that would otherwise be plain white: a
+     khatam star lattice drawn in the brand emerald and the identity gold, at
+     a contrast low enough to read as paper rather than as a picture. */
+  .pattern-islamic {
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%2317a17a' stroke-opacity='0.06'%3E%3Crect x='16' y='16' width='40' height='40'/%3E%3Crect x='16' y='16' width='40' height='40' transform='rotate(45 36 36)'/%3E%3C/g%3E%3Ccircle cx='36' cy='36' r='5' fill='none' stroke='%23c4a05a' stroke-opacity='0.07'/%3E%3C/svg%3E");
+    background-size: 72px 72px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
