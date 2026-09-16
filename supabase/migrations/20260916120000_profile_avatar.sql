@@ -7,9 +7,12 @@
 -- is the stable fact; the URL is minted when a page needs it, exactly as a
 -- slide or a lesson video is served.
 --
--- The shape constraint mirrors `avatarKey()` in src/lib/storage/key.ts. It is
--- what stops a row holding a key that names somebody else's prefix or escapes
--- the bucket layout with `..`.
+-- Two clauses, and the second is the one that matters. The first mirrors
+-- `avatarKey()` in src/lib/storage/key.ts — the shape of a key we issue. The
+-- second demands that the prefix IS this row's own user id, so a key naming
+-- somebody else's object cannot be stored even by a service-role write. The
+-- application checks the same thing before it signs anything; this is the
+-- cheaper refusal and the one that cannot be forgotten.
 -- ---------------------------------------------------------------------------
 
 alter table public.profiles
@@ -18,7 +21,10 @@ alter table public.profiles
 alter table public.profiles
   add constraint profiles_avatar_key_shape check (
     avatar_key is null
-    or avatar_key ~ '^avatars/[0-9a-f-]{36}/[A-Za-z0-9_-]{8,64}\.(png|jpg|webp)$'
+    or (
+      avatar_key ~ '^avatars/[0-9a-f-]{36}/[A-Za-z0-9_-]{8,64}\.(png|jpg|webp)$'
+      and avatar_key like 'avatars/' || id::text || '/%'
+    )
   );
 
 comment on column public.profiles.avatar_key is
