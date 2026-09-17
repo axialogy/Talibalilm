@@ -630,6 +630,41 @@ begin
   reset role;
 end $$;
 
+-- --- a forgotten room closes itself ---------------------------------------
+
+do $$
+declare closed integer;
+begin
+  raise notice 'a room left open ends on its own';
+
+  -- One that started six hours ago and was never closed, and one still inside
+  -- the school's five-hour ceiling.
+  insert into public.live_sessions (id, course_id, title, status, started_at)
+  values ('11110000-0000-4000-8000-0000000000f1', 'c0000000-0000-4000-8000-000000000001',
+          'Séance oubliée', 'live', now() - interval '6 hours');
+  insert into public.live_sessions (id, course_id, title, status, started_at)
+  values ('11110000-0000-4000-8000-0000000000f2', 'c0000000-0000-4000-8000-000000000001',
+          'Séance en cours', 'live', now() - interval '1 hour');
+
+  closed := public.end_stale_live_sessions(5);
+  perform public.assert(closed = 1, 'exactly the forgotten room is closed');
+
+  perform public.assert(
+    (select status from public.live_sessions where id = '11110000-0000-4000-8000-0000000000f1')
+      = 'ended',
+    'and it is ended, not deleted — the class happened');
+
+  perform public.assert(
+    (select ended_at is not null from public.live_sessions
+      where id = '11110000-0000-4000-8000-0000000000f1'),
+    'with the time it closed written down');
+
+  perform public.assert(
+    (select status from public.live_sessions where id = '11110000-0000-4000-8000-0000000000f2')
+      = 'live',
+    'a class inside the ceiling is left alone');
+end $$;
+
 drop function public.assert(boolean, text);
 
 \echo ''

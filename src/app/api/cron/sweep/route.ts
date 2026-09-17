@@ -197,6 +197,13 @@ export async function GET(request: NextRequest) {
   // for a new link, and short enough that the list stays clean.
   const unconfirmedPurged = await purgeUnconfirmedUsers(supabase);
 
+  // Rooms nobody closed: five hours is the school's ceiling for one class, and
+  // a forgotten tab must not leave a class "live" for a week.
+  const { data: liveClosed, error: liveError } = await supabase.rpc('end_stale_live_sessions', {
+    max_hours: 5,
+  });
+  if (liveError) reportError('cron.liveStale', liveError, { note: 'rooms left open this run' });
+
   // Rolled-over rate-limit windows are dead weight once past. Pruning them is
   // pure housekeeping — a failure here must not fail the sweep that matters.
   const { data: pruned, error: pruneError } = await supabase.rpc('prune_rate_limits');
@@ -209,6 +216,7 @@ export async function GET(request: NextRequest) {
     videosPurged,
     installmentReminders: reminders,
     unconfirmedPurged,
+    liveSessionsClosed: liveClosed ?? 0,
   };
   if (
     result.ordersCancelled > 0 ||

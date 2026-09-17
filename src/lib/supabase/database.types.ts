@@ -1238,6 +1238,10 @@ export interface Database {
         Args: { uid: string; approve: boolean };
         Returns: string | null;
       };
+      end_stale_live_sessions: {
+        Args: { max_hours?: number };
+        Returns: number;
+      };
       unconfirmed_users: {
         Args: { older_than: string };
         Returns: { id: string; email: string; created_at: string }[];
