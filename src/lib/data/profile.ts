@@ -77,6 +77,21 @@ export async function getStudentProfile(): Promise<StudentProfile | null> {
 }
 
 /**
+ * May this account open an order?
+ *
+ * Asked of the database rather than read from a flag here: `is_approved()` is
+ * the same function the checkout actions call, so the page and the gate cannot
+ * disagree. Staff are approved by their role and are never in the queue.
+ */
+export async function isApproved(): Promise<boolean> {
+  if (!supabaseConfigured) return false;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('is_approved');
+  if (error) return false;
+  return data === true;
+}
+
+/**
  * Is the enrolment complete enough to take a payment?
  *
  * The same fields the form marks required, checked on the server so a

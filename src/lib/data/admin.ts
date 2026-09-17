@@ -225,6 +225,8 @@ export interface StudentAccountDetail {
   department: string;
   /** R2 key of the photo; the page signs it before display. */
   avatarKey: string | null;
+  /** May this account open an order? Null means still waiting. */
+  approvedAt: string | null;
 }
 
 export async function listStudents(search?: string): Promise<StudentSummary[]> {
@@ -318,7 +320,7 @@ export async function getStudent(userId: string): Promise<{
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      `id, full_name, role, created_at, anonymised_at, reviewed_at, phone, locale,
+      `id, full_name, role, created_at, anonymised_at, reviewed_at, approved_at, phone, locale,
        phone_landline, civility, first_name, last_name, birth_date,
        address, postal_code, city, department, avatar_key`,
     )
@@ -359,6 +361,7 @@ export async function getStudent(userId: string): Promise<{
       city: profile.city,
       department: profile.department,
       avatarKey: profile.avatar_key,
+      approvedAt: profile.approved_at,
     },
     student: {
       userId: profile.id,

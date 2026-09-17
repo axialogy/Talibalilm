@@ -161,6 +161,82 @@ export interface NewRegistrationData {
  * school reads French. It carries the link to the person's page so the office
  * is one tap from seeing who registered rather than hunting through a list.
  */
+export interface StudentApprovedData {
+  to: string;
+  fullName: string;
+  locale: string;
+  spaceUrl: string;
+}
+
+/**
+ * The student's account was let in.
+ *
+ * Sent the moment an admin approves, and it is what closes the loop for the
+ * student: they can now open an order, and their space is already theirs — no
+ * second sign-up, no waiting for a second e-mail.
+ */
+export function studentApproved(data: StudentApprovedData): Mail {
+  const fr = data.locale === 'fr';
+  const name = data.fullName.trim();
+  const shell: Shell = {
+    heading: fr ? 'Votre inscription est validée' : 'Your registration is approved',
+    intro: fr
+      ? `${name ? `${name}, v` : 'V'}otre compte a été validé par l’institut. Vous pouvez dès maintenant vous inscrire à un module ou à un cursus et suivre vos cours.`
+      : `${name ? `${name}, y` : 'Y'}our account has been approved by the institute. You can now enrol in a module or a programme and follow your classes.`,
+    lines: [
+      { title: fr ? 'Votre espace' : 'Your space', detail: data.spaceUrl },
+    ],
+    outro: fr
+      ? 'Une question ? Répondez simplement à cet e-mail, nous vous répondrons.'
+      : 'A question? Just reply to this email and we will answer.',
+  };
+  return {
+    to: data.to,
+    subject: fr ? 'Votre inscription est validée' : 'Your registration is approved',
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
+export interface OfficeApprovalData {
+  to: string;
+  fullName: string;
+  email: string;
+  approved: boolean;
+}
+
+/**
+ * What the office is told once it has decided.
+ *
+ * A copy for the record: the admin who clicked knows what they clicked, but
+ * the mailbox is shared and a second person reading it later should be able to
+ * see that an account was let in — and which one.
+ */
+export function officeApprovalNotice(data: OfficeApprovalData): Mail {
+  const shell: Shell = {
+    heading: data.approved ? 'Compte validé' : 'Compte remis en attente',
+    intro: data.approved
+      ? 'L’étudiant peut désormais s’inscrire à un module ou à un cursus.'
+      : 'L’étudiant ne peut plus ouvrir de commande tant que le compte n’est pas validé.',
+    lines: [
+      { title: data.fullName || '—', detail: data.email },
+      {
+        title: 'Décision',
+        detail: data.approved ? 'Validé' : 'Remis en attente',
+      },
+    ],
+    outro: 'Vous pouvez modifier cette décision depuis Administration → Étudiants.',
+  };
+  return {
+    to: data.to,
+    subject: data.approved
+      ? `Compte validé : ${data.fullName || data.email}`
+      : `Compte remis en attente : ${data.fullName || data.email}`,
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
 export function newRegistration(data: NewRegistrationData): Mail {
   const shell: Shell = {
     heading: 'Nouvelle inscription à valider',

@@ -52,6 +52,7 @@ export interface Database {
           locale: AppLocale;
           role: UserRole;
           reviewed_at: string | null;
+          approved_at: string | null;
           anonymised_at: string | null;
           created_at: string;
           updated_at: string;
@@ -72,6 +73,7 @@ export interface Database {
           avatar_key?: string | null;
           locale?: AppLocale;
           role?: UserRole;
+          approved_at?: string | null;
           anonymised_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1114,6 +1116,18 @@ export interface Database {
       unreviewed_student_count: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      is_approved: {
+        Args: { uid?: string };
+        Returns: boolean;
+      };
+      pending_student_count: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      admin_set_approval: {
+        Args: { uid: string; approve: boolean };
+        Returns: string | null;
       };
       admin_generate_coupons: {
         Args: {

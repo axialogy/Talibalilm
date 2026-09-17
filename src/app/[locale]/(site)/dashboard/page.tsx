@@ -6,13 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { AvatarUpload } from '@/components/profile/AvatarUpload';
+import { NotificationsToggle } from '@/components/notifications/NotificationsToggle';
 import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
 import { UpcomingClasses } from '@/components/live/UpcomingClasses';
 import { requireViewer } from '@/lib/auth/guards';
 import { daysRemaining, getCourseProgress, getEntitlements } from '@/lib/data/learning';
 import { listCourses } from '@/lib/data/courses';
 import { listCursus } from '@/lib/data/commerce';
-import { avatarUrl, getStudentProfile } from '@/lib/data/profile';
+import { avatarUrl, getStudentProfile, isApproved } from '@/lib/data/profile';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { courseLessons } from '@/lib/content/types';
@@ -46,11 +47,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const tProfile = await getTranslations('profile');
   const tCourses = await getTranslations('courses');
 
-  const [profile, entitlements, published, cursusList] = await Promise.all([
+  const [profile, entitlements, published, cursusList, approved] = await Promise.all([
     getStudentProfile(),
     getEntitlements(),
     listCourses(),
     listCursus(),
+    isApproved(),
   ]);
 
   const avatar = await avatarUrl(profile?.avatarKey ?? null);
@@ -133,6 +135,18 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       <section className="py-10 sm:py-12">
         <div className="shell grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-10">
+            {/* Nothing is wrong — the school lets accounts in deliberately, and
+                this says so rather than leaving a checkout that refuses for a
+                reason nobody can see. */}
+            {!approved && !isStaff && (
+              <div className="rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/60 p-5">
+                <p className="text-[13px] font-medium text-ink">{tProfile('pendingTitle')}</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+                  {tProfile('pendingBody')}
+                </p>
+              </div>
+            )}
+
             {/* Live classes first when there are any: a room that is open now
                 is the one thing on this page that is time-sensitive. */}
             <div className="empty:hidden">
@@ -292,6 +306,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                 </Button>
               </div>
             )}
+
+            <NotificationsToggle audience="student" />
 
             <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
               <h2 className="font-display text-[15px] font-semibold text-ink">

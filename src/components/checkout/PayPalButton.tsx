@@ -49,6 +49,7 @@ const MESSAGE: Record<string, string> = {
   packExhausted: 'packExhausted',
   mixedCurrency: 'mixedCurrency',
   profileRequired: 'profileRequired',
+  notApproved: 'notApproved',
   emptyBasket: 'emptyBasket',
   payMismatch: 'payMismatch',
   payNotCompleted: 'payNotCompleted',

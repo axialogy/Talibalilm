@@ -34,7 +34,7 @@ import {
   programmeByYear,
   type ProgrammeEntry,
 } from '@/lib/data/commerce';
-import { getStudentProfile, profileComplete } from '@/lib/data/profile';
+import { getStudentProfile, isApproved, profileComplete } from '@/lib/data/profile';
 import { getPayPalPublicConfig } from '@/lib/paypal/client';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
@@ -127,6 +127,10 @@ export async function CheckoutFlow({
   // is answered before it renders anything.
   const profile = signedIn ? await getStudentProfile() : null;
   const detailsComplete = profileComplete(profile);
+
+  // The school lets accounts in deliberately. An account that has not been
+  // approved can fill everything in and see the total; it cannot pay.
+  const approved = signedIn ? await isApproved() : false;
 
   // Public config only — the client id, the currency and the environment. The
   // secret never leaves the server module it is read in.
@@ -488,7 +492,18 @@ export async function CheckoutFlow({
             />
 
             <div className="mt-5 border-t border-line pt-5">
-              <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
+              {signedIn && !approved ? (
+                <div className="rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/60 p-5">
+                  <p className="text-[13px] font-medium text-ink">
+                    {t('approvalPendingTitle')}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+                    {t('approvalPendingBody')}
+                  </p>
+                </div>
+              ) : (
+                <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
+              )}
             </div>
           </div>
         </>

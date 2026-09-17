@@ -6,7 +6,7 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
-import { getStudentProfile, profileComplete } from '@/lib/data/profile';
+import { getStudentProfile, isApproved, profileComplete } from '@/lib/data/profile';
 import { loadBasket } from '@/lib/commerce/basket';
 import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
 import { clearSelection } from '@/lib/commerce/selection';
@@ -139,6 +139,10 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
   // Opening a PayPal order claims a coupon and a pack seat; cap how fast one
   // caller can churn through those holds.
   if (!(await throttle('checkout-start', 20, user.id))) return { ok: false, error: 'rateLimited' };
+
+  // The account has to be let in before it can order. Browsing and trial
+  // lessons stay open; this is the school deciding who joins, not a paywall.
+  if (!(await isApproved())) return { ok: false, error: 'notApproved' };
 
   // The enrolment details are required before money moves. The wizard only
   // reaches this step once they are saved, but a hand-posted action must not
@@ -304,6 +308,7 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
   const user = await requireUser();
 
   if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+  if (!(await isApproved())) return { error: 'notApproved' };
   if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
 
   const { selection, quote } = await loadBasket();
@@ -363,6 +368,7 @@ export async function redeemOfficeCode(_previous: PayState, formData: FormData):
   // The one path where guessing pays: a valid office code is a year of access
   // for free. A shared, durable counter is what makes brute force uneconomical.
   if (!(await throttle('office-code', 10, user.id))) return { error: 'rateLimited' };
+  if (!(await isApproved())) return { error: 'notApproved' };
   if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
 
   const parsed = codeSchema.safeParse(formData.get('code') ?? '');

@@ -298,6 +298,97 @@ begin
     'and a webhook retry racing the return route is refused — sent at most once');
 end $$;
 
+-- --- who may buy: the approval gate ----------------------------------------
+
+do $$
+declare
+  refused boolean := false;
+  returned text;
+  audit_count integer;
+begin
+  raise notice 'an account is let in deliberately';
+
+  -- A fresh registration is pending. The migration approved everyone who
+  -- existed before the gate came back, so this is set directly.
+  update public.profiles set approved_at = null
+   where id = 'a0000000-0000-4000-8000-000000000001';
+
+  perform public.assert(
+    not public.is_approved('a0000000-0000-4000-8000-000000000001'),
+    'a pending student may not open an order');
+
+  perform public.assert(
+    public.is_approved('a0000000-0000-4000-8000-000000000002'),
+    'staff are never pending — a promotion must not put somebody in a queue');
+
+  -- A student cannot approve themselves, or anybody else.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    perform public.admin_set_approval('a0000000-0000-4000-8000-000000000001', true);
+  exception when insufficient_privilege then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'and cannot approve themselves');
+
+  -- The admin can.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  returned := public.admin_set_approval('a0000000-0000-4000-8000-000000000001', true);
+  reset role;
+
+  perform public.assert(returned = 'student@test.fr',
+    'approving returns the address to write to, and only when something changed');
+  perform public.assert(
+    public.is_approved('a0000000-0000-4000-8000-000000000001'),
+    'and the account may now buy');
+
+  -- Idempotent: a second press is not an event, so nothing is returned and no
+  -- second message can be sent.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  returned := public.admin_set_approval('a0000000-0000-4000-8000-000000000001', true);
+  reset role;
+  perform public.assert(returned is null,
+    'approving an approved account is a no-op rather than a second welcome');
+
+  select count(*) into audit_count from public.admin_audit
+   where action = 'student.approve' and target_id = 'a0000000-0000-4000-8000-000000000001';
+  perform public.assert(audit_count = 1,
+    'and exactly one audit row names who let them in');
+
+  -- Putting them back in the queue is the same decision, the other way.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  returned := public.admin_set_approval('a0000000-0000-4000-8000-000000000001', false);
+  reset role;
+  perform public.assert(
+    returned = 'student@test.fr'
+      and not public.is_approved('a0000000-0000-4000-8000-000000000001'),
+    'an admin can put an account back in the queue');
+
+  -- Staff are not a student account: the RPC refuses rather than quietly
+  -- clearing a colleague's approval.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  begin
+    perform public.admin_set_approval('a0000000-0000-4000-8000-000000000002', false);
+  exception when check_violation then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'and a staff account is not something to approve');
+
+  -- The queue count is a staff answer, and zero for anyone else.
+  call auth.login_as('a0000000-0000-4000-8000-000000000002');
+  perform public.assert(public.pending_student_count() = 1,
+    'the office sees exactly who is waiting');
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(public.pending_student_count() = 0,
+    'and a student asking gets nothing');
+  reset role;
+
+  -- Leave the fixture as the rest of the suite expects it.
+  update public.profiles set approved_at = now()
+   where id = 'a0000000-0000-4000-8000-000000000001';
+end $$;
+
 drop function public.assert(boolean, text);
 
 \echo ''
