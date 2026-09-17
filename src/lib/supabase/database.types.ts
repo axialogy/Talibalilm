@@ -792,6 +792,32 @@ export interface Database {
         }>;
         Relationships: [];
       };
+      admin_security: {
+        Row: {
+          user_id: string;
+          pin_hash: string;
+          pin_salt: string;
+          failed_attempts: number;
+          locked_until: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          pin_hash: string;
+          pin_salt: string;
+          failed_attempts?: number;
+          locked_until?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          pin_hash: string;
+          pin_salt: string;
+          failed_attempts: number;
+          locked_until: string | null;
+          updated_at: string;
+        }>;
+        Relationships: [];
+      };
       installments: {
         Row: {
           id: string;

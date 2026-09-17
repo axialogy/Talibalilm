@@ -198,6 +198,45 @@ export function studentApproved(data: StudentApprovedData): Mail {
   };
 }
 
+export interface SecurityAlertData {
+  to: string;
+  /** What happened, in French: this goes to the school. */
+  action: string;
+  actor: string;
+  detail: string;
+  /** The one-click "it was not me", when the change can be undone. */
+  revertUrl: string | null;
+}
+
+/**
+ * Something sensitive was changed.
+ *
+ * Always in French, always to the office mailbox. The point is not the
+ * notification — it is the LINK: one click closes the money path and starts
+ * the password reset, without waiting for anyone to be at a computer.
+ */
+export function securityAlert(data: SecurityAlertData): Mail {
+  const shell: Shell = {
+    heading: data.action,
+    intro: `Ce changement a été fait depuis le compte ${data.actor}. Si c’est bien vous, ignorez ce message.`,
+    lines: [
+      { title: 'Détail', detail: data.detail },
+      ...(data.revertUrl
+        ? [{ title: 'Ce n’était pas moi', detail: data.revertUrl }]
+        : []),
+    ],
+    outro: data.revertUrl
+      ? 'Le lien ci-dessus coupe immédiatement le paiement en ligne et vide les identifiants enregistrés, puis vous recevrez un e-mail pour changer votre mot de passe. Vous pourrez ensuite remettre les identifiants.'
+      : 'Sans clé STEPUP_SECRET configurée, ce lien ne peut pas être généré : changez le mot de passe du compte administrateur dès maintenant.',
+  };
+  return {
+    to: data.to,
+    subject: `Sécurité — ${data.action}`,
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
 export interface PaymentDueData {
   to: string;
   fullName: string;

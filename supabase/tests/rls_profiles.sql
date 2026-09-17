@@ -189,6 +189,21 @@ begin
   perform public.assert(not escalated,
     'a student CANNOT promote themselves to admin (column grant holds)');
 
+  -- The belt behind that column grant: even if a future migration granted
+  -- UPDATE(role) by mistake, the trigger refuses a session. This test grants
+  -- it on purpose, to prove the second lock is there.
+  grant update (role) on public.profiles to authenticated;
+  begin
+    update public.profiles set role = 'admin'
+      where id = '11111111-1111-1111-1111-111111111111';
+    escalated := true;
+  exception when insufficient_privilege then
+    escalated := false;
+  end;
+  revoke update (role) on public.profiles from authenticated;
+  perform public.assert(not escalated,
+    'and a session cannot write a role even WITH the column grant — the trigger refuses');
+
   perform public.assert(
     (select role from public.profiles
       where id = '11111111-1111-1111-1111-111111111111') = 'student',

@@ -9,6 +9,13 @@ import type { AdminState } from '@/app/actions/admin';
 import { errorDetail } from '@/lib/supabase/error-detail';
 import { reportError } from '@/lib/observability/report';
 import { checkImage } from '@/lib/media/image';
+import { stepUpUnlocked } from '@/lib/security/stepup-server';
+import { signRevertToken } from '@/lib/security/pin';
+import { notifyStaff } from '@/lib/push/server';
+import { sendMail, officeInbox } from '@/lib/email/send';
+import { securityAlert } from '@/lib/email/templates';
+import { institut } from '@/lib/content/institut';
+import { siteUrl } from '@/lib/env';
 import { pickFreeSlug, slugify } from '@/lib/content/slug';
 
 /**
@@ -674,6 +681,10 @@ export async function savePaymentSettings(
   if (!supabaseConfigured) return { ok: false, error: 'unavailable' };
   const admin = await requireAdmin();
 
+  // The page hides the form without the PIN; this is the check that counts.
+  // A hand-posted request has no step-up cookie.
+  if (!(await stepUpUnlocked())) return { ok: false, error: 'locked' };
+
   const parsed = paymentSchema.safeParse({
     environment: formData.get('environment'),
     client_id: String(formData.get('client_id') ?? '').trim(),
@@ -692,6 +703,15 @@ export async function savePaymentSettings(
   const webhookId = String(formData.get('webhook_id') ?? '').trim();
 
   const supabase = createAdminClient();
+
+  // What it was, for the alert: an admin who did not make this change has to
+  // be told WHAT changed, in words, without any secret in the message.
+  const { data: before } = await supabase
+    .from('payment_settings')
+    .select('environment, client_id, merchant_email, currency, enabled, client_secret, webhook_id')
+    .eq('id', true)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('payment_settings')
     .update({
@@ -708,6 +728,78 @@ export async function savePaymentSettings(
     return { ok: false, error: error.code === '23514' ? 'credentialsMissing' : 'saveFailed' };
   }
 
+  await alertPaymentChange({
+    actorId: admin.id,
+    actorEmail: admin.email ?? '',
+    before: before ?? null,
+    after: {
+      environment: parsed.data.environment,
+      client_id: parsed.data.client_id,
+      merchant_email: parsed.data.merchant_email,
+      currency: parsed.data.currency,
+      enabled: parsed.data.enabled,
+      client_secret: secret ? 'replaced' : (before?.client_secret ? 'kept' : 'set'),
+      webhook_id: webhookId ? 'replaced' : (before?.webhook_id ? 'kept' : 'set'),
+    },
+  });
+
   revalidatePath('/[locale]/admin/payments', 'page');
   return OK;
+}
+
+/**
+ * Tell every admin the PayPal account was touched.
+ *
+ * The e-mail carries a one-click "it was not me" link: it clears the
+ * credentials and switches online payment off immediately, then asks the
+ * account holder to change their password. Clearing rather than restoring the
+ * previous values is deliberate — the previous values are exactly what an
+ * attacker would be trying to move the money away from.
+ */
+async function alertPaymentChange(input: {
+  actorId: string;
+  actorEmail: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown>;
+}): Promise<void> {
+  const secret = process.env.STEPUP_SECRET?.trim();
+  const changedAt = Date.now();
+  const token = secret ? signRevertToken(input.actorId, changedAt, secret) : null;
+  const revertUrl = token
+    ? `${siteUrl()}/api/security/paypal-revert?u=${input.actorId}&t=${encodeURIComponent(token)}`
+    : null;
+
+  const changed = Object.keys(input.after).filter((key) => {
+    const was = input.before ? input.before[key] : undefined;
+    return String(was ?? '') !== String(input.after[key] ?? '');
+  });
+
+  const summary = changed
+    .map((key) => `${key}: ${input.before ? String(input.before[key] ?? '—') : '—'} → ${String(input.after[key] ?? '—')}`)
+    .join('\n');
+
+  try {
+    await sendMail(
+      securityAlert({
+        to: officeInbox(institut.email),
+        action: 'Configuration PayPal modifiée',
+        actor: input.actorEmail || input.actorId,
+        detail: summary || 'aucun champ modifié',
+        revertUrl,
+      }),
+    );
+  } catch (cause) {
+    reportError('security.paypal.alert.mail', cause, { actorId: input.actorId });
+  }
+
+  try {
+    await notifyStaff({
+      title: 'Configuration PayPal modifiée',
+      body: `${input.actorEmail || 'Un administrateur'} a modifié les identifiants PayPal. Si ce n’est pas vous, ouvrez l’e-mail d’alerte et cliquez « Ce n’était pas moi ».`,
+      url: '/admin/payments',
+      tag: `paypal-change-${changedAt}`,
+    });
+  } catch (cause) {
+    reportError('security.paypal.alert.push', cause, { actorId: input.actorId });
+  }
 }
