@@ -8,7 +8,6 @@ import {
   Layers,
   MapPin,
   Plus,
-  Tag,
   Video,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -19,8 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { CheckoutWizard, type WizardStep } from '@/components/checkout/CheckoutWizard';
 import { PaymentForms } from '@/components/checkout/PaymentForms';
 import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
+import { CouponForm } from '@/components/checkout/CouponForm';
 import {
-  applyCoupon,
   chooseCursus,
   chooseCursusYear,
   chooseDelivery,
@@ -87,7 +86,10 @@ export async function CheckoutFlow({
 }) {
   const t = await getTranslations('checkout');
 
-  const [{ selection, quote }, cursusList] = await Promise.all([loadBasket(), listCursus()]);
+  const [{ selection, quote, coupon }, cursusList] = await Promise.all([
+    loadBasket(),
+    listCursus(),
+  ]);
 
   const stale = moduleContext !== undefined && selection.courseId !== moduleContext.courseId;
   const kind = stale ? 'module' : selection.kind;
@@ -455,62 +457,39 @@ export async function CheckoutFlow({
                   <dd>−{formatPrice(priced.discountCents, locale)}</dd>
                 </div>
               )}
-              <div className="flex justify-between border-t border-line pt-2 font-display text-lg font-semibold text-ink">
+              <div className="flex items-baseline justify-between border-t border-line pt-2 font-display text-lg font-semibold text-ink">
                 <dt>{t('total')}</dt>
-                <dd>{formatPrice(priced.totalCents, locale)}</dd>
+                <dd className="flex items-baseline gap-2">
+                  {/* The old price stays visible when a code or an offer moves
+                      it, so the reduction is a fact rather than a memory. */}
+                  {priced.discountCents > 0 && (
+                    <span className="text-[13px] font-normal text-ink-muted line-through">
+                      {formatPrice(priced.subtotalCents, locale)}
+                    </span>
+                  )}
+                  <span>{formatPrice(priced.totalCents, locale)}</span>
+                </dd>
               </div>
             </dl>
           </div>
 
           {/*
-            The code is stored, and the total above is priced with it only when
-            the database recognises it. Claiming it is still atomic and still
-            happens when the order opens; this read is what lets the student
-            see the discount before they commit, rather than discovering it on
-            the receipt.
+            ONE card for the whole payment: the code, then the two ways to pay.
+            The code used to sit in its own dashed box above the PayPal button
+            and the desk card, which read as two separate offers rather than
+            one payment screen.
           */}
-          <form
-            action={applyCoupon}
-            className="mt-5 flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-4"
-          >
-            <label className="min-w-[200px] flex-1">
-              <span className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-ink">
-                <Tag className="size-3.5 text-ink-muted" aria-hidden="true" />
-                {t('couponLabel')}
-              </span>
-              <input
-                name="code"
-                defaultValue={selection.couponCode ?? ''}
-                maxLength={32}
-                autoComplete="off"
-                spellCheck={false}
-                className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm tracking-wide text-ink uppercase outline-none focus:border-brand-400"
-              />
-              <span className="mt-1.5 block text-[11px] text-ink-muted">{t('couponHint')}</span>
-            </label>
-            <SubmitButton variant="outline" size="md">
-              {t('couponApply')}
-            </SubmitButton>
-          </form>
+          <div className="mt-5 rounded-[var(--radius-card)] border border-line bg-white p-5">
+            <CouponForm
+              defaultValue={selection.couponCode ?? ''}
+              coupon={coupon}
+              totalCents={priced.totalCents}
+              locale={locale}
+            />
 
-          {selection.couponCode && (
-            <p
-              role="status"
-              className={
-                priced.coupon ? 'mt-2 text-[12px] text-brand-600' : 'mt-2 text-[12px] text-red-600'
-              }
-            >
-              {priced.coupon
-                ? t('couponApplied', {
-                    code: priced.coupon.code,
-                    amount: formatPrice(priced.couponDiscountCents, locale),
-                  })
-                : t('codeRefused')}
-            </p>
-          )}
-
-          <div className="mt-5">
-            <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
+            <div className="mt-5 border-t border-line pt-5">
+              <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
+            </div>
           </div>
         </>
       ),

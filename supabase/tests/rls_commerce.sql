@@ -32,7 +32,8 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('a0000000-0000-0000-0000-000000000002', 'online@test.fr',   '{"full_name":"Approfondi en ligne"}'::jsonb),
   ('a0000000-0000-0000-0000-000000000003', 'onsite@test.fr',   '{"full_name":"Approfondi présentiel"}'::jsonb),
   ('a0000000-0000-0000-0000-000000000004', 'nobody@test.fr',   '{"full_name":"Sans rien"}'::jsonb),
-  ('a0000000-0000-0000-0000-000000000005', 'admin@test.fr',    '{"full_name":"Direction"}'::jsonb);
+  ('a0000000-0000-0000-0000-000000000005', 'admin@test.fr',    '{"full_name":"Direction"}'::jsonb),
+  ('a0000000-0000-0000-0000-000000000006', 'bonus@test.fr',    '{"full_name":"Reçoit un bonus"}'::jsonb);
 
 update public.profiles set role = 'admin' where id = 'a0000000-0000-0000-0000-000000000005';
 
@@ -409,6 +410,45 @@ begin
     (select count(*) from public.entitlements
       where user_id = 'a0000000-0000-0000-0000-000000000004') = 1,
     'and leaves exactly one entitlement behind, not two');
+end $$;
+
+-- --- a bonus hands over the gift ------------------------------------------
+--
+-- "Buy Arabic, French is free" is priced by zeroing the gift's line, which
+-- means the gift has to BE a line — `bonusItems` in the app is what puts it
+-- there. The entitlement then comes out of the same loop as everything else,
+-- and this is what proves the gift is granted rather than merely discounted.
+
+do $$
+declare granted integer;
+begin
+  raise notice 'a bonus grants the gift, not only a discount';
+
+  insert into public.orders
+    (id, user_id, route, delivery, subtotal_cents, total_cents, status, paid_at)
+  values ('33330000-0000-0000-0000-000000000009',
+          'a0000000-0000-0000-0000-000000000006', 'paypal', 'online', 22000, 22000,
+          'paid', now());
+
+  insert into public.order_items
+    (order_id, product_id, kind, course_id, delivery, unit_price_cents, duration_days, is_free)
+  values
+    ('33330000-0000-0000-0000-000000000009', '11110000-0000-0000-0000-000000000002',
+     'module', 'c0000000-0000-0000-0000-000000000003', 'online', 22000, 365, false),
+    ('33330000-0000-0000-0000-000000000009', '11110000-0000-0000-0000-000000000001',
+     'module', 'c0000000-0000-0000-0000-000000000001', 'online', 0, 365, true);
+
+  granted := public.grant_order_entitlements('33330000-0000-0000-0000-000000000009');
+  perform public.assert(granted = 2, 'both the paid module and the gift are handed over');
+
+  perform public.assert(
+    public.has_course_access('c0000000-0000-0000-0000-000000000003',
+                             'a0000000-0000-0000-0000-000000000006'),
+    'the buyer can read what they paid for');
+  perform public.assert(
+    public.has_course_access('c0000000-0000-0000-0000-000000000001',
+                             'a0000000-0000-0000-0000-000000000006'),
+    'and the gift too — a bonus that granted nothing would be a lie on the card');
 end $$;
 
 do $$

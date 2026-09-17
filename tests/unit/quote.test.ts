@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bestPack,
+  bonusItems,
   couponDiscount,
   currencyOf,
   formatPrice,
@@ -56,8 +57,11 @@ describe('offer eligibility', () => {
     expect(packApplies(bogof, ['arabic', 'french', 'fiqh'])).toBe(true);
   });
 
-  it('does not apply when the free half was not selected', () => {
-    expect(packApplies(bogof, ['arabic'])).toBe(false);
+  it('applies on the paid half alone — the gift is added by the basket', () => {
+    // The student buys Arabic; the free French module is put in the basket by
+    // `bonusItems` rather than demanded of them. Requiring the gift here meant
+    // the offer only ever applied to people who had worked out the trick.
+    expect(packApplies(bogof, ['arabic'])).toBe(true);
   });
 
   it('does not apply when the paid half was not selected', () => {
@@ -110,6 +114,74 @@ describe('offer eligibility', () => {
     const b: OfferPack = { ...bogof, id: 'b', slug: 'bbb' };
     expect(bestPack([b, a], [ARABIC, FRENCH], 'online')?.slug).toBe('aaa');
     expect(bestPack([a, b], [ARABIC, FRENCH], 'online')?.slug).toBe('aaa');
+  });
+});
+
+describe('bonus items', () => {
+  const catalogue = [ARABIC, FRENCH, FIQH];
+
+  it('adds the gift when only the paid half is selected', () => {
+    const gifts = bonusItems([ARABIC], catalogue, [bogof], 'online');
+    expect(gifts.map((g) => g.id)).toEqual(['french']);
+  });
+
+  it('adds nothing when the paid half is not selected', () => {
+    expect(bonusItems([FRENCH], catalogue, [bogof], 'online')).toEqual([]);
+    expect(bonusItems([FIQH], catalogue, [bogof], 'online')).toEqual([]);
+  });
+
+  it('does not add a gift the student already chose', () => {
+    expect(bonusItems([ARABIC, FRENCH], catalogue, [bogof], 'online')).toEqual([]);
+  });
+
+  it('adds nothing for an offer that is not a sum pack', () => {
+    const percent: OfferPack = {
+      ...bogof,
+      slug: 'dix-pour-cent',
+      pricing: 'percent',
+      percentOff: 10,
+      freeProductIds: [],
+    };
+    expect(bonusItems([ARABIC], catalogue, [percent], 'online')).toEqual([]);
+  });
+
+  it('picks the better of two applicable offers', () => {
+    const small: OfferPack = {
+      ...bogof,
+      id: 'p-small',
+      slug: 'petit-cadeau',
+      freeProductIds: ['french'],
+    };
+    const big: OfferPack = {
+      ...bogof,
+      id: 'p-big',
+      slug: 'gros-cadeau',
+      freeProductIds: ['fiqh'],
+    };
+    // FIQH is worth more than FRENCH.
+    expect(bonusItems([ARABIC], catalogue, [small, big], 'online').map((g) => g.id)).toEqual([
+      'fiqh',
+    ]);
+  });
+
+  it('ignores an offer built for the other delivery mode', () => {
+    const onsite: OfferPack = { ...bogof, delivery: 'presentiel' };
+    expect(bonusItems([ARABIC], catalogue, [onsite], 'online')).toEqual([]);
+  });
+
+  it('prices the basket the student sees: gift in, paid half charged', () => {
+    const gifts = bonusItems([ARABIC], catalogue, [bogof], 'online');
+    const quote = priceSelection({
+      products: [ARABIC, ...gifts],
+      packs: [bogof],
+      delivery: 'online',
+    });
+
+    expect(quote.lines.find((l) => l.productId === 'french')).toMatchObject({
+      unitPriceCents: 0,
+      isFree: true,
+    });
+    expect(quote.totalCents).toBe(22000);
   });
 });
 

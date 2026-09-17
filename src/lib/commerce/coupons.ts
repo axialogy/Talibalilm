@@ -14,18 +14,26 @@ import { couponDiscount, type AppliedCoupon } from '@/lib/commerce/quote';
  *
  * This is a PREVIEW. `redeem_coupon` is still the only thing that claims one,
  * atomically, at order creation; nothing here increments a counter.
+ *
+ * The refusal is specific rather than a single "no": the office generating a
+ * batch and the student typing a code both need to know whether it is unknown,
+ * past its date, or already used — those are three different phone calls.
  */
-export interface CouponPreview {
-  coupon: AppliedCoupon;
-  discountCents: number;
-}
+
+export type CouponRefusal = 'unknown' | 'expired' | 'exhausted';
+
+export type CouponPreview =
+  | { status: 'none' }
+  | { status: 'valid'; coupon: AppliedCoupon; discountCents: number }
+  | { status: 'invalid'; reason: CouponRefusal };
 
 export async function previewCoupon(
   code: string | null,
   /** What the coupon is taken off: the subtotal after any offer. */
   afterOffersCents: number,
-): Promise<CouponPreview | null> {
-  if (!code || !supabaseConfigured) return null;
+): Promise<CouponPreview> {
+  if (!code) return { status: 'none' };
+  if (!supabaseConfigured) return { status: 'invalid', reason: 'unknown' };
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -34,12 +42,16 @@ export async function previewCoupon(
     .eq('code', code)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data) return { status: 'invalid', reason: 'unknown' };
 
   // The same conditions `redeem_coupon` applies, checked here so the screen
   // does not promise a discount the database will then refuse.
-  if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) return null;
-  if (data.max_redemptions !== null && data.redeemed_count >= data.max_redemptions) return null;
+  if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
+    return { status: 'invalid', reason: 'expired' };
+  }
+  if (data.max_redemptions !== null && data.redeemed_count >= data.max_redemptions) {
+    return { status: 'invalid', reason: 'exhausted' };
+  }
 
   const coupon: AppliedCoupon = {
     id: data.id,
@@ -48,5 +60,5 @@ export async function previewCoupon(
     amountOffCents: data.amount_off_cents,
   };
 
-  return { coupon, discountCents: couponDiscount(coupon, afterOffersCents) };
+  return { status: 'valid', coupon, discountCents: couponDiscount(coupon, afterOffersCents) };
 }

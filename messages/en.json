@@ -340,6 +340,14 @@
     "couponApply": "Apply",
     "couponRemove": "Remove the code",
     "couponStored": "Code saved: {code}",
+    "couponNewTotal": "· new total {total}",
+    "couponCleared": "· nothing left to pay",
+    "couponRefused": {
+      "unknown": "That code is unknown. Check the spelling.",
+      "expired": "That code has expired.",
+      "exhausted": "That code has already been used."
+    },
+    "confirmOpen": "Open",
     "continue": "Continue",
     "backStep": "Go back",
     "startOver": "Start again",
