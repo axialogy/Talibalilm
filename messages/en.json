@@ -1032,6 +1032,7 @@
     "colPaid": "Settled",
     "colOutstanding": "Outstanding",
     "colStanding": "Standing",
+    "colItems": "Programme",
     "colLastPayment": "Last payment",
     "standingPaid": "Paid",
     "standingPartial": "Partial",

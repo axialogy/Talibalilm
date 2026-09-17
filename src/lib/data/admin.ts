@@ -463,14 +463,20 @@ export interface StudentPayment {
   userId: string;
   email: string | null;
   fullName: string;
-  /** Settled, in cents. Refunds are not deducted — they show as their own row. */
+  /**
+   * What the paid orders actually collected. A 100 % code collected nothing,
+   * and a plan has collected only the installments paid so far — neither is
+   * the order's total.
+   */
   paidCents: number;
-  /** Opened and not settled: a checkout left half-way, or an instalment due. */
+  /** Still owed: unpaid orders, plus the balance on any plan. */
   outstandingCents: number;
   currency: string;
   orders: number;
   lastPaidAt: string | null;
   standing: PaymentStanding;
+  /** What was paid for, from the order items' snapshot. */
+  items: string[];
 }
 
 /**
@@ -497,12 +503,14 @@ export async function studentPayments(): Promise<StudentPayment[]> {
 
   const { data: orders } = await supabase
     .from('orders')
-    .select('user_id, status, total_cents, currency, paid_at')
+    .select('id, user_id, status, total_cents, paid_cents, currency, paid_at')
     .in('status', ['paid', 'pending'])
     .order('created_at', { ascending: false })
     .limit(2000);
 
   const byUser = new Map<string, StudentPayment>();
+  const orderIdsByUser = new Map<string, string[]>();
+
   for (const order of orders ?? []) {
     const current = byUser.get(order.user_id) ?? {
       userId: order.user_id,
@@ -514,28 +522,66 @@ export async function studentPayments(): Promise<StudentPayment[]> {
       orders: 0,
       lastPaidAt: null,
       standing: 'pending' as PaymentStanding,
+      items: [],
     };
 
     current.orders += 1;
+
     if (order.status === 'paid') {
-      current.paidCents += order.total_cents;
+      // What was COLLECTED, not what was charged: a plan has a balance, and an
+      // order settled by a 100 % code collected nothing.
+      current.paidCents += order.paid_cents;
       // The list is newest first, so the first settled row seen is the latest.
       current.lastPaidAt ??= order.paid_at;
+      orderIdsByUser.set(order.user_id, [...(orderIdsByUser.get(order.user_id) ?? []), order.id]);
     } else {
       current.outstandingCents += order.total_cents;
     }
+
+    // A plan's balance is still owed even though the order reads as paid.
+    if (order.status === 'paid' && order.paid_cents < order.total_cents) {
+      current.outstandingCents += order.total_cents - order.paid_cents;
+    }
+
     byUser.set(order.user_id, current);
   }
 
-  const rows = [...byUser.values()].map((row) => ({
-    ...row,
-    standing:
-      row.paidCents > 0 && row.outstandingCents > 0
-        ? ('partial' as const)
-        : row.paidCents > 0
-          ? ('paid' as const)
-          : ('pending' as const),
-  }));
+  // What each student actually bought, from the snapshot on the order items.
+  const paidOrderIds = [...orderIdsByUser.values()].flat();
+  if (paidOrderIds.length > 0) {
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('order_id, title, kind, year_index')
+      .in('order_id', paidOrderIds);
+
+    for (const [userId, ids] of orderIdsByUser) {
+      const row = byUser.get(userId);
+      if (!row) continue;
+      for (const item of (items ?? []).filter((i) => ids.includes(i.order_id))) {
+        const label =
+          item.kind === 'cursus' && item.year_index > 0
+            ? `${item.title} — Année ${item.year_index}`
+            : item.title;
+        if (label && !row.items.includes(label)) row.items.push(label);
+      }
+    }
+  }
+
+  // The standing comes from what the ORDERS are, not from a total: an order
+  // settled by a code collected 0 € and is still paid.
+  const rows = [...byUser.values()].map((row) => {
+    const anyPaid = (orders ?? []).some(
+      (order) => order.user_id === row.userId && order.status === 'paid',
+    );
+    return {
+      ...row,
+      standing: anyPaid
+        ? row.outstandingCents > 0
+          ? ('partial' as const)
+          : ('paid' as const)
+        : ('pending' as const),
+    };
+  });
 
   if (rows.length === 0) return [];
 

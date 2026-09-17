@@ -309,6 +309,22 @@ export function priceSelection(options: {
   };
 }
 
+/**
+ * Cents to a display string for an ADMIN money column.
+ *
+ * `formatPrice` says "Gratuit" for zero, which is right on the catalogue — a
+ * line the school gives away — and wrong in a ledger: a student who has paid
+ * nothing read as "free" next to a balance of 900 €, which is how a real bug
+ * was reported. Zero is zero here.
+ */
+export function formatAmount(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  }).format(cents / 100);
+}
+
 /** Cents to a display string, in the reader's locale. */
 /**
  * Money for a reader.

@@ -1032,6 +1032,7 @@
     "colPaid": "Réglé",
     "colOutstanding": "Reste à régler",
     "colStanding": "État",
+    "colItems": "Formation",
     "colLastPayment": "Dernier paiement",
     "standingPaid": "Payé",
     "standingPartial": "Partiel",

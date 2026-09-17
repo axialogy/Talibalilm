@@ -89,7 +89,7 @@ async function markOrderFailed(orderId: string, reason: string): Promise<void> {
 async function claimCoupon(
   code: string | null,
   subtotalCents: number,
-): Promise<{ id: string; discountCents: number } | null> {
+): Promise<{ id: string; discountCents: number; isOffice: boolean } | null> {
   if (!code) return null;
 
   const supabase = createAdminClient();
@@ -98,13 +98,14 @@ async function claimCoupon(
 
   const { data: coupon } = await supabase
     .from('coupons')
-    .select('id, code, percent_off, amount_off_cents')
+    .select('id, code, percent_off, amount_off_cents, is_office')
     .eq('id', couponId)
     .single();
 
   if (!coupon) return null;
   return {
     id: coupon.id,
+    isOffice: coupon.is_office,
     discountCents: couponDiscount(
       {
         id: coupon.id,
@@ -173,7 +174,9 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
     order = await createPendingOrder({
       userId: user.id,
       delivery: selection.delivery,
-      route: 'paypal',
+      // A desk code is cash the office took, whatever page the student was on
+      // when they typed it: the route says how it was paid, not where.
+      route: coupon?.isOffice ? 'office' : 'paypal',
       quote,
       couponId: coupon?.id ?? null,
       couponDiscountCents: coupon?.discountCents ?? 0,
@@ -469,7 +472,7 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
     order = await createPendingOrder({
       userId: user.id,
       delivery: selection.delivery,
-      route: 'free',
+      route: coupon?.isOffice ? 'office' : 'free',
       quote,
       couponId: coupon?.id ?? null,
       couponDiscountCents: coupon?.discountCents ?? 0,
