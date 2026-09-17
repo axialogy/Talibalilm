@@ -110,6 +110,7 @@ export default async function AdminStudentDetailPage({
               locale={account.locale}
               hasOrders={account.hasOrders}
               reviewed={student.reviewedAt !== null}
+              approved={account.approvedAt !== null}
               details={{
                 civility: account.civility,
                 firstName: account.firstName,

@@ -8,7 +8,6 @@ import {
   Layers,
   MapPin,
   Plus,
-  Tag,
   Video,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -19,14 +18,16 @@ import { Badge } from '@/components/ui/badge';
 import { CheckoutWizard, type WizardStep } from '@/components/checkout/CheckoutWizard';
 import { PaymentForms } from '@/components/checkout/PaymentForms';
 import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
+import { CouponForm } from '@/components/checkout/CouponForm';
 import {
-  applyCoupon,
   chooseCursus,
   chooseCursusYear,
   chooseDelivery,
+  chooseInstallments,
   toggleProduct,
 } from '@/app/actions/checkout';
 import { loadBasket } from '@/lib/commerce/basket';
+import { planDueDates, splitInstallments } from '@/lib/commerce/plan';
 import { formatPrice } from '@/lib/commerce/quote';
 import {
   getProgramme,
@@ -35,7 +36,7 @@ import {
   programmeByYear,
   type ProgrammeEntry,
 } from '@/lib/data/commerce';
-import { getStudentProfile, profileComplete } from '@/lib/data/profile';
+import { getStudentProfile, isApproved, profileComplete } from '@/lib/data/profile';
 import { getPayPalPublicConfig } from '@/lib/paypal/client';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
@@ -87,7 +88,10 @@ export async function CheckoutFlow({
 }) {
   const t = await getTranslations('checkout');
 
-  const [{ selection, quote }, cursusList] = await Promise.all([loadBasket(), listCursus()]);
+  const [{ selection, quote, coupon }, cursusList] = await Promise.all([
+    loadBasket(),
+    listCursus(),
+  ]);
 
   const stale = moduleContext !== undefined && selection.courseId !== moduleContext.courseId;
   const kind = stale ? 'module' : selection.kind;
@@ -109,6 +113,12 @@ export async function CheckoutFlow({
       ? programmeByYear(await getProgramme(cursusId, delivery))
       : new Map<number, ProgrammeEntry[]>();
 
+  // What the plan would look like, computed the same way the order will
+  // compute it — the student sees the three amounts before choosing.
+  const planAmounts = priced ? splitInstallments(priced.totalCents, selection.installments) : [];
+  const planDates = planDueDates(new Date(), selection.installments);
+  const planDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long' });
+
   // Signing in is required to pay, because an entitlement has to belong to
   // somebody. The selection survives in its cookie across the round trip.
   let signedIn = false;
@@ -125,6 +135,10 @@ export async function CheckoutFlow({
   // is answered before it renders anything.
   const profile = signedIn ? await getStudentProfile() : null;
   const detailsComplete = profileComplete(profile);
+
+  // The school lets accounts in deliberately. An account that has not been
+  // approved can fill everything in and see the total; it cannot pay.
+  const approved = signedIn ? await isApproved() : false;
 
   // Public config only — the client id, the currency and the environment. The
   // secret never leaves the server module it is read in.
@@ -455,62 +469,102 @@ export async function CheckoutFlow({
                   <dd>−{formatPrice(priced.discountCents, locale)}</dd>
                 </div>
               )}
-              <div className="flex justify-between border-t border-line pt-2 font-display text-lg font-semibold text-ink">
+              <div className="flex items-baseline justify-between border-t border-line pt-2 font-display text-lg font-semibold text-ink">
                 <dt>{t('total')}</dt>
-                <dd>{formatPrice(priced.totalCents, locale)}</dd>
+                <dd className="flex items-baseline gap-2">
+                  {/* The old price stays visible when a code or an offer moves
+                      it, so the reduction is a fact rather than a memory. */}
+                  {priced.discountCents > 0 && (
+                    <span className="text-[13px] font-normal text-ink-muted line-through">
+                      {formatPrice(priced.subtotalCents, locale)}
+                    </span>
+                  )}
+                  <span>{formatPrice(priced.totalCents, locale)}</span>
+                </dd>
               </div>
             </dl>
           </div>
 
           {/*
-            The code is stored, and the total above is priced with it only when
-            the database recognises it. Claiming it is still atomic and still
-            happens when the order opens; this read is what lets the student
-            see the discount before they commit, rather than discovering it on
-            the receipt.
+            ONE card for the whole payment: the code, then the two ways to pay.
+            The code used to sit in its own dashed box above the PayPal button
+            and the desk card, which read as two separate offers rather than
+            one payment screen.
           */}
-          <form
-            action={applyCoupon}
-            className="mt-5 flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-4"
-          >
-            <label className="min-w-[200px] flex-1">
-              <span className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-ink">
-                <Tag className="size-3.5 text-ink-muted" aria-hidden="true" />
-                {t('couponLabel')}
-              </span>
-              <input
-                name="code"
-                defaultValue={selection.couponCode ?? ''}
-                maxLength={32}
-                autoComplete="off"
-                spellCheck={false}
-                className="w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm tracking-wide text-ink uppercase outline-none focus:border-brand-400"
-              />
-              <span className="mt-1.5 block text-[11px] text-ink-muted">{t('couponHint')}</span>
-            </label>
-            <SubmitButton variant="outline" size="md">
-              {t('couponApply')}
-            </SubmitButton>
-          </form>
+          <div className="mt-5 rounded-[var(--radius-card)] border border-line bg-white p-5">
+            {/* How many payments. Only when there is something to split: a
+                basket the school is giving away has no schedule. */}
+            {priced.totalCents > 0 && (
+              <div className="mb-5 border-b border-line pb-5">
+                <p className="text-[13px] font-medium text-ink">{t('installmentsTitle')}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                  {t('installmentsLead')}
+                </p>
 
-          {selection.couponCode && (
-            <p
-              role="status"
-              className={
-                priced.coupon ? 'mt-2 text-[12px] text-brand-600' : 'mt-2 text-[12px] text-red-600'
-              }
-            >
-              {priced.coupon
-                ? t('couponApplied', {
-                    code: priced.coupon.code,
-                    amount: formatPrice(priced.couponDiscountCents, locale),
-                  })
-                : t('codeRefused')}
-            </p>
-          )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {([1, 3] as const).map((count) => {
+                    const on = selection.installments === count;
+                    return (
+                      <form action={chooseInstallments} key={count}>
+                        <input type="hidden" name="installments" value={count} />
+                        <button
+                          type="submit"
+                          aria-pressed={on}
+                          className={`relative rounded-full border px-4 py-2 text-[12px] font-medium transition-colors ${
+                            on
+                              ? 'border-brand-400 bg-brand-50 text-brand-700'
+                              : 'border-line text-ink-muted hover:border-brand-300'
+                          }`}
+                        >
+                          {count === 1 ? t('installmentsOnce') : t('installmentsThree')}
+                          <PendingSpinner className="absolute end-2 top-1/2 -translate-y-1/2 text-brand-600" />
+                        </button>
+                      </form>
+                    );
+                  })}
+                </div>
 
-          <div className="mt-5">
-            <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
+                {selection.installments > 1 && (
+                  <ul className="mt-4 space-y-1.5 text-[12px] text-ink-muted">
+                    {planAmounts.map((amount, index) => (
+                      <li key={index} className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span>
+                          {index === 0
+                            ? t('installmentsToday')
+                            : t('installmentsNumber', { n: index + 1 })}
+                          {index > 0 && ` — ${planDateFmt.format(planDates[index]!)}`}
+                        </span>
+                        <span className="font-medium text-ink tabular-nums">
+                          {formatPrice(amount, locale)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <CouponForm
+              defaultValue={selection.couponCode ?? ''}
+              coupon={coupon}
+              totalCents={priced.totalCents}
+              locale={locale}
+            />
+
+            <div className="mt-5 border-t border-line pt-5">
+              {signedIn && !approved ? (
+                <div className="rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/60 p-5">
+                  <p className="text-[13px] font-medium text-ink">
+                    {t('approvalPendingTitle')}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+                    {t('approvalPendingBody')}
+                  </p>
+                </div>
+              ) : (
+                <PaymentForms paypal={paypal} free={priced.totalCents === 0} locale={locale} />
+              )}
+            </div>
           </div>
         </>
       ),

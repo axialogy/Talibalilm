@@ -303,7 +303,27 @@ async function authSettingsChecks(): Promise<Check[]> {
     });
   }
 
-  // The switch behind "Error sending confirmation email". With confirmation on,
+  // The sweep, and the silent way it stops.
+  //
+  // Vercel's Hobby plan refuses a cron more frequent than daily, so the real
+  // cadence is a GitHub workflow calling the endpoint every fifteen minutes —
+  // and that workflow SKIPS CLEANLY when `SWEEP_URL` or `CRON_SECRET` is
+  // missing. Nothing fails, nothing logs, and abandoned checkouts stop being
+  // cancelled: the office sees pending orders that never go away. This is the
+  // only place that says so out loud.
+  checks.push({
+    group: 'Configuration',
+    name: 'Balayage (abandons, échéances)',
+    state: process.env.CRON_SECRET ? 'ok' : 'unset',
+    detail: process.env.CRON_SECRET
+      ? 'CRON_SECRET est défini. Vérifiez côté GitHub que les secrets SWEEP_URL et CRON_SECRET existent aussi : ' +
+        'sans eux le workflow s’arrête sans erreur et les commandes abandonnées restent « En attente ».'
+      : 'CRON_SECRET n’est pas défini : /api/cron/sweep refuse toute requête, donc rien n’est balayé — ' +
+        'les commandes abandonnées restent en attente, les codes de caisse ne sont pas rendus, et les rappels ' +
+        'd’échéance ne partent pas. Définissez CRON_SECRET dans Vercel et dans les secrets GitHub.',
+  });
+
+  // The switch behind "Error sending confirmation email".  // The switch behind "Error sending confirmation email". With confirmation on,
   // every single sign-up depends on a message leaving Supabase; the built-in
   // sender allows a handful an hour, and a custom SMTP that rejects fails the
   // same way. Neither is a fault in this code and neither is fixed by retrying.

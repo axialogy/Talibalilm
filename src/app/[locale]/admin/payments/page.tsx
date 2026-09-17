@@ -4,10 +4,12 @@ import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/tabs';
 import { PaymentSettingsForm, type PaymentStatus } from '@/components/admin/PaymentSettingsForm';
+import { PinGate } from '@/components/admin/PinGate';
 import { requireAdmin } from '@/lib/auth/guards';
+import { stepUpState } from '@/lib/security/stepup-server';
 import { createClient } from '@/lib/supabase/server';
 import { studentPayments, type PaymentStanding } from '@/lib/data/admin';
-import { formatPrice } from '@/lib/commerce/quote';
+import { formatAmount } from '@/lib/commerce/quote';
 import { siteUrl } from '@/lib/env';
 
 /**
@@ -35,9 +37,10 @@ export default async function AdminPaymentsPage({
   const t = await getTranslations('admin');
   const supabase = await createClient();
 
-  const [{ data }, rows] = await Promise.all([
+  const [{ data }, rows, gate] = await Promise.all([
     supabase.rpc('payment_settings_status'),
     studentPayments(),
+    stepUpState(),
   ]);
 
   const status = (data as unknown as PaymentStatus | null) ?? {
@@ -53,7 +56,10 @@ export default async function AdminPaymentsPage({
   // Read here rather than in the client component: the presence of the
   // variables is safe to report, their values are not.
   const envOverride = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   const badge: Record<PaymentStanding, 'success' | 'warn' | 'muted'> = {
     paid: 'success',
@@ -97,8 +103,8 @@ export default async function AdminPaymentsPage({
                         <thead>
                           <tr className="bg-surface/60 text-left text-[11px] tracking-wide text-ink-muted uppercase">
                             <th className="p-3 font-medium">{t('colName')}</th>
-                            <th className="p-3 font-medium">{t('colEmail')}</th>
                             <th className="p-3 font-medium">{t('colStanding')}</th>
+                            <th className="p-3 font-medium">{t('colItems')}</th>
                             <th className="p-3 text-right font-medium">{t('colPaid')}</th>
                             <th className="p-3 text-right font-medium">{t('colOutstanding')}</th>
                             <th className="p-3 font-medium">{t('colLastPayment')}</th>
@@ -115,19 +121,21 @@ export default async function AdminPaymentsPage({
                                   {row.fullName || '—'}
                                 </Link>
                               </td>
-                              <td className="p-3 text-ink-muted">{row.email ?? '—'}</td>
                               <td className="p-3">
                                 <Badge variant={badge[row.standing]}>
                                   {standingLabel[row.standing]}
                                 </Badge>
                               </td>
+                              <td className="p-3 text-ink-muted">
+                                {row.items.length > 0 ? row.items.join(' · ') : '—'}
+                              </td>
                               <td className="p-3 text-right font-medium text-ink tabular-nums">
-                                {formatPrice(row.paidCents, locale, row.currency)}
+                                {formatAmount(row.paidCents, locale, row.currency)}
                               </td>
                               <td className="p-3 text-right tabular-nums">
                                 {row.outstandingCents > 0 ? (
                                   <span className="text-amber-700">
-                                    {formatPrice(row.outstandingCents, locale, row.currency)}
+                                    {formatAmount(row.outstandingCents, locale, row.currency)}
                                   </span>
                                 ) : (
                                   <span className="text-ink-muted">—</span>
@@ -159,11 +167,15 @@ export default async function AdminPaymentsPage({
               label: t('paymentsTabConfig'),
               content: (
                 <div className="max-w-2xl">
-                  <PaymentSettingsForm
-                    status={status}
-                    webhookUrl={`${siteUrl()}/api/paypal/webhook`}
-                    envOverride={envOverride}
-                  />
+                  {gate.unlocked ? (
+                    <PaymentSettingsForm
+                      status={status}
+                      webhookUrl={`${siteUrl()}/api/paypal/webhook`}
+                      envOverride={envOverride}
+                    />
+                  ) : (
+                    <PinGate pinSet={gate.pinSet} configured={gate.configured} />
+                  )}
                 </div>
               ),
             },

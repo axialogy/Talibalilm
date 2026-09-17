@@ -86,6 +86,9 @@ export async function POST(request: NextRequest) {
     currency: event.resource?.amount?.currency_code ?? null,
     captureId: event.resource?.id ?? null,
     status: event.resource?.status ?? 'UNKNOWN',
+    // Which installment, when the order carries a plan. PayPal echoes the
+    // order id here on every capture event.
+    paypalOrderId: event.resource?.supplementary_data?.related_ids?.order_id ?? null,
   });
 
   // Always 200 once the signature is good: a non-2xx makes PayPal retry, and

@@ -29,6 +29,21 @@ export async function unreviewedStudentCount(): Promise<number> {
 }
 
 /**
+ * How many accounts are waiting to be approved, for the sidebar badge.
+ *
+ * Distinct from `unreviewedStudentCount`: "seen" is the office acknowledging a
+ * registration, "approved" is letting it buy. The badge answers the second,
+ * because that is the one with somebody waiting at the other end.
+ */
+export async function pendingApprovalCount(): Promise<number> {
+  if (!supabaseConfigured) return 0;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('pending_student_count', {});
+  if (error) return 0;
+  return typeof data === 'number' ? data : 0;
+}
+
+/**
  * Tell the office somebody has registered.
  *
  * Called from the sign-up action, and deliberately never allowed to fail it: a

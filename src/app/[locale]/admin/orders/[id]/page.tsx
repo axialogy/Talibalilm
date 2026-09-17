@@ -5,7 +5,10 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { formatPrice } from '@/lib/commerce/quote';
+import { CorrectOrderForm } from '@/components/admin/CorrectOrderForm';
 import { getOrder } from '@/lib/data/admin';
+import { currentViewer } from '@/lib/auth/guards';
+import { createClient } from '@/lib/supabase/server';
 import { cap } from '@/lib/utils';
 
 /** One order in full — line items, PayPal identifiers, and a link to the buyer. */
@@ -18,8 +21,28 @@ export default async function AdminOrderDetailPage({
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');
-  const order = await getOrder(id);
+  const [order, viewer] = await Promise.all([getOrder(id), currentViewer()]);
   if (!order) notFound();
+
+  // The correction form is admin-only, like every other access write.
+  const isAdmin = viewer?.role === 'admin';
+  let targets: { value: string; label: string }[] = [];
+  if (isAdmin) {
+    const supabase = await createClient();
+    const [{ data: courses }, { data: cursus }] = await Promise.all([
+      supabase.from('courses').select('id, title').order('display_order'),
+      supabase.from('cursus').select('id, title, year_count').order('display_order'),
+    ]);
+    targets = [
+      ...(courses ?? []).map((c) => ({ value: `course:${c.id}`, label: c.title })),
+      ...(cursus ?? []).flatMap((cu) =>
+        Array.from({ length: Math.max(1, cu.year_count) }, (_, index) => ({
+          value: `cursus:${cu.id}:${index + 1}`,
+          label: `${cu.title} — ${index + 1}`,
+        })),
+      ),
+    ];
+  }
 
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' });
   const money = (c: number) => formatPrice(c, locale, order.currency);
@@ -168,6 +191,36 @@ export default async function AdminOrderDetailPage({
             );
           })}
         </ul>
+      )}
+
+      {/* What was corrected after the sale, and why. */}
+      {order.corrections.length > 0 && (
+        <>
+          <h2 className="mt-8 font-display text-[15px] font-semibold text-ink">
+            {t('correctHistory')}
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {order.corrections.map((correction, index) => (
+              <li
+                key={`${correction.at}-${index}`}
+                className="rounded-[var(--radius-card)] border border-line bg-surface/40 p-4 text-[12px]"
+              >
+                <p className="text-ink">
+                  {correction.fromLabel} → <span className="font-medium">{correction.toLabel}</span>
+                </p>
+                <p className="mt-1 text-ink-muted">
+                  {dateFmt.format(new Date(correction.at))} · {correction.reason}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {isAdmin && (
+        <section className="mt-8">
+          <CorrectOrderForm orderId={order.id} granted={order.granted} targets={targets} />
+        </section>
       )}
 
       <Button asChild variant="outline" size="md" className="mt-8">

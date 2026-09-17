@@ -8,6 +8,10 @@ import { requireAdmin } from '@/lib/auth/guards';
 import { reportError } from '@/lib/observability/report';
 import { slugifyBatch } from '@/lib/commerce/batch';
 import { deleteObject } from '@/lib/storage/r2';
+import { sendMail, officeInbox } from '@/lib/email/send';
+import { officeApprovalNotice, studentApproved } from '@/lib/email/templates';
+import { institut } from '@/lib/content/institut';
+import { siteUrl } from '@/lib/env';
 import type { AdminState } from '@/app/actions/admin';
 import { errorDetail } from '@/lib/supabase/error-detail';
 
@@ -188,6 +192,126 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
 
   revalidatePath('/[locale]/admin/students/[id]', 'page');
   revalidatePath('/[locale]/admin/students', 'page');
+  return OK;
+}
+
+/**
+ * Swap a wrongly bought access for the right one.
+ *
+ * Access only: the money is untouched, and the replacement keeps the days that
+ * were left on what it replaces. The RPC is the control and the audit — it
+ * checks `is_admin()`, refuses an entitlement this order did not buy, and
+ * writes the correction row the order screen shows.
+ */
+export async function correctOrder(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z
+    .object({
+      orderId: z.string().uuid(),
+      entitlementId: z.string().uuid(),
+      target: z.string().min(1),
+      reason: z.string().trim().min(3).max(500),
+    })
+    .safeParse({
+      orderId: formData.get('orderId'),
+      entitlementId: formData.get('entitlementId'),
+      target: formData.get('target'),
+      reason: formData.get('reason'),
+    });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  // `course:<uuid>` or `cursus:<uuid>:<year>` — the target is one choice in
+  // the form, and this is what it means.
+  const [kind, id, year] = parsed.data.target.split(':');
+  if ((kind !== 'course' && kind !== 'cursus') || !id) {
+    return { ok: false, error: 'targetRequired' };
+  }
+
+  const supabase = await admin();
+  const { error } = await supabase.rpc('admin_correct_order', {
+    target_order: parsed.data.orderId,
+    old_entitlement: parsed.data.entitlementId,
+    new_course: kind === 'course' ? id : null,
+    new_cursus: kind === 'cursus' ? id : null,
+    new_year: kind === 'cursus' ? Number(year ?? 1) || 1 : null,
+    reason: parsed.data.reason,
+  });
+
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+  revalidatePath('/[locale]/admin/orders/[id]', 'page');
+  revalidatePath('/[locale]/admin/students/[id]', 'page');
+  return OK;
+}
+
+/**
+ * Let a registration in, or put it back in the queue.
+ *
+ * The RPC is the control and the audit: it checks `is_admin()`, records who
+ * decided and when, and returns the student's e-mail only when something
+ * actually changed — so a second press cannot send a second message. The two
+ * e-mails below are the loop closing: the student learns they can enrol, and
+ * the office keeps a copy in its own mailbox.
+ *
+ * Nothing here is allowed to fail the decision. The approval is already
+ * committed when the mail is attempted; a mail server that is down must not
+ * leave the admin believing nothing happened.
+ */
+export async function setStudentApproval(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = z
+    .object({ userId: z.string().uuid(), approve: z.enum(['yes', 'no']) })
+    .safeParse({ userId: formData.get('userId'), approve: formData.get('approve') });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const approve = parsed.data.approve === 'yes';
+  const supabase = await admin();
+  const { data: email, error } = await supabase.rpc('admin_set_approval', {
+    uid: parsed.data.userId,
+    approve,
+  });
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+  // Null means it was already in that state — nothing to announce.
+  if (email) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, locale')
+      .eq('id', parsed.data.userId)
+      .maybeSingle();
+    const fullName = profile?.full_name ?? '';
+
+    try {
+      await sendMail(
+        studentApproved({
+          to: email,
+          fullName,
+          locale: profile?.locale ?? 'fr',
+          spaceUrl: `${siteUrl()}/dashboard`,
+        }),
+      );
+    } catch (cause) {
+      reportError('approval.student.mail', cause, { userId: parsed.data.userId });
+    }
+
+    try {
+      await sendMail(
+        officeApprovalNotice({
+          to: officeInbox(institut.email),
+          fullName,
+          email,
+          approved: approve,
+        }),
+      );
+    } catch (cause) {
+      reportError('approval.office.mail', cause, { userId: parsed.data.userId });
+    }
+  }
+
+  revalidatePath('/[locale]/admin/students/[id]', 'page');
+  revalidatePath('/[locale]/admin/students', 'page');
+  revalidatePath('/[locale]/admin', 'page');
   return OK;
 }
 
