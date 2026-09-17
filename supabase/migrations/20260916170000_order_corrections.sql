@@ -65,6 +65,7 @@ declare
   old public.entitlements%rowtype;
   remaining interval;
   from_label text;
+  to_label text;
   created uuid;
 begin
   if not public.is_admin() then
