@@ -198,6 +198,66 @@ export function studentApproved(data: StudentApprovedData): Mail {
   };
 }
 
+export interface PaymentDueData {
+  to: string;
+  fullName: string;
+  locale: string;
+  /** Already formatted for the reader, by the caller that knows the locale. */
+  amount: string;
+  due: string;
+  spaceUrl: string;
+  /** True on the day itself and after: the door is closed until it is paid. */
+  overdue: boolean;
+}
+
+/**
+ * An installment is due, or has been missed.
+ *
+ * Sent by the sweep a week before, the day before, and on the day. It names
+ * the amount and the date, and links straight to the space where it can be
+ * paid — the message is useless if finding the button takes five minutes.
+ */
+export function paymentDue(data: PaymentDueData): Mail {
+  const fr = data.locale === 'fr';
+  const name = data.fullName.trim();
+  const shell: Shell = {
+    heading: data.overdue
+      ? fr
+        ? 'Échéance à régler'
+        : 'Installment to settle'
+      : fr
+        ? 'Votre prochaine échéance'
+        : 'Your next installment',
+    intro: data.overdue
+      ? fr
+        ? `${name ? `${name}, l` : 'L'}’échéance de ${data.amount} était due le ${data.due}. L’accès aux cours est suspendu jusqu’au règlement.`
+        : `${name ? `${name}, t` : 'T'}he ${data.amount} installment was due on ${data.due}. Access to the courses is suspended until it is settled.`
+      : fr
+        ? `${name ? `${name}, v` : 'V'}otre prochaine échéance de ${data.amount} arrive le ${data.due}.`
+        : `${name ? `${name}, y` : 'Y'}our next installment of ${data.amount} is due on ${data.due}.`,
+    lines: [
+      { title: fr ? 'Montant' : 'Amount', detail: data.amount },
+      { title: fr ? 'Échéance' : 'Due date', detail: data.due },
+      { title: fr ? 'Payer depuis votre espace' : 'Pay from your space', detail: data.spaceUrl },
+    ],
+    outro: fr
+      ? 'Vous pouvez aussi régler en espèces à l’institut : un code remis à l’accueil règle l’échéance.'
+      : 'You can also pay in cash at the institute: a code from the desk settles the installment.',
+  };
+  return {
+    to: data.to,
+    subject: data.overdue
+      ? fr
+        ? `Échéance à régler : ${data.amount}`
+        : `Installment to settle: ${data.amount}`
+      : fr
+        ? `Prochaine échéance : ${data.amount}`
+        : `Next installment: ${data.amount}`,
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
 export interface OfficeApprovalData {
   to: string;
   fullName: string;

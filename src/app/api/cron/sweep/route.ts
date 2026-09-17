@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { supabaseConfigured } from '@/lib/env';
+import { supabaseConfigured, siteUrl } from '@/lib/env';
 import { deleteObject } from '@/lib/storage/r2';
+import { notifyUser } from '@/lib/push/server';
+import { sendMail } from '@/lib/email/send';
+import { paymentDue } from '@/lib/email/templates';
+import { reportError } from '@/lib/observability/report';
 
 /**
  * The housekeeping the shop needs to stay honest.
@@ -45,6 +49,88 @@ function authorised(request: NextRequest): boolean {
   return diff === 0;
 }
 
+/**
+ * Tell a student their installment is due.
+ *
+ * Both channels, best-effort: push to their devices and an e-mail, because a
+ * notification the browser never showed is not a reminder. A failure is
+ * reported and the sweep carries on — the next run has its own claim, and one
+ * undeliverable e-mail must not stop the other students being told.
+ */
+async function sendInstallmentReminders(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<number> {
+  const { data: notices, error } = await supabase.rpc('claim_due_installment_notices');
+  if (error) {
+    reportError('cron.installments', error, { note: 'reminders not sent this run' });
+    return 0;
+  }
+  if (!notices || notices.length === 0) return 0;
+
+  let sent = 0;
+  for (const notice of notices) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, locale')
+        .eq('id', notice.user_id)
+        .maybeSingle();
+
+      const { data: account } = await supabase.auth.admin.getUserById(notice.user_id);
+      const email = account?.user?.email ?? null;
+      const locale = profile?.locale === 'en' ? 'en' : 'fr';
+      const overdue = notice.kind === 'due-0';
+
+      const amount = new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: notice.amount_cents % 100 === 0 ? 0 : 2,
+      }).format(notice.amount_cents / 100);
+      const due = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(
+        new Date(notice.due_at),
+      );
+
+      await notifyUser(notice.user_id, {
+        title: overdue
+          ? locale === 'fr'
+            ? 'Échéance à régler'
+            : 'Installment to settle'
+          : locale === 'fr'
+            ? 'Prochaine échéance'
+            : 'Next installment',
+        body: overdue
+          ? locale === 'fr'
+            ? `${amount} était due le ${due}. Votre accès est suspendu jusqu’au règlement.`
+            : `${amount} was due on ${due}. Access is suspended until it is settled.`
+          : locale === 'fr'
+            ? `${amount} à régler le ${due}.`
+            : `${amount} due on ${due}.`,
+        url: '/dashboard',
+        tag: `installment-${notice.installment_id}-${notice.kind}`,
+      });
+
+      if (email) {
+        await sendMail(
+          paymentDue({
+            to: email,
+            fullName: profile?.full_name ?? '',
+            locale,
+            amount,
+            due,
+            spaceUrl: `${siteUrl()}/dashboard`,
+            overdue,
+          }),
+        );
+      }
+      sent += 1;
+    } catch (cause) {
+      reportError('cron.installment', cause, { installmentId: notice.installment_id });
+    }
+  }
+
+  return sent;
+}
+
 export async function GET(request: NextRequest) {
   if (!authorised(request)) {
     return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
@@ -68,6 +154,11 @@ export async function GET(request: NextRequest) {
 
   const videosPurged = await purgeExpiredVideos(supabase);
 
+  // Installment reminders: a week before, the day before, and on the day. The
+  // claim happens inside the RPC — `on conflict do nothing` — so two runs
+  // racing each other send each reminder once.
+  const reminders = await sendInstallmentReminders(supabase);
+
   // Rolled-over rate-limit windows are dead weight once past. Pruning them is
   // pure housekeeping — a failure here must not fail the sweep that matters.
   const { data: pruned, error: pruneError } = await supabase.rpc('prune_rate_limits');
@@ -78,6 +169,7 @@ export async function GET(request: NextRequest) {
     entitlementsExpired: expired ?? 0,
     rateWindowsPruned: pruned ?? 0,
     videosPurged,
+    installmentReminders: reminders,
   };
   if (
     result.ordersCancelled > 0 ||

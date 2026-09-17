@@ -164,6 +164,20 @@ export interface CouponState {
  * itself never spends anything; this cap is what keeps guessing slow. It says
  * so out loud now: returning nothing left the form looking like it had worked.
  */
+/**
+ * How many payments.
+ *
+ * Only the choice is stored — the split is computed from the priced total when
+ * the order opens, so a hand-posted "3" cannot name an amount.
+ */
+export async function chooseInstallments(formData: FormData): Promise<void> {
+  const parsed = z.coerce.number().int().min(1).max(3).safeParse(formData.get('installments'));
+  if (!parsed.success) return;
+
+  const selection = await readSelection();
+  await writeSelection({ ...selection, installments: parsed.data });
+}
+
 export async function applyCoupon(_previous: CouponState, formData: FormData): Promise<CouponState> {
   const raw = z.string().max(32).safeParse(formData.get('code'));
   if (!raw.success) return { ok: false, error: 'invalid' };

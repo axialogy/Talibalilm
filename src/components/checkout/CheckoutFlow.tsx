@@ -23,9 +23,11 @@ import {
   chooseCursus,
   chooseCursusYear,
   chooseDelivery,
+  chooseInstallments,
   toggleProduct,
 } from '@/app/actions/checkout';
 import { loadBasket } from '@/lib/commerce/basket';
+import { planDueDates, splitInstallments } from '@/lib/commerce/plan';
 import { formatPrice } from '@/lib/commerce/quote';
 import {
   getProgramme,
@@ -110,6 +112,12 @@ export async function CheckoutFlow({
     isApprofondi && cursusId && delivery
       ? programmeByYear(await getProgramme(cursusId, delivery))
       : new Map<number, ProgrammeEntry[]>();
+
+  // What the plan would look like, computed the same way the order will
+  // compute it — the student sees the three amounts before choosing.
+  const planAmounts = priced ? splitInstallments(priced.totalCents, selection.installments) : [];
+  const planDates = planDueDates(new Date(), selection.installments);
+  const planDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long' });
 
   // Signing in is required to pay, because an entitlement has to belong to
   // somebody. The selection survives in its cookie across the round trip.
@@ -484,6 +492,58 @@ export async function CheckoutFlow({
             one payment screen.
           */}
           <div className="mt-5 rounded-[var(--radius-card)] border border-line bg-white p-5">
+            {/* How many payments. Only when there is something to split: a
+                basket the school is giving away has no schedule. */}
+            {priced.totalCents > 0 && (
+              <div className="mb-5 border-b border-line pb-5">
+                <p className="text-[13px] font-medium text-ink">{t('installmentsTitle')}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                  {t('installmentsLead')}
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {([1, 3] as const).map((count) => {
+                    const on = selection.installments === count;
+                    return (
+                      <form action={chooseInstallments} key={count}>
+                        <input type="hidden" name="installments" value={count} />
+                        <button
+                          type="submit"
+                          aria-pressed={on}
+                          className={`relative rounded-full border px-4 py-2 text-[12px] font-medium transition-colors ${
+                            on
+                              ? 'border-brand-400 bg-brand-50 text-brand-700'
+                              : 'border-line text-ink-muted hover:border-brand-300'
+                          }`}
+                        >
+                          {count === 1 ? t('installmentsOnce') : t('installmentsThree')}
+                          <PendingSpinner className="absolute end-2 top-1/2 -translate-y-1/2 text-brand-600" />
+                        </button>
+                      </form>
+                    );
+                  })}
+                </div>
+
+                {selection.installments > 1 && (
+                  <ul className="mt-4 space-y-1.5 text-[12px] text-ink-muted">
+                    {planAmounts.map((amount, index) => (
+                      <li key={index} className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span>
+                          {index === 0
+                            ? t('installmentsToday')
+                            : t('installmentsNumber', { n: index + 1 })}
+                          {index > 0 && ` — ${planDateFmt.format(planDates[index]!)}`}
+                        </span>
+                        <span className="font-medium text-ink tabular-nums">
+                          {formatPrice(amount, locale)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             <CouponForm
               defaultValue={selection.couponCode ?? ''}
               coupon={coupon}

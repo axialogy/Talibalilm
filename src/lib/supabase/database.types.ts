@@ -757,6 +757,8 @@ export interface Database {
           coupon_released_at: string | null;
           pack_released_at: string | null;
           status_reason: string;
+          plan_size: number;
+          paid_cents: number;
           confirmation_sent_at: string | null;
           created_at: string;
           updated_at: string;
@@ -776,6 +778,8 @@ export interface Database {
           coupon_id?: string | null;
           pack_id?: string | null;
           provider_order_id?: string | null;
+          plan_size?: number;
+          paid_cents?: number;
         };
         Update: Partial<{
           status: OrderStatus;
@@ -784,8 +788,52 @@ export interface Database {
           provider_capture_id: string | null;
           paid_at: string | null;
           confirmation_sent_at: string | null;
+          paid_cents: number;
         }>;
         Relationships: [];
+      };
+      installments: {
+        Row: {
+          id: string;
+          order_id: string;
+          sequence: number;
+          amount_cents: number;
+          due_at: string;
+          status: 'pending' | 'paid' | 'cancelled';
+          provider_order_id: string | null;
+          provider_capture_id: string | null;
+          paid_at: string | null;
+          coupon_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          sequence: number;
+          amount_cents: number;
+          due_at: string;
+          status?: 'pending' | 'paid' | 'cancelled';
+          provider_order_id?: string | null;
+          provider_capture_id?: string | null;
+          paid_at?: string | null;
+          coupon_id?: string | null;
+        };
+        Update: Partial<{
+          status: 'pending' | 'paid' | 'cancelled';
+          provider_order_id: string | null;
+          provider_capture_id: string | null;
+          paid_at: string | null;
+          coupon_id: string | null;
+        }>;
+        Relationships: [
+          {
+            foreignKeyName: 'installments_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       order_items: {
         Row: {
@@ -1128,6 +1176,17 @@ export interface Database {
       admin_set_approval: {
         Args: { uid: string; approve: boolean };
         Returns: string | null;
+      };
+      claim_due_installment_notices: {
+        Args: Record<string, never>;
+        Returns: {
+          installment_id: string;
+          order_id: string;
+          user_id: string;
+          kind: string;
+          amount_cents: number;
+          due_at: string;
+        }[];
       };
       admin_generate_coupons: {
         Args: {
