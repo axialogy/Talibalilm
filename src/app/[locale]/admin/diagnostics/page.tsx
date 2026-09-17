@@ -7,6 +7,7 @@ import { runDiagnostics, type CheckState } from '@/lib/data/diagnostics';
 import { recentErrors } from '@/lib/observability/recent-errors';
 import { findErrorByDigest, recentAppErrors } from '@/lib/data/errors';
 import { requireAdmin } from '@/lib/auth/guards';
+import { requireLocale } from '@/i18n/routing';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,7 @@ export default async function DiagnosticsPage({
   searchParams: Promise<{ digest?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireAdmin();

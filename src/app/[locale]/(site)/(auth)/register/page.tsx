@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Link } from '@/i18n/navigation';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { RegisterForm } from '@/components/auth/RegisterForm';
+import { requireLocale } from '@/i18n/routing';
 
 export async function generateMetadata({
   params,
@@ -10,12 +11,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  requireLocale(locale);
   const t = await getTranslations({ locale, namespace: 'auth' });
   return { title: t('registerTitle'), robots: { index: false, follow: false } };
 }
 
 export default async function RegisterPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
   const t = await getTranslations('auth');
 

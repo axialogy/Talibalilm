@@ -8,6 +8,7 @@ import { listLiveSessions } from '@/lib/data/live';
 import { requireStaff } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import type { LiveStatus } from '@/lib/supabase/database.types';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * Live classes.
@@ -19,6 +20,7 @@ import type { LiveStatus } from '@/lib/supabase/database.types';
  */
 export default async function AdminLivePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireStaff();

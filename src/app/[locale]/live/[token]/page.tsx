@@ -10,6 +10,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { liveKitConfigured } from '@/lib/live/server';
 import { reportError } from '@/lib/observability/report';
 import type { LiveRoomState } from '@/lib/supabase/database.types';
+import { requireLocale } from '@/i18n/routing';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -33,6 +34,7 @@ export default async function LiveRoomPage({
   params: Promise<{ locale: string; token: string }>;
 }) {
   const { locale, token } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   if (!supabaseConfigured) redirect('/login');

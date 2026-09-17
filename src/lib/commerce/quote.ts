@@ -81,6 +81,9 @@ export interface Quote {
 /** Only used when there is nothing to read a currency from — an empty basket. */
 const FALLBACK_CURRENCY = 'EUR';
 
+/** The language a formatter falls back to when it is handed a tag Intl refuses. */
+const FALLBACK_LOCALE = 'fr';
+
 /**
  * Raised when a basket mixes currencies.
  *
@@ -318,11 +321,28 @@ export function priceSelection(options: {
  * was reported. Zero is zero here.
  */
 export function formatAmount(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
+  return money(cents, locale, currency);
+}
+
+/**
+ * Money, and never a thrown page.
+ *
+ * `Intl.NumberFormat` throws `RangeError: Incorrect locale information
+ * provided` on a tag it does not recognise, and this function is called from
+ * every price on the site — one bad locale upstream and a page 500s over a
+ * currency label. The pages guard their locale; this is the second lock.
+ */
+function money(cents: number, locale: string, currency: string): string {
+  const options = {
+    style: 'currency' as const,
     currency,
     minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(cents / 100);
+  };
+  try {
+    return new Intl.NumberFormat(locale, options).format(cents / 100);
+  } catch {
+    return new Intl.NumberFormat(FALLBACK_LOCALE, options).format(cents / 100);
+  }
 }
 
 /** Cents to a display string, in the reader's locale. */
@@ -335,10 +355,5 @@ export function formatAmount(cents: number, locale: string, currency = FALLBACK_
  */
 export function formatPrice(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
   if (cents === 0) return locale.startsWith('en') ? 'Free' : 'Gratuit';
-
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(cents / 100);
+  return money(cents, locale, currency);
 }

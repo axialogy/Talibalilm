@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { studentPayments, type PaymentStanding } from '@/lib/data/admin';
 import { formatAmount } from '@/lib/commerce/quote';
 import { siteUrl } from '@/lib/env';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * Payments — who has paid, then how PayPal is set up.
@@ -31,6 +32,7 @@ export default async function AdminPaymentsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireAdmin();

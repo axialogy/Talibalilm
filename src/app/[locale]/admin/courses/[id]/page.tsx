@@ -13,6 +13,7 @@ import { CourseFees, type CourseFee } from '@/components/admin/CourseFees';
 import { CourseCursus, membershipKey } from '@/components/admin/CourseCursus';
 import { createClient } from '@/lib/supabase/server';
 import { reportError } from '@/lib/observability/report';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * The course builder — the screen the school lives in.
@@ -27,6 +28,7 @@ export default async function CourseBuilderPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');

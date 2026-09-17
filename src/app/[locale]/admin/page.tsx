@@ -18,6 +18,7 @@ import { NotificationsToggle } from '@/components/notifications/NotificationsTog
 import { formatBytes } from '@/lib/media/video';
 import { createClient } from '@/lib/supabase/server';
 import { currentViewer } from '@/lib/auth/guards';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * The overview.
@@ -37,6 +38,7 @@ export default async function AdminOverviewPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/tabs';
 import { createClient } from '@/lib/supabase/server';
 import type { DeliveryMode } from '@/lib/supabase/database.types';
+import { requireLocale } from '@/i18n/routing';
 
 const MODES: DeliveryMode[] = ['presentiel', 'online'];
 
@@ -27,6 +28,7 @@ const MODES: DeliveryMode[] = ['presentiel', 'online'];
  */
 export default async function AdminCursusPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');

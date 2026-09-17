@@ -6,6 +6,7 @@ import { ContactForm } from '@/components/marketing/ContactForm';
 import { SocialLinks } from '@/components/layout/SocialLinks';
 import { getSiteSettings } from '@/lib/data/site';
 import { institut } from '@/lib/content/institut';
+import { requireLocale } from '@/i18n/routing';
 
 export async function generateMetadata({
   params,
@@ -13,6 +14,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  requireLocale(locale);
   const t = await getTranslations({ locale, namespace: 'contact' });
   return { title: t('title'), description: t('lead') };
 }
@@ -31,6 +33,7 @@ export async function generateMetadata({
  */
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('contact');

@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/commerce/quote';
 import { listOrders } from '@/lib/data/admin';
 import type { OrderStatus } from '@/lib/supabase/database.types';
 import { cap } from '@/lib/utils';
+import { requireLocale } from '@/i18n/routing';
 
 const STATUSES: OrderStatus[] = ['pending', 'paid', 'failed', 'refunded', 'cancelled'];
 const METHODS = ['paypal', 'card', 'office', 'free'] as const;
@@ -24,6 +25,7 @@ export default async function AdminOrdersPage({
   searchParams: Promise<{ status?: string; method?: string; since?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   const { status, method, since } = await searchParams;
   setRequestLocale(locale);
 

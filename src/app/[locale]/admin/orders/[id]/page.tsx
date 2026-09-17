@@ -10,6 +10,7 @@ import { getOrder } from '@/lib/data/admin';
 import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { cap } from '@/lib/utils';
+import { requireLocale } from '@/i18n/routing';
 
 /** One order in full — line items, PayPal identifiers, and a link to the buyer. */
 export default async function AdminOrderDetailPage({
@@ -18,6 +19,7 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');

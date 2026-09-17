@@ -4,6 +4,7 @@ import { LiveSearch } from '@/components/admin/LiveSearch';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { listStudents } from '@/lib/data/admin';
+import { requireLocale } from '@/i18n/routing';
 
 /** Find a student by name or email, and see at a glance how much access they hold. */
 export default async function AdminStudentsPage({
@@ -14,6 +15,7 @@ export default async function AdminStudentsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   const { q } = await searchParams;
   setRequestLocale(locale);
 

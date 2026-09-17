@@ -10,6 +10,7 @@ import { getLiveSession, listSlides, listJoinRequests } from '@/lib/data/live';
 import { r2Configured, r2Missing } from '@/lib/storage/r2';
 import { requireStaff } from '@/lib/auth/guards';
 import type { LiveStatus } from '@/lib/supabase/database.types';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * One live class: its deck, its door, and the controls to run it.
@@ -25,6 +26,7 @@ export default async function AdminLiveSessionPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireStaff();

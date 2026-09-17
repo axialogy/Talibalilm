@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/marketing/PageHero';
-import { routing } from '@/i18n/routing';
+import { requireLocale, routing } from '@/i18n/routing';
 
 /**
  * The three documents GDPR and French consumer law require.
@@ -35,6 +35,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string; doc: string }>;
 }): Promise<Metadata> {
   const { locale, doc } = await params;
+  requireLocale(locale);
   const key = asDoc(doc);
   if (!key) return {};
 
@@ -49,6 +50,7 @@ export default async function LegalPage({
   params: Promise<{ locale: string; doc: string }>;
 }) {
   const { locale, doc } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const key = asDoc(doc);

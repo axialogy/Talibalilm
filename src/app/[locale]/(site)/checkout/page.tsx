@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * Enrolment, as one page.
@@ -17,6 +18,7 @@ export default async function CheckoutPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   const { error } = await searchParams;
   setRequestLocale(locale);
 
