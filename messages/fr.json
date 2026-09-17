@@ -679,6 +679,12 @@
     "enablePayments": "Activer le paiement en ligne",
     "secretNeverShown": "Le secret n’est jamais réaffiché, y compris à vous. Il est lisible uniquement par le serveur au moment de contacter PayPal.",
     "envOverride": "Des variables d’environnement PayPal sont définies sur le serveur : elles priment sur ce formulaire.",
+    "correctTitle": "Corriger la formation",
+    "correctLead": "Échangez un accès acheté par erreur contre le bon. Le montant n’est pas touché, et le remplacement garde les jours restants.",
+    "correctFrom": "Accès à remplacer",
+    "correctTo": "Par",
+    "correctCta": "Corriger",
+    "correctHistory": "Corrections",
     "security": {
       "pinTitle": "Configuration protégée par un code",
       "pinUnconfigured": "La clé STEPUP_SECRET n’est pas définie sur le serveur : le code de protection ne peut pas fonctionner, et l’écran refuse d’afficher les identifiants. Ajoutez STEPUP_SECRET dans Vercel, puis redéployez.",

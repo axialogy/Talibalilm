@@ -679,6 +679,12 @@
     "enablePayments": "Turn online payment on",
     "secretNeverShown": "The secret is never shown again, including to you. Only the server reads it, at the moment it contacts PayPal.",
     "envOverride": "PayPal environment variables are set on the server: they take precedence over this form.",
+    "correctTitle": "Correct the programme",
+    "correctLead": "Swap an access bought by mistake for the right one. The amount is untouched, and the replacement keeps the remaining days.",
+    "correctFrom": "Access to replace",
+    "correctTo": "With",
+    "correctCta": "Correct",
+    "correctHistory": "Corrections",
     "security": {
       "pinTitle": "Configuration protected by a code",
       "pinUnconfigured": "STEPUP_SECRET is not set on the server: the protection code cannot work, and the screen refuses to show the credentials. Add STEPUP_SECRET in Vercel, then redeploy.",

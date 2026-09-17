@@ -196,6 +196,54 @@ export async function updateStudent(_prev: AdminState, formData: FormData): Prom
 }
 
 /**
+ * Swap a wrongly bought access for the right one.
+ *
+ * Access only: the money is untouched, and the replacement keeps the days that
+ * were left on what it replaces. The RPC is the control and the audit — it
+ * checks `is_admin()`, refuses an entitlement this order did not buy, and
+ * writes the correction row the order screen shows.
+ */
+export async function correctOrder(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  const parsed = z
+    .object({
+      orderId: z.string().uuid(),
+      entitlementId: z.string().uuid(),
+      target: z.string().min(1),
+      reason: z.string().trim().min(3).max(500),
+    })
+    .safeParse({
+      orderId: formData.get('orderId'),
+      entitlementId: formData.get('entitlementId'),
+      target: formData.get('target'),
+      reason: formData.get('reason'),
+    });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  // `course:<uuid>` or `cursus:<uuid>:<year>` — the target is one choice in
+  // the form, and this is what it means.
+  const [kind, id, year] = parsed.data.target.split(':');
+  if ((kind !== 'course' && kind !== 'cursus') || !id) {
+    return { ok: false, error: 'targetRequired' };
+  }
+
+  const supabase = await admin();
+  const { error } = await supabase.rpc('admin_correct_order', {
+    target_order: parsed.data.orderId,
+    old_entitlement: parsed.data.entitlementId,
+    new_course: kind === 'course' ? id : null,
+    new_cursus: kind === 'cursus' ? id : null,
+    new_year: kind === 'cursus' ? Number(year ?? 1) || 1 : null,
+    reason: parsed.data.reason,
+  });
+
+  if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+  revalidatePath('/[locale]/admin/orders/[id]', 'page');
+  revalidatePath('/[locale]/admin/students/[id]', 'page');
+  return OK;
+}
+
+/**
  * Let a registration in, or put it back in the queue.
  *
  * The RPC is the control and the audit: it checks `is_admin()`, records who

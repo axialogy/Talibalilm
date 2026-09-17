@@ -92,7 +92,16 @@ export interface OrderDetail extends OrderSummary {
   subtotalCents: number;
   discountCents: number;
   /** What this order actually opened, which is the question an office asks. */
-  granted: { label: string; expiresAt: string; status: string }[];
+  granted: {
+    id: string;
+    label: string;
+    expiresAt: string;
+    status: string;
+    scope: string;
+    courseId: string | null;
+    cursusId: string | null;
+    yearIndex: number;
+  }[];
   items: {
     productId: string;
     title: string;
@@ -103,6 +112,8 @@ export interface OrderDetail extends OrderSummary {
     durationDays: number;
     isFree: boolean;
   }[];
+  /** Swaps made after the sale, newest first. */
+  corrections: { fromLabel: string; toLabel: string; reason: string; at: string }[];
 }
 
 export async function getOrder(orderId: string): Promise<OrderDetail | null> {
@@ -134,7 +145,9 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
       // if a grant was later revoked or wound back by a refund.
       supabase
         .from('entitlements')
-        .select('scope, year_index, status, expires_at, courses ( title ), cursus ( title )')
+        .select(
+          'id, scope, course_id, cursus_id, year_index, status, expires_at, courses ( title ), cursus ( title )',
+        )
         .eq('source_order_id', orderId),
       o.coupon_id
         ? supabase.from('coupons').select('code').eq('id', o.coupon_id).maybeSingle()
@@ -144,6 +157,12 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
         : Promise.resolve({ data: null }),
     ],
   );
+
+  const { data: corrections } = await supabase
+    .from('order_corrections')
+    .select('from_label, to_label, reason, created_at')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: false });
 
   return {
     id: o.id,
@@ -166,10 +185,21 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     subtotalCents: o.subtotal_cents,
     discountCents: o.discount_cents,
     granted: (entitlements ?? []).map((e) => ({
+      id: e.id,
       label:
         e.courses?.title ?? (e.cursus?.title ? `${e.cursus.title} — ${e.year_index}` : 'Institut'),
       expiresAt: e.expires_at,
       status: e.status,
+      scope: e.scope,
+      courseId: e.course_id,
+      cursusId: e.cursus_id,
+      yearIndex: e.year_index,
+    })),
+    corrections: (corrections ?? []).map((c) => ({
+      fromLabel: c.from_label,
+      toLabel: c.to_label,
+      reason: c.reason,
+      at: c.created_at,
     })),
     items: (o.order_items ?? []).map((i) => ({
       productId: i.product_id,

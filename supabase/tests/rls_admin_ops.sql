@@ -389,6 +389,104 @@ begin
    where id = 'a0000000-0000-4000-8000-000000000001';
 end $$;
 
+-- --- correcting a wrong choice ---------------------------------------------
+
+do $$
+declare
+  refused boolean := false;
+  granted_id uuid;
+  old_id uuid;
+begin
+  raise notice 'a wrong module can be swapped, and the money is left alone';
+
+  -- A second module to correct TO, and an order that opened the first.
+  insert into public.courses (id, slug, title, status, published_at) values
+    ('c0000000-0000-4000-8000-000000000002', 'aqida', 'Aqida', 'published', now());
+
+  insert into public.orders
+    (id, user_id, route, delivery, subtotal_cents, total_cents, status, paid_at)
+  values ('33330000-0000-4000-8000-000000000011',
+          'a0000000-0000-4000-8000-000000000001', 'paypal', 'online',
+          18000, 18000, 'paid', now());
+
+  insert into public.entitlements
+    (user_id, scope, course_id, delivery, expires_at, source_order_id, note)
+  values ('a0000000-0000-4000-8000-000000000001', 'course',
+          'c0000000-0000-4000-8000-000000000001', 'online',
+          now() + interval '300 days', '33330000-0000-4000-8000-000000000011', 'achat')
+  returning id into old_id;
+
+  -- A student cannot correct anything.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    perform public.admin_correct_order(
+      '33330000-0000-4000-8000-000000000011', old_id,
+      'c0000000-0000-4000-8000-000000000002', null, null, 'je préfère');
+  exception when insufficient_privilege then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'a student cannot correct their own order');
+
+  -- The admin can.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  granted_id := public.admin_correct_order(
+    '33330000-0000-4000-8000-000000000011', old_id,
+    'c0000000-0000-4000-8000-000000000002', null, null, 'mauvais module choisi');
+  reset role;
+
+  perform public.assert(granted_id is not null, 'the replacement is granted');
+
+  perform public.assert(
+    (select status from public.entitlements where id = old_id) = 'cancelled',
+    'and the wrong one is cancelled rather than deleted — history stands');
+
+  perform public.assert(
+    public.has_course_access('c0000000-0000-4000-8000-000000000002',
+                             'a0000000-0000-4000-8000-000000000001'),
+    'the student can now read the right module');
+  perform public.assert(
+    not public.has_course_access('c0000000-0000-4000-8000-000000000001',
+                                 'a0000000-0000-4000-8000-000000000001'),
+    'and no longer the wrong one');
+
+  perform public.assert(
+    (select expires_at from public.entitlements where id = granted_id)
+      <= now() + interval '301 days',
+    'the replacement keeps the REMAINING days, not a fresh term');
+
+  perform public.assert(
+    (select source_order_id from public.entitlements where id = granted_id)
+      = '33330000-0000-4000-8000-000000000011',
+    'and still points at the order that paid for it');
+
+  perform public.assert(
+    (select count(*) from public.order_corrections
+      where order_id = '33330000-0000-4000-8000-000000000011') = 1,
+    'the correction is recorded on the order');
+
+  -- A reason is required, and an entitlement this order did not buy is refused.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  begin
+    perform public.admin_correct_order(
+      '33330000-0000-4000-8000-000000000011', granted_id,
+      'c0000000-0000-4000-8000-000000000001', null, null, '   ');
+  exception when check_violation then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'a correction without a reason is refused');
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  refused := false;
+  begin
+    perform public.admin_correct_order(
+      '33330000-0000-4000-8000-000000000011', '11111111-1111-1111-1111-111111111111',
+      'c0000000-0000-4000-8000-000000000001', null, null, 'pas la mienne');
+  exception when check_violation then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'and an entitlement from another order is refused');
+end $$;
+
 drop function public.assert(boolean, text);
 
 \echo ''

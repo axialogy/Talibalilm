@@ -792,6 +792,38 @@ export interface Database {
         }>;
         Relationships: [];
       };
+      order_corrections: {
+        Row: {
+          id: string;
+          order_id: string;
+          from_entitlement_id: string | null;
+          from_label: string;
+          to_label: string;
+          to_course_id: string | null;
+          to_cursus_id: string | null;
+          to_year_index: number | null;
+          to_delivery: DeliveryMode;
+          reason: string;
+          actor_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          from_entitlement_id?: string | null;
+          from_label?: string;
+          to_label?: string;
+          to_course_id?: string | null;
+          to_cursus_id?: string | null;
+          to_year_index?: number | null;
+          to_delivery: DeliveryMode;
+          reason: string;
+          actor_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{ reason: string }>;
+        Relationships: [];
+      };
       admin_security: {
         Row: {
           user_id: string;
@@ -1202,6 +1234,17 @@ export interface Database {
       admin_set_approval: {
         Args: { uid: string; approve: boolean };
         Returns: string | null;
+      };
+      admin_correct_order: {
+        Args: {
+          target_order: string;
+          old_entitlement: string;
+          new_course: string | null;
+          new_cursus: string | null;
+          new_year: number | null;
+          reason: string;
+        };
+        Returns: string;
       };
       claim_due_installment_notices: {
         Args: Record<string, never>;
