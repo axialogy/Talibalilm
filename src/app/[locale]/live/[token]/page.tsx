@@ -2,7 +2,13 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Classroom } from '@/components/live/Classroom';
-import { getLiveSessionByToken, listSlides, listBoardOps, listMessages } from '@/lib/data/live';
+import {
+  getLiveSessionByToken,
+  listSlides,
+  listBoardOps,
+  listMessages,
+  listAttendance,
+} from '@/lib/data/live';
 import { joinRoom } from '@/app/actions/live';
 import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
@@ -107,10 +113,14 @@ export default async function LiveRoomPage({
 
   // Attendance, and the lesson so far. Best-effort on the log: a failure to
   // record that somebody arrived must never be why they cannot attend.
-  const [slides, boardHistory, chatHistory] = await Promise.all([
+  //
+  // The roll is read for the teacher alone — a ban is theirs to undo, and a
+  // student has no use for the list of people removed from the class.
+  const [slides, boardHistory, chatHistory, attendance] = await Promise.all([
     listSlides(session.id),
     listBoardOps(session.id),
     listMessages(session.id),
+    room.is_host ? listAttendance(session.id) : Promise.resolve([]),
     joinRoom(session.id).catch(() => {}),
   ]);
 
@@ -129,6 +139,9 @@ export default async function LiveRoomPage({
       slides={slides.map((s) => ({ id: s.id, url: s.url, filename: s.filename }))}
       boardHistory={boardHistory}
       chatHistory={chatHistory}
+      removedPeople={attendance
+        .filter((row) => row.banned)
+        .map((row) => ({ userId: row.userId, name: row.name }))}
       recordingBaseName={`${safeTitle || 'cours'}-${stamp}`}
     />
   );

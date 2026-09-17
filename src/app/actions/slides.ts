@@ -115,11 +115,16 @@ const confirmSchema = z.object({
   filename: z.string().max(300).default(''),
 });
 
+export interface ConfirmedSlide extends AdminState {
+  /** The row that now exists, with a link its uploader may open. */
+  slide?: { id: string; url: string | null; filename: string };
+}
+
 export async function confirmSlide(input: {
   sessionId: string;
   key: string;
   filename: string;
-}): Promise<AdminState> {
+}): Promise<ConfirmedSlide> {
   if (!r2Configured) return { ok: false, error: 'storageUnavailable' };
 
   const parsed = confirmSchema.safeParse(input);
@@ -156,22 +161,65 @@ export async function confirmSlide(input: {
     .limit(1)
     .maybeSingle();
 
-  const { error } = await supabase.from('live_slides').insert({
-    session_id: sessionId,
-    storage_key: key,
-    filename: safeFilename(filename),
-    mime_type: check.contentType,
-    byte_size: object.size,
-    display_order: (last?.display_order ?? -1) + 1,
-  });
-  if (error) {
+  const name = safeFilename(filename);
+  const { data: row, error } = await supabase
+    .from('live_slides')
+    .insert({
+      session_id: sessionId,
+      storage_key: key,
+      filename: name,
+      mime_type: check.contentType,
+      byte_size: object.size,
+      display_order: (last?.display_order ?? -1) + 1,
+    })
+    .select('id')
+    .single();
+  if (error || !row) {
     reportError('slides.insert', error, { sessionId });
     await deleteObject(key);
-    return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+    return {
+      ok: false,
+      error: 'saveFailed',
+      detail: error ? errorDetail(error) : 'no row returned',
+    };
   }
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');
-  return OK;
+  // The row and a link, so a teacher dropping a file into a live class can be
+  // shown the slide they just added without the page being rebuilt underneath
+  // the lesson that is happening.
+  return { ok: true, slide: { id: row.id, url: await signDownload(key), filename: name } };
+}
+
+/**
+ * The deck as it stands, for a viewer already in the room.
+ *
+ * Called when the teacher adds slides mid-lesson: the room tells every browser
+ * the deck changed, and each one reads it for itself. The URLs are minted per
+ * caller through `can_read_slide()`, so a slide added during a class is
+ * visible to the students entitled to it and to nobody else — which a URL
+ * copied out of the teacher's page would not have been.
+ */
+export async function roomSlides(
+  sessionId: string,
+): Promise<{ id: string; url: string | null; filename: string }[]> {
+  if (!supabaseConfigured) return [];
+  if (!z.string().uuid().safeParse(sessionId).success) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('live_slides')
+    .select('id, storage_key, filename')
+    .eq('session_id', sessionId)
+    .order('display_order');
+  if (error) {
+    reportError('slides.roomList', error, { sessionId });
+    return [];
+  }
+
+  const rows = data ?? [];
+  const urls = await Promise.all(rows.map((r) => slideUrl(r.storage_key)));
+  return rows.map((r, i) => ({ id: r.id, url: urls[i] ?? null, filename: r.filename }));
 }
 
 export async function deleteSlide(_prev: AdminState, formData: FormData): Promise<AdminState> {

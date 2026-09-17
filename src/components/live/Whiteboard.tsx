@@ -10,6 +10,10 @@ type Tool = 'pen' | 'line' | 'rect' | 'ellipse' | 'text' | 'eraser';
 
 const COLOURS = ['#f8fafc', '#fbbf24', '#34d399', '#60a5fa', '#f87171'];
 
+/** Text height as a fraction of the board, and the line spacing under it. */
+const TEXT_SIZE = 0.05;
+const TEXT_LEADING = 1.25;
+
 /**
  * The whiteboard.
  *
@@ -59,17 +63,30 @@ export function Whiteboard({
    * they will land, and in front of a class it looks like an error. Typing
    * happens on the board, at the point that was clicked.
    */
-  const [typing, setTyping] = useState<{ x: number; y: number; value: string } | null>(null);
+  const [typing, setTyping] = useState<{
+    x: number;
+    y: number;
+    value: string;
+    /** The committed text's height on this board, so the caret matches it. */
+    px: number;
+  } | null>(null);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
+  /** A click that moves the caret blurs the textarea; that blur is not a commit. */
+  const ignoreBlur = useRef(false);
 
   /** Ops are stored in a 0–1 space so every screen shows the same board. */
   const paint = useCallback((ctx: CanvasRenderingContext2D, op: BoardOp, W: number, H: number) => {
-    ctx.strokeStyle = op.t === 'text' ? op.color : op.color;
+    ctx.strokeStyle = op.color;
     ctx.fillStyle = op.color;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     if (op.t === 'stroke') {
       ctx.lineWidth = op.w;
+      // The rubber takes ink away rather than laying the board's colour down:
+      // what is under it shows through, so the board keeps whatever background
+      // it is given, and replaying the lesson's ops lands on the same picture.
+      if (op.erase) ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
       for (let i = 0; i + 1 < op.pts.length; i += 2) {
         const x = op.pts[i]! * W;
@@ -78,6 +95,7 @@ export function Whiteboard({
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
+      if (op.erase) ctx.globalCompositeOperation = 'source-over';
     } else if (op.t === 'shape') {
       ctx.lineWidth = op.lw;
       const x = op.x * W;
@@ -94,8 +112,14 @@ export function Whiteboard({
       }
       ctx.stroke();
     } else {
-      ctx.font = `${op.size * H}px system-ui, sans-serif`;
-      ctx.fillText(op.s, op.x * W, op.y * H);
+      // Enter writes a new line on the board, so a text op may hold several.
+      const size = op.size * H;
+      ctx.font = `${size}px system-ui, sans-serif`;
+      ctx.textBaseline = 'top';
+      op.s
+        .split('\n')
+        .slice(0, 40)
+        .forEach((line, i) => ctx.fillText(line, op.x * W, op.y * H + i * size * TEXT_LEADING));
     }
   }, []);
 
@@ -138,22 +162,41 @@ export function Whiteboard({
   };
 
   const width = tool === 'eraser' ? 24 : 3;
-  const ink = tool === 'eraser' ? '#0b1120' : colour;
+  const ink = tool === 'eraser' ? '#000000' : colour;
+  const erasing = tool === 'eraser';
 
   const down = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!canDraw) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    drawing.current = true;
     const p = at(event);
     start.current = p;
 
     if (tool === 'text') {
       drawing.current = false;
-      // Commit whatever was already being typed before the caret moves.
+      // The click that moves the caret also blurs the textarea. That blur is
+      // not a commit — the words move with the caret, they are not written by
+      // leaving them — so the default that would take focus away is stopped
+      // and the guard below covers browsers that do it anyway.
+      event.preventDefault();
+      ignoreBlur.current = true;
       commitText();
-      setTyping({ x: p.x, y: p.y, value: '' });
+      const rect = event.currentTarget.getBoundingClientRect();
+      // The last caret may have grown to three lines; a fresh one starts at one.
+      if (textRef.current) textRef.current.style.height = '';
+      setTyping({
+        x: p.x,
+        y: p.y,
+        value: '',
+        px: Math.max(12, Math.round(rect.height * TEXT_SIZE)),
+      });
+      requestAnimationFrame(() => {
+        ignoreBlur.current = false;
+        textRef.current?.focus();
+      });
       return;
     }
+
+    drawing.current = true;
     points.current = [p.x, p.y];
   };
 
@@ -164,14 +207,20 @@ export function Whiteboard({
       points.current.push(p.x, p.y);
       // Unreliable on purpose: this stroke is still being drawn.
       if (points.current.length % 8 === 0) {
-        onLiveOp({ t: 'stroke', pts: points.current.slice(-16), color: ink, w: width });
+        onLiveOp({
+          t: 'stroke',
+          pts: points.current.slice(-16),
+          color: ink,
+          w: width,
+          erase: erasing,
+        });
       }
       const ctx = canvasRef.current?.getContext('2d');
       const canvas = canvasRef.current;
       if (ctx && canvas) {
         paint(
           ctx,
-          { t: 'stroke', pts: points.current.slice(-4), color: ink, w: width },
+          { t: 'stroke', pts: points.current.slice(-4), color: ink, w: width, erase: erasing },
           canvas.width,
           canvas.height,
         );
@@ -188,7 +237,13 @@ export function Whiteboard({
 
     if (tool === 'pen' || tool === 'eraser') {
       if (points.current.length >= 4) {
-        onOp({ t: 'stroke', pts: points.current.slice(0, 4000), color: ink, w: width });
+        onOp({
+          t: 'stroke',
+          pts: points.current.slice(0, 4000),
+          color: ink,
+          w: width,
+          erase: erasing,
+        });
       }
       points.current = [];
     } else if (from) {
@@ -208,20 +263,39 @@ export function Whiteboard({
 
   const commitText = useCallback(() => {
     setTyping((current) => {
-      const body = current?.value.trim();
-      if (current && body) {
+      const body = current?.value.replace(/\s+$/, '');
+      if (current && body?.trim()) {
         onOp({
           t: 'text',
           x: current.x,
           y: current.y,
           s: body.slice(0, 500),
           color: colour,
-          size: 0.05,
+          size: TEXT_SIZE,
         });
       }
       return null;
     });
   }, [colour, onOp]);
+
+  // T picks up the text tool, the way it does on every other board. Typing in
+  // a field is typing in a field: the shortcut never steals a keystroke.
+  useEffect(() => {
+    if (!canDraw) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      ) {
+        return;
+      }
+      if (event.key === 't' || event.key === 'T') setTool('text');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canDraw]);
 
   const toolButton = (value: Tool, Icon: typeof Pen, label: string) => (
     <button
@@ -249,7 +323,7 @@ export function Whiteboard({
           {toolButton('pen', Pen, t('boardPen'))}
           {toolButton('line', Minus, t('boardLine'))}
           {toolButton('rect', Square, t('boardRect'))}
-          {toolButton('text', Type, t('boardTextTool'))}
+          {toolButton('text', Type, `${t('boardTextTool')} (T)`)}
           {toolButton('eraser', Eraser, t('boardEraser'))}
 
           <span className="mx-1 h-5 w-px bg-white/15" aria-hidden="true" />
@@ -307,23 +381,42 @@ export function Whiteboard({
         />
 
         {typing && (
-          <input
+          <textarea
+            ref={textRef}
             autoFocus
+            rows={1}
+            wrap="off"
             value={typing.value}
-            onChange={(event) => setTyping((c) => (c ? { ...c, value: event.target.value } : c))}
-            onBlur={commitText}
+            onChange={(event) => {
+              const el = event.target;
+              setTyping((c) => (c ? { ...c, value: el.value } : c));
+              // Grow with the words, so a second line is not hidden behind a
+              // scrollbar on a board the class is watching.
+              el.style.height = 'auto';
+              el.style.height = `${el.scrollHeight}px`;
+            }}
+            onBlur={() => {
+              if (ignoreBlur.current) return;
+              commitText();
+            }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') {
+              // Enter is a new line. Writing on a board is not submitting a
+              // form, and a teacher numbering points types Enter by instinct.
+              if (event.key === 'Escape') {
                 event.preventDefault();
-                commitText();
-              } else if (event.key === 'Escape') {
                 setTyping(null);
               }
             }}
             maxLength={500}
             aria-label={t('boardText')}
-            className="absolute min-w-[8ch] -translate-y-full border-b border-dashed border-white/40 bg-transparent p-0 text-[clamp(14px,4vh,36px)] leading-none outline-none"
-            style={{ left: `${typing.x * 100}%`, top: `${typing.y * 100}%`, color: colour }}
+            className="absolute min-w-[8ch] resize-none overflow-hidden border-b border-dashed border-white/40 bg-transparent p-0 whitespace-pre outline-none"
+            style={{
+              left: `${typing.x * 100}%`,
+              top: `${typing.y * 100}%`,
+              color: colour,
+              fontSize: `${typing.px}px`,
+              lineHeight: TEXT_LEADING,
+            }}
           />
         )}
       </div>
