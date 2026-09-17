@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       custom_id?: string;
       invoice_id?: string;
       amount?: { value?: string; currency_code?: string };
+      payment_source?: Record<string, unknown>;
       supplementary_data?: { related_ids?: { order_id?: string } };
     };
   };
@@ -89,6 +90,13 @@ export async function POST(request: NextRequest) {
     // Which installment, when the order carries a plan. PayPal echoes the
     // order id here on every capture event.
     paypalOrderId: event.resource?.supplementary_data?.related_ids?.order_id ?? null,
+    // The webhook body carries the capture's payment source too.
+    paymentMethod:
+      event.resource?.payment_source && 'card' in event.resource.payment_source
+        ? 'card'
+        : event.resource?.payment_source
+          ? 'paypal'
+          : null,
   });
 
   // Always 200 once the signature is good: a non-2xx makes PayPal retry, and

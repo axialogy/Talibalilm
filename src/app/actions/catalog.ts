@@ -508,18 +508,28 @@ export async function setCursusYear(formData: FormData): Promise<void> {
   const { cursus_id, course_id, year_index, included } = parsed.data;
   const modes = ['presentiel', 'online'] as const;
 
-  if (included === 'no') {
-    await supabase
-      .from('cursus_courses')
-      .delete()
-      .eq('cursus_id', cursus_id)
-      .eq('course_id', course_id)
-      .eq('year_index', year_index);
-  } else {
-    await supabase.from('cursus_courses').upsert(
-      modes.map((delivery) => ({ cursus_id, course_id, delivery, year_index })),
-      { onConflict: 'cursus_id,course_id,delivery,year_index' },
-    );
+  // A tick that fails must not take the module's page down with it: this is a
+  // void action, so an uncaught throw becomes an error screen the admin cannot
+  // navigate away from — which is exactly what was reported. The failure is
+  // reported where it can be read, and the page stays.
+  try {
+    if (included === 'no') {
+      const { error } = await supabase
+        .from('cursus_courses')
+        .delete()
+        .eq('cursus_id', cursus_id)
+        .eq('course_id', course_id)
+        .eq('year_index', year_index);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('cursus_courses').upsert(
+        modes.map((delivery) => ({ cursus_id, course_id, delivery, year_index })),
+        { onConflict: 'cursus_id,course_id,delivery,year_index' },
+      );
+      if (error) throw error;
+    }
+  } catch (cause) {
+    reportError('catalog.cursusYear', cause, { cursus_id, course_id, year_index });
   }
 
   revalidatePath('/[locale]/admin/cursus', 'page');

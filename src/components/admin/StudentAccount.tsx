@@ -2,14 +2,13 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, MailCheck, Trash2 } from 'lucide-react';
+import { Check, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import {
   confirmStudentEmail,
-  deleteStudent,
   markStudentReviewed,
   setStudentApproval,
   updateStudent,
@@ -42,7 +41,6 @@ export function StudentAccount({
   phone,
   phoneLandline,
   locale,
-  hasOrders,
   reviewed,
   approved,
   details,
@@ -52,7 +50,6 @@ export function StudentAccount({
   phone: string;
   phoneLandline: string;
   locale: string;
-  hasOrders: boolean;
   /** Has the office looked at this registration yet? */
   reviewed: boolean;
   /** Has the office let this account buy? */
@@ -72,7 +69,6 @@ export function StudentAccount({
   const t = useTranslations('admin');
   const [saveState, save] = useActionState(updateStudent, EMPTY);
   const [approvalState, setApproval] = useActionState(setStudentApproval, EMPTY);
-  const [removeState, remove] = useActionState(deleteStudent, EMPTY);
   const [confirmState, confirmEmail] = useActionState(confirmStudentEmail, IDLE);
   const [seenState, markSeen] = useActionState(markStudentReviewed, IDLE);
 
@@ -279,28 +275,12 @@ export function StudentAccount({
         )}
       </form>
 
-      {hasOrders ? (
-        <p className="text-[12px] leading-relaxed text-ink-muted">{t('studentHasOrdersNote')}</p>
-      ) : (
-        <form
-          action={remove}
-          onSubmit={(event) => {
-            if (!window.confirm(t('studentDeleteConfirm'))) event.preventDefault();
-          }}
-        >
-          <input type="hidden" name="userId" value={userId} />
-          <Button
-            type="submit"
-            size="sm"
-            variant="ghost"
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            {t('studentDelete')}
-          </Button>
-          <ActionError state={removeState} />
-        </form>
-      )}
+      {/*
+        Deleting the account outright is gone from here on purpose: the
+        Effacement section below does the same job and explains itself, and two
+        buttons that remove a person, one of them unlabelled, is one too many.
+        `studentHasOrdersNote` still appears there.
+      */}
     </div>
   );
 }

@@ -759,6 +759,7 @@ export interface Database {
           status_reason: string;
           plan_size: number;
           paid_cents: number;
+          payment_method: string | null;
           confirmation_sent_at: string | null;
           created_at: string;
           updated_at: string;
@@ -780,6 +781,7 @@ export interface Database {
           provider_order_id?: string | null;
           plan_size?: number;
           paid_cents?: number;
+          payment_method?: string | null;
         };
         Update: Partial<{
           status: OrderStatus;
@@ -789,6 +791,7 @@ export interface Database {
           paid_at: string | null;
           confirmation_sent_at: string | null;
           paid_cents: number;
+          payment_method: string | null;
         }>;
         Relationships: [];
       };
@@ -1234,6 +1237,10 @@ export interface Database {
       admin_set_approval: {
         Args: { uid: string; approve: boolean };
         Returns: string | null;
+      };
+      unconfirmed_users: {
+        Args: { older_than: string };
+        Returns: { id: string; email: string; created_at: string }[];
       };
       admin_correct_order: {
         Args: {

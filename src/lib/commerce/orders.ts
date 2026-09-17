@@ -182,8 +182,11 @@ export async function settleOrder(options: {
   status: string;
   /** PayPal's order id, when the caller has it: it names WHICH installment. */
   paypalOrderId?: string | null;
+  /** paypal or card, from the capture. Written to the order when it settles. */
+  paymentMethod?: 'paypal' | 'card' | null;
 }): Promise<SettleResult> {
-  const { orderId, capturedCents, currency, captureId, status, paypalOrderId } = options;
+  const { orderId, capturedCents, currency, captureId, status, paypalOrderId, paymentMethod } =
+    options;
   const supabase = createAdminClient();
 
   const { data: order } = await supabase
@@ -195,7 +198,14 @@ export async function settleOrder(options: {
   if (!order) return { ok: false, reason: 'not_found' };
 
   if (order.plan_size > 1) {
-    return settleInstallment(order, { capturedCents, currency, captureId, status, paypalOrderId });
+    return settleInstallment(order, {
+      capturedCents,
+      currency,
+      captureId,
+      status,
+      paypalOrderId,
+      paymentMethod,
+    });
   }
 
   if (order.status === 'paid') return { ok: true, alreadyPaid: true, orderId };
@@ -229,6 +239,7 @@ export async function settleOrder(options: {
       paid_at: new Date().toISOString(),
       provider_capture_id: captureId,
       paid_cents: order.total_cents,
+      payment_method: paymentMethod ?? null,
     })
     .eq('id', orderId)
     // Only a pending order becomes paid. If a concurrent settle got there
@@ -270,6 +281,7 @@ async function settleInstallment(
     captureId: string | null;
     status: string;
     paypalOrderId?: string | null;
+    paymentMethod?: 'paypal' | 'card' | null;
   },
 ): Promise<SettleResult> {
   const supabase = createAdminClient();
@@ -315,6 +327,7 @@ async function settleInstallment(
 
   return completeInstallment(order, installment.id, {
     providerCaptureId: capture.captureId,
+    paymentMethod: capture.paymentMethod ?? null,
   });
 }
 
@@ -329,7 +342,11 @@ async function settleInstallment(
 async function completeInstallment(
   order: PlanOrder,
   installmentId: string,
-  payment: { providerCaptureId?: string | null; couponId?: string | null },
+  payment: {
+    providerCaptureId?: string | null;
+    couponId?: string | null;
+    paymentMethod?: 'paypal' | 'card' | null;
+  },
 ): Promise<SettleResult> {
   const supabase = createAdminClient();
 
@@ -360,6 +377,9 @@ async function completeInstallment(
       // even though a balance is still due — `paid_cents` carries that.
       status: 'paid',
       paid_at: order.paid_at ?? new Date().toISOString(),
+      // Only on the first payment: the later ones are the same method anyway,
+      // and overwriting would lose what the first one said.
+      ...(order.paid_cents === 0 ? { payment_method: payment.paymentMethod ?? null } : {}),
     })
     .eq('id', order.id);
 

@@ -57,6 +57,39 @@ function authorised(request: NextRequest): boolean {
  * reported and the sweep carries on — the next run has its own claim, and one
  * undeliverable e-mail must not stop the other students being told.
  */
+/**
+ * Remove the accounts that never confirmed and never bought.
+ *
+ * The list comes from the database (see 20260917110000) and the deletion goes
+ * through the auth admin API, which is the only thing that can remove a user.
+ * Failures are counted, not thrown: one stuck account must not stop the rest,
+ * and the next run will try again.
+ */
+async function purgeUnconfirmedUsers(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<number> {
+  const { data: stale, error } = await supabase.rpc('unconfirmed_users', {
+    older_than: '2 days',
+  });
+  if (error) {
+    reportError('cron.unconfirmed', error, { note: 'nothing deleted this run' });
+    return 0;
+  }
+  if (!stale || stale.length === 0) return 0;
+
+  let deleted = 0;
+  for (const account of stale) {
+    try {
+      const { error: removeError } = await supabase.auth.admin.deleteUser(account.id);
+      if (removeError) throw removeError;
+      deleted += 1;
+    } catch (cause) {
+      reportError('cron.unconfirmed.delete', cause, { userId: account.id });
+    }
+  }
+  return deleted;
+}
+
 async function sendInstallmentReminders(
   supabase: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
@@ -159,6 +192,11 @@ export async function GET(request: NextRequest) {
   // racing each other send each reminder once.
   const reminders = await sendInstallmentReminders(supabase);
 
+  // Spam registrations: never confirmed, never bought, older than two days.
+  // Two days is long enough that a student who mistyped their address can ask
+  // for a new link, and short enough that the list stays clean.
+  const unconfirmedPurged = await purgeUnconfirmedUsers(supabase);
+
   // Rolled-over rate-limit windows are dead weight once past. Pruning them is
   // pure housekeeping — a failure here must not fail the sweep that matters.
   const { data: pruned, error: pruneError } = await supabase.rpc('prune_rate_limits');
@@ -170,6 +208,7 @@ export async function GET(request: NextRequest) {
     rateWindowsPruned: pruned ?? 0,
     videosPurged,
     installmentReminders: reminders,
+    unconfirmedPurged,
   };
   if (
     result.ordersCancelled > 0 ||
