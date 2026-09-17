@@ -8,7 +8,7 @@ import { GalleryUpload } from '@/components/admin/GalleryUpload';
 import { readBullets, readGallery, readHighlights } from '@/lib/content/presentation';
 import { CourseOutline } from '@/components/admin/CourseOutline';
 import { PublishControls } from '@/components/admin/PublishControls';
-import { Tabs } from '@/components/ui/tabs';
+import { CourseSteps } from '@/components/admin/CourseSteps';
 import { CourseFees, type CourseFee } from '@/components/admin/CourseFees';
 import { CourseCursus, membershipKey } from '@/components/admin/CourseCursus';
 import { createClient } from '@/lib/supabase/server';
@@ -172,8 +172,30 @@ export default async function CourseBuilderPage({
       </div>
 
       <div className="mt-6">
-        <Tabs
-          tabs={[
+        <CourseSteps
+          formId="course-details"
+          needsStatusChoice={course.status === 'draft'}
+          steps={[
+            {
+              key: 'details',
+              label: t('tabDetails'),
+              content: <CourseSettingsForm
+                formId="course-details"
+                course={{
+                  id: course.id,
+                  title: course.title,
+                  slug: course.slug,
+                  subtitle: course.subtitle,
+                  description: course.description,
+                  title_ar: course.title_ar,
+                  level: course.level,
+                  format: course.format,
+                  duration_weeks: course.duration_weeks,
+                  requirements: readBullets(course.requirements),
+                  highlights: readHighlights(course.highlights),
+                }}
+              />,
+            },
             {
               key: 'content',
               label: t('tabContent'),
@@ -183,21 +205,6 @@ export default async function CourseBuilderPage({
                   <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
                     <CoverUpload courseId={course.id} coverUrl={course.cover_url} />
                     <GalleryUpload courseId={course.id} images={readGallery(course.gallery)} />
-                    <CourseSettingsForm
-                      course={{
-                        id: course.id,
-                        title: course.title,
-                        slug: course.slug,
-                        subtitle: course.subtitle,
-                        description: course.description,
-                        title_ar: course.title_ar,
-                        level: course.level,
-                        format: course.format,
-                        duration_weeks: course.duration_weeks,
-                        requirements: readBullets(course.requirements),
-                        highlights: readHighlights(course.highlights),
-                      }}
-                    />
                   </aside>
                 </div>
               ),

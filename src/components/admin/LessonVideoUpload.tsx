@@ -82,9 +82,17 @@ export function LessonVideoUpload({
               ? resolve()
               : reject(new Error(`R2 answered ${xhr.status}`));
           // A CORS refusal and a dropped connection both land here with no
-          // detail — the browser does not tell us which. The message says so
-          // rather than guessing at one of the two.
-          xhr.onerror = () => reject(new Error('the upload was refused or interrupted'));
+          // detail — the browser does not tell us which. The message says so,
+          // and names the one test that can tell them apart, rather than
+          // guessing at one of the two.
+          xhr.onerror = () =>
+            reject(
+              new Error(
+                'the upload was refused or interrupted — run Admin → Diagnostic → ' +
+                  '« Tester l’envoi depuis le navigateur », which reproduces this ' +
+                  'exact request and names the missing rule',
+              ),
+            );
           xhr.onabort = () => reject(new Error('the upload was cancelled'));
           xhr.send(file);
         });
