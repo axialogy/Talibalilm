@@ -121,7 +121,7 @@ R2 → your bucket → Settings → CORS Policy:
 ```json
 [
   {
-    "AllowedOrigins": ["https://talibalim.com"],
+    "AllowedOrigins": ["https://www.talibalim.com", "https://talibalim.com"],
     "AllowedMethods": ["PUT"],
     "AllowedHeaders": ["content-type"],
     "MaxAgeSeconds": 3600
@@ -131,6 +131,10 @@ R2 → your bucket → Settings → CORS Policy:
 
 Slides are uploaded straight from the browser to Cloudflare, so this origin must
 match exactly or every upload fails with a browser error that names nothing.
+List both hosts: the site is served at `www`, the bare domain 308s to it, and
+the browser sends whichever host is in the address bar. The diagnostic's
+"Tester l'envoi depuis le navigateur" prints the origin it used, so when an
+upload is refused, compare that string with the policy rather than guessing.
 Displaying slides is unaffected — a plain `<img>` is not CORS-checked — so the
 symptom is "uploads stopped working, the deck still shows".
 

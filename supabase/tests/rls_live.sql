@@ -327,10 +327,15 @@ begin
   end;
   perform public.assert(refused, 'a student cannot add a slide');
 
+  -- Deleting is write access too, and the same absence of a policy covers it:
+  -- the row is not even visible to the delete, so zero rows go — no exception,
+  -- just nothing removed.
+  delete from public.live_slides
+   where session_id = '11110000-0000-4000-8000-000000000001';
   perform public.assert(
     (select count(*) from public.live_slides
       where session_id = '11110000-0000-4000-8000-000000000001') = 1,
-    'and nothing was written');
+    'a student cannot delete the teacher’s slides');
   reset role;
 
   -- The stranger holds neither course.

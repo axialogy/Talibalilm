@@ -64,37 +64,53 @@ export function useSlideUpload(
 
   const putOne = useCallback(
     async (file: File): Promise<{ id: string; url: string | null; filename: string } | null> => {
-      if (file.size > MAX_IMAGE_BYTES) {
-        setError('tooLarge');
-        return null;
-      }
-      const ticket = await requestSlideUpload({
-        sessionId,
-        contentType: file.type,
-        byteSize: file.size,
-      });
-      if (!ticket.ok || !ticket.url || !ticket.key) {
-        setError(ticket.error ?? 'uploadFailed');
-        return null;
-      }
+      try {
+        if (file.size > MAX_IMAGE_BYTES) {
+          setError('tooLarge');
+          return null;
+        }
+        const ticket = await requestSlideUpload({
+          sessionId,
+          contentType: file.type,
+          byteSize: file.size,
+        });
+        if (!ticket.ok || !ticket.url || !ticket.key) {
+          setError(ticket.error ?? 'uploadFailed');
+          return null;
+        }
 
-      const put = await fetch(ticket.url, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': ticket.contentType ?? file.type },
-      });
-      if (!put.ok) {
+        const put = await fetch(ticket.url, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': ticket.contentType ?? file.type },
+        });
+        if (!put.ok) {
+          setError('uploadFailed');
+          return null;
+        }
+
+        const done = await confirmSlide({ sessionId, key: ticket.key, filename: file.name });
+        if (!done.ok || !done.slide) {
+          setError(done.error ?? 'uploadFailed');
+          return null;
+        }
+        addedRef.current = true;
+        return done.slide;
+      } catch (thrown) {
+        // A rejected fetch — a CORS refusal, a dropped connection — arrives
+        // with no status and only the browser's own words. This is an UPLOAD
+        // failure; without this catch it escaped to the PDF branch, which
+        // relabelled it "conversion failed" and sent the office to the wrong
+        // problem. The origin is included because a bucket's CORS rule is
+        // written against exactly that string.
         setError('uploadFailed');
+        setDetail(
+          `${
+            thrown instanceof Error ? `${thrown.name}: ${thrown.message}` : String(thrown)
+          } (origine ${window.location.origin})`,
+        );
         return null;
       }
-
-      const done = await confirmSlide({ sessionId, key: ticket.key, filename: file.name });
-      if (!done.ok || !done.slide) {
-        setError(done.error ?? 'uploadFailed');
-        return null;
-      }
-      addedRef.current = true;
-      return done.slide;
     },
     [sessionId],
   );

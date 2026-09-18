@@ -57,7 +57,10 @@ export function R2BrowserCheck() {
         setState({
           ok: false,
           error: 'uploadFailed',
-          detail: t('diagBrowserBlocked'),
+          // The origin is the string the bucket's AllowedOrigins must contain.
+          // Without it the message asks the office to guess which of the site's
+          // addresses the browser actually sent.
+          detail: `${t('diagBrowserBlocked')} (origine ${window.location.origin})`,
         });
         return;
       }
