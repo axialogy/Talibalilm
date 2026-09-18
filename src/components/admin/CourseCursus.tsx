@@ -2,19 +2,13 @@
 
 import { useTranslations } from 'next-intl';
 import { setCursusYear } from '@/app/actions/catalog';
+import { membershipKey, type Membership } from '@/lib/content/cursus';
 
 export interface CursusOption {
   id: string;
   kind: string;
   title: string;
   yearCount: number;
-}
-
-/** Which cursus/year/mode combinations already include this course. */
-export type Membership = Set<string>;
-
-export function membershipKey(cursusId: string, year: number, delivery: string): string {
-  return `${cursusId}|${year}|${delivery}`;
 }
 
 /** The years shown for Approfondi. The school runs five at most. */
