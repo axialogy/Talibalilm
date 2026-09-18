@@ -1,8 +1,15 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronLeft, ChevronRight, Loader2, PresentationIcon, Upload } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  PresentationIcon,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SlideUploadState } from './useSlideUpload';
 
@@ -24,18 +31,35 @@ export function SlidesPanel({
   current,
   canPresent,
   onGo,
+  onRemove,
+  removeError,
   upload,
 }: {
   slides: { id: string; url: string | null; filename: string }[];
   current: number;
   canPresent: boolean;
   onGo: (index: number) => void;
+  /** The teacher's removal, mid-lesson. Resolves when the server has answered. */
+  onRemove: (slideId: string) => Promise<void>;
+  /** Why the last removal failed, if it did. */
+  removeError: { error: string; detail?: string | null } | null;
   /** The room's upload state — one deck, one set of refusals. */
   upload: SlideUploadState;
 }) {
   const t = useTranslations('live');
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
   const { busy, converting, error, detail, upload: uploadFiles } = upload;
+
+  const remove = async (slide: { id: string }) => {
+    if (!window.confirm(t('slideRemoveConfirm'))) return;
+    setRemoving(slide.id);
+    try {
+      await onRemove(slide.id);
+    } finally {
+      setRemoving(null);
+    }
+  };
 
   const choose = (files: FileList | File[]) => {
     void uploadFiles(files).then(() => {
@@ -85,6 +109,19 @@ export function SlidesPanel({
         </div>
       )}
 
+      {removeError && (
+        <div role="alert" className="px-3 pb-1.5 text-center">
+          <p className="text-[11px] leading-relaxed text-red-300">
+            {t(`errors.${removeError.error}` as 'errors.saveFailed')}
+          </p>
+          {canPresent && removeError.detail && (
+            <p className="mt-1 font-mono text-[10px] break-words text-white/35">
+              {removeError.detail}
+            </p>
+          )}
+        </div>
+      )}
+
       {slides.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
           <PresentationIcon className="size-5 text-white/30" aria-hidden="true" />
@@ -122,7 +159,7 @@ export function SlidesPanel({
 
           <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
             {slides.map((slide, index) => (
-              <li key={slide.id}>
+              <li key={slide.id} className="relative">
                 <button
                   type="button"
                   onClick={() => canPresent && onGo(index)}
@@ -148,6 +185,25 @@ export function SlidesPanel({
                     </span>
                   </span>
                 </button>
+
+                {/* Sibling of the thumbnail button, not inside it: a button
+                    inside a button is invalid and swallows the click. */}
+                {canPresent && (
+                  <button
+                    type="button"
+                    onClick={() => void remove(slide)}
+                    disabled={removing !== null}
+                    title={t('slideRemove')}
+                    className="absolute end-1.5 top-1.5 inline-flex size-7 items-center justify-center rounded-md bg-black/70 text-white/70 transition-colors hover:bg-red-600 hover:text-white disabled:opacity-40"
+                  >
+                    {removing === slide.id ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                    )}
+                    <span className="sr-only">{t('slideRemove')}</span>
+                  </button>
+                )}
               </li>
             ))}
           </ol>

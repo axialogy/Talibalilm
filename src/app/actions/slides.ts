@@ -222,10 +222,18 @@ export async function roomSlides(
   return rows.map((r, i) => ({ id: r.id, url: urls[i] ?? null, filename: r.filename }));
 }
 
-export async function deleteSlide(_prev: AdminState, formData: FormData): Promise<AdminState> {
-  const parsed = z
-    .object({ id: z.string().uuid(), sessionId: z.string().uuid() })
-    .safeParse({ id: formData.get('id'), sessionId: formData.get('sessionId') });
+const removeSchema = z.object({ id: z.string().uuid(), sessionId: z.string().uuid() });
+
+/**
+ * Remove one slide from a deck.
+ *
+ * The preparation screen and the room both come through here: the same staff
+ * gate, the same key read back through the policy, the same object cleanup.
+ * The room calls it directly, mid-lesson; `deleteSlide` below is the
+ * form-shaped wrapper the admin screen's `useActionState` uses.
+ */
+export async function removeSlide(input: { id: string; sessionId: string }): Promise<AdminState> {
+  const parsed = removeSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await staffClient();
@@ -251,6 +259,13 @@ export async function deleteSlide(_prev: AdminState, formData: FormData): Promis
 
   revalidatePath('/[locale]/admin/live/[id]', 'page');
   return OK;
+}
+
+export async function deleteSlide(_prev: AdminState, formData: FormData): Promise<AdminState> {
+  return removeSlide({
+    id: String(formData.get('id') ?? ''),
+    sessionId: String(formData.get('sessionId') ?? ''),
+  });
 }
 
 /** Move one slide up or down the deck, swapping with its neighbour. */

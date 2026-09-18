@@ -30,7 +30,8 @@ import {
   saveBoardOp,
   saveMessage,
 } from '@/app/actions/live';
-import { roomSlides } from '@/app/actions/slides';
+import { removeSlide, roomSlides } from '@/app/actions/slides';
+import { removeAt } from '@/lib/live/deck';
 import type { BoardOp, RoomMessage } from '@/lib/live/protocol';
 import type { LiveRoomState } from '@/lib/supabase/database.types';
 
@@ -85,6 +86,10 @@ export function Classroom({
   const [panelOpen, setPanelOpen] = useState(false);
   const [slide, setSlide] = useState(-1);
   const [deck, setDeck] = useState<SlideItem[]>(slides);
+  /** Why the last removal failed, kept apart from the upload refusals. */
+  const [deckError, setDeckError] = useState<{ error: string; detail?: string | null } | null>(
+    null,
+  );
   const [board, setBoard] = useState<{ ops: BoardOp[]; clearedAt: number }>({
     ops: [],
     clearedAt: 0,
@@ -111,7 +116,13 @@ export function Classroom({
    * each viewer separately, so the class cannot be handed the teacher's links.
    */
   const refreshDeck = useCallback(() => {
-    void roomSlides(sessionId).then(setDeck);
+    void roomSlides(sessionId).then((next) => {
+      setDeck(next);
+      // A page removed while this browser was on it must not leave the
+      // position past the end of the new deck. The teacher's `slide` message
+      // normally arrives first; this is the safety net for when it does not.
+      setSlide((s) => (s >= next.length ? next.length - 1 : s));
+    });
   }, [sessionId]);
 
   const onMessage = useCallback(
@@ -158,6 +169,38 @@ export function Classroom({
       live.send({ t: 'deck' });
       present(at);
     }
+  };
+
+  /**
+   * Take one page off the deck, mid-lesson.
+   *
+   * The server goes first: the row and its object are removed, and only then
+   * does the class see the deck change. A failure leaves the deck as it was
+   * and says why, rather than dropping a page every other browser still has.
+   */
+  const removeSlideAt = async (id: string) => {
+    if (!isHost) return;
+    // The id, not the index the thumbnail was rendered with: an upload landing
+    // between render and click would otherwise shift the deck under the click
+    // and delete the wrong page.
+    const index = deckRef.current.findIndex((s) => s.id === id);
+    if (index < 0) return;
+
+    setDeckError(null);
+    const result = await removeSlide({ id, sessionId });
+    if (!result.ok) {
+      setDeckError({ error: result.error ?? 'saveFailed', detail: result.detail });
+      return;
+    }
+
+    const after = removeAt(deckRef.current, slideRef.current, index);
+    deckRef.current = after.deck;
+    setDeck(after.deck);
+    // Every viewer re-reads its own signed copy, then the class follows the
+    // teacher to wherever the removal left the presentation.
+    live.send({ t: 'deck' });
+    if (after.current >= 0) present(after.current);
+    else setSlide(-1);
   };
 
   const deckUpload = useSlideUpload(sessionId, { onAdded: addSlide });
@@ -658,6 +701,8 @@ export function Classroom({
               current={slide}
               canPresent={isHost}
               onGo={goToSlide}
+              onRemove={removeSlideAt}
+              removeError={deckError}
               upload={deckUpload}
             />
           )}
