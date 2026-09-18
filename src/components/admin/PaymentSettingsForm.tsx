@@ -6,6 +6,7 @@ import { KeyRound, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { savePaymentSettings } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -42,7 +43,7 @@ export function PaymentSettingsForm({
   const [state, action] = useActionState(savePaymentSettings, EMPTY);
 
   return (
-    <form
+    <ActionForm
       action={action}
       className="space-y-5 rounded-[var(--radius-card)] border border-line bg-white p-6"
     >
@@ -134,6 +135,6 @@ export function PaymentSettingsForm({
         )}
         <ActionError state={state} />
       </div>
-    </form>
+    </ActionForm>
   );
 }

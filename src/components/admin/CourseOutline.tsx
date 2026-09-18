@@ -20,6 +20,7 @@ import {
   type AdminState,
 } from '@/app/actions/admin';
 import { cn } from '@/lib/utils';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -76,7 +77,7 @@ export function CourseOutline({
         ))}
       </ol>
 
-      <form
+      <ActionForm
         action={addModuleAction}
         className="mt-4 flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-4"
       >
@@ -86,7 +87,7 @@ export function CourseOutline({
           <Plus className="size-4" aria-hidden="true" />
           {t('addModule')}
         </Button>
-      </form>
+      </ActionForm>
     </div>
   );
 }
@@ -111,7 +112,7 @@ function ModuleCard({
       <div className="flex flex-wrap items-center gap-2 border-b border-line p-4">
         <GripVertical className="size-4 shrink-0 text-ink-muted/40" aria-hidden="true" />
 
-        <form action={renameAction} className="flex min-w-[200px] flex-1 items-center gap-2">
+        <ActionForm action={renameAction} className="flex min-w-[200px] flex-1 items-center gap-2">
           <input type="hidden" name="id" value={module.id} />
           <input
             name="title"
@@ -122,11 +123,11 @@ function ModuleCard({
           <Button type="submit" size="sm" variant="ghost">
             {t('save')}
           </Button>
-        </form>
+        </ActionForm>
 
         <MoveButtons formAction={moveAction} item={module} previous={previous} next={next} />
 
-        <form
+        <ActionForm
           action={deleteAction}
           onSubmit={(event) => {
             if (!window.confirm(t('confirmDelete'))) event.preventDefault();
@@ -136,7 +137,7 @@ function ModuleCard({
           <Button type="submit" size="sm" variant="ghost" aria-label={t('delete')}>
             <Trash2 className="size-3.5" aria-hidden="true" />
           </Button>
-        </form>
+        </ActionForm>
       </div>
 
       <ul className="divide-y divide-line">
@@ -150,14 +151,14 @@ function ModuleCard({
         ))}
       </ul>
 
-      <form action={addLessonAction} className="flex flex-wrap items-end gap-3 p-4">
+      <ActionForm action={addLessonAction} className="flex flex-wrap items-end gap-3 p-4">
         <input type="hidden" name="moduleId" value={module.id} />
         <Field label={t('lessonTitle')} name="title" required className="min-w-[200px] flex-1" />
         <Button type="submit" size="sm" variant="outline">
           <Plus className="size-3.5" aria-hidden="true" />
           {t('addLesson')}
         </Button>
-      </form>
+      </ActionForm>
     </li>
   );
 }
@@ -246,7 +247,7 @@ function LessonRow({
 
         <MoveButtons formAction={moveAction} item={lesson} previous={previous} next={next} />
 
-        <form
+        <ActionForm
           action={deleteAction}
           onSubmit={(event) => {
             if (!window.confirm(t('confirmDelete'))) event.preventDefault();
@@ -256,11 +257,11 @@ function LessonRow({
           <Button type="submit" size="sm" variant="ghost" aria-label={t('delete')}>
             <Trash2 className="size-3.5" aria-hidden="true" />
           </Button>
-        </form>
+        </ActionForm>
       </div>
 
       {open && (
-        <form
+        <ActionForm
           ref={formRef}
           action={updateAction}
           className="mt-4 space-y-3 rounded-[var(--radius-input)] bg-surface/50 p-4"
@@ -381,7 +382,7 @@ function LessonRow({
               </span>
             )}
           </div>
-        </form>
+        </ActionForm>
       )}
     </li>
   );
@@ -409,7 +410,7 @@ function MoveButtons<T extends { id: string; position: number }>({
           ['down', next],
         ] as const
       ).map(([direction, neighbour]) => (
-        <form key={direction} action={formAction}>
+        <ActionForm key={direction} action={formAction}>
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="position" value={item.position} />
           <input type="hidden" name="otherId" value={neighbour?.id ?? ''} />
@@ -431,7 +432,7 @@ function MoveButtons<T extends { id: string; position: number }>({
               <ChevronDown className="size-3.5" aria-hidden="true" />
             )}
           </button>
-        </form>
+        </ActionForm>
       ))}
     </span>
   );

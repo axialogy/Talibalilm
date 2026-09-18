@@ -6,6 +6,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { deleteProduct, saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -63,7 +64,7 @@ export function ProductForm({
   const [kind, setKind] = useState(product?.kind ?? 'module');
 
   return (
-    <form
+    <ActionForm
       action={(formData) => {
         action(formData);
         onDone?.();
@@ -248,7 +249,7 @@ export function ProductForm({
           </span>
         )}
       </div>
-    </form>
+    </ActionForm>
   );
 }
 
@@ -258,7 +259,7 @@ export function DeleteProductButton({ id }: { id: string }) {
   const [state, action] = useActionState(deleteProduct, EMPTY);
 
   return (
-    <form
+    <ActionForm
       action={action}
       onSubmit={(event) => {
         if (!window.confirm(t('confirmDelete'))) event.preventDefault();
@@ -269,6 +270,6 @@ export function DeleteProductButton({ id }: { id: string }) {
         <Trash2 className="size-3.5" aria-hidden="true" />
       </Button>
       <ActionError state={state} />
-    </form>
+    </ActionForm>
   );
 }

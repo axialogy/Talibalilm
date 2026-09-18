@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Gift, Lock, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionForm } from '@/components/ui/action-form';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { PayPalButton } from '@/components/checkout/PayPalButton';
 import { claimFreeCourse, redeemOfficeCode, type PayState } from '@/app/actions/pay';
@@ -68,7 +69,7 @@ export function PaymentForms({
   // asking the student to settle a bill of zero. One button, and it is done.
   if (free) {
     return (
-      <form action={freeAction}>
+      <ActionForm action={freeAction}>
         <SubmitButton>
           <Gift className="size-4" aria-hidden="true" />
           {t('claimFree')}
@@ -79,7 +80,7 @@ export function PaymentForms({
             {t(freeError)}
           </p>
         )}
-      </form>
+      </ActionForm>
     );
   }
 
@@ -107,7 +108,7 @@ export function PaymentForms({
         </h2>
         <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">{t('payOfficeBody')}</p>
 
-        <form action={codeAction} className="mt-4 flex flex-wrap items-end gap-3">
+        <ActionForm action={codeAction} className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[200px] flex-1">
             <span className="mb-1.5 block text-[13px] font-medium text-ink">
               {t('officeCodeLabel')}
@@ -124,7 +125,7 @@ export function PaymentForms({
           <SubmitButton variant="outline" size="md" block={false}>
             {t('officeCodeApply')}
           </SubmitButton>
-        </form>
+        </ActionForm>
 
         {codeError && (
           <p role="alert" className="mt-3 text-[12px] text-red-600">

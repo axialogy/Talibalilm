@@ -12,6 +12,7 @@ import { SubmitButton } from '@/components/auth/SubmitButton';
 import { deleteEvent, saveEvent, setEventStatus, uploadEventImage } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { EventView } from '@/lib/data/site';
+import { ActionForm } from '@/components/ui/action-form';
 
 /**
  * The state before anything has been submitted.
@@ -138,7 +139,7 @@ function EventForm({ event, onDone }: { event?: EventView; onDone?: () => void }
   }, [state.ok, onDone]);
 
   return (
-    <form
+    <ActionForm
       action={action}
       className="space-y-3 rounded-[var(--radius-card)] border border-line bg-surface/40 p-5"
     >
@@ -203,7 +204,7 @@ function EventForm({ event, onDone }: { event?: EventView; onDone?: () => void }
           </Button>
         )}
       </div>
-    </form>
+    </ActionForm>
   );
 }
 

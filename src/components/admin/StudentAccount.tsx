@@ -14,6 +14,7 @@ import {
   updateStudent,
 } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -107,7 +108,7 @@ export function StudentAccount({
         <ActionError state={approvalState} />
       </div>
 
-      <form
+      <ActionForm
         action={save}
         className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
       >
@@ -214,7 +215,7 @@ export function StudentAccount({
         </div>
 
         <p className="text-[11px] leading-relaxed text-ink-muted">{t('studentEmailNote')}</p>
-      </form>
+      </ActionForm>
 
       {/*
         A registration nobody has opened yet.

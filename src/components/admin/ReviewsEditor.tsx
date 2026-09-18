@@ -12,6 +12,7 @@ import { deleteReview, saveReview, setReviewStatus } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { ReviewView } from '@/lib/data/site';
 import { cn } from '@/lib/utils';
+import { ActionForm } from '@/components/ui/action-form';
 
 /** `ok` means "the save succeeded", so nothing has succeeded yet. */
 const IDLE: AdminState = { ok: false };
@@ -111,7 +112,7 @@ function ReviewForm({ review, onDone }: { review?: ReviewView; onDone?: () => vo
   }, [state.ok, onDone]);
 
   return (
-    <form
+    <ActionForm
       action={action}
       className="space-y-3 rounded-[var(--radius-card)] border border-line bg-surface/40 p-5"
     >
@@ -172,7 +173,7 @@ function ReviewForm({ review, onDone }: { review?: ReviewView; onDone?: () => vo
           </Button>
         )}
       </div>
-    </form>
+    </ActionForm>
   );
 }
 

@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { FormMessage } from '@/components/auth/AuthCard';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { register, type ActionState } from '@/app/actions/auth';
@@ -15,7 +16,7 @@ export function RegisterForm() {
   const [state, action] = useActionState(register, EMPTY);
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <ActionForm action={action} className="space-y-4" noValidate>
       {state.message && <FormMessage tone="error">{state.message}</FormMessage>}
 
       <Field
@@ -82,6 +83,6 @@ export function RegisterForm() {
       </div>
 
       <SubmitButton>{t('submitRegister')}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
