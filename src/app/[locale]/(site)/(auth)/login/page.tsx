@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Link } from '@/i18n/navigation';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { requireLocale } from '@/i18n/routing';
 
 export async function generateMetadata({
   params,
@@ -10,6 +11,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  requireLocale(locale);
   const t = await getTranslations({ locale, namespace: 'auth' });
   return { title: t('loginTitle'), robots: { index: false, follow: false } };
 }
@@ -22,6 +24,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; reset?: string; error?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const { next: rawNext, reset, error } = await searchParams;

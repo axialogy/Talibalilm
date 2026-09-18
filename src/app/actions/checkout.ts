@@ -150,17 +150,43 @@ export async function chooseCursusYear(formData: FormData): Promise<void> {
   });
 }
 
-export async function applyCoupon(formData: FormData): Promise<void> {
-  const raw = z.string().max(32).safeParse(formData.get('code'));
+export interface CouponState {
+  ok: boolean;
+  /** Resolved by the form through next-intl. */
+  error?: 'rateLimited' | 'invalid';
+}
 
-  // The payment step reads the stored code back — read-only — to show what it
-  // takes off, which makes applying one the way to probe for codes. The read
-  // itself never spends anything; this cap is what keeps guessing slow.
+/**
+ * Store a code, or say why not.
+ *
+ * The payment step reads the stored code back — read-only — to show what it
+ * takes off, which makes applying one the way to probe for codes. The read
+ * itself never spends anything; this cap is what keeps guessing slow. It says
+ * so out loud now: returning nothing left the form looking like it had worked.
+ */
+/**
+ * How many payments.
+ *
+ * Only the choice is stored — the split is computed from the priced total when
+ * the order opens, so a hand-posted "3" cannot name an amount.
+ */
+export async function chooseInstallments(formData: FormData): Promise<void> {
+  const parsed = z.coerce.number().int().min(1).max(3).safeParse(formData.get('installments'));
+  if (!parsed.success) return;
+
+  const selection = await readSelection();
+  await writeSelection({ ...selection, installments: parsed.data });
+}
+
+export async function applyCoupon(_previous: CouponState, formData: FormData): Promise<CouponState> {
+  const raw = z.string().max(32).safeParse(formData.get('code'));
+  if (!raw.success) return { ok: false, error: 'invalid' };
+
   const { ok } = await rateLimit(clientKey(await headers(), 'coupon-apply'), {
     limit: 12,
     windowMs: 15 * 60 * 1000,
   });
-  if (!ok) return;
+  if (!ok) return { ok: false, error: 'rateLimited' };
 
   const selection = await readSelection();
 
@@ -168,8 +194,10 @@ export async function applyCoupon(formData: FormData): Promise<void> {
   // order opens; this only decides what the payment screen shows.
   await writeSelection({
     ...selection,
-    couponCode: raw.success && raw.data.trim() !== '' ? raw.data.trim().toUpperCase() : null,
+    couponCode: raw.data.trim() !== '' ? raw.data.trim().toUpperCase() : null,
   });
+
+  return { ok: true };
 }
 
 export async function resetCheckout(): Promise<void> {

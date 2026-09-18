@@ -41,10 +41,14 @@ export interface OrderSummary {
   statusReason: string;
   createdAt: string;
   paidAt: string | null;
+  /** paypal or card on a PayPal payment; null for the desk and free. */
+  paymentMethod: string | null;
 }
 
 export interface OrderListOptions {
   status?: OrderStatus;
+  /** How the money arrived: paypal, card, office or free. */
+  method?: 'paypal' | 'card' | 'office' | 'free';
   /** ISO date; orders created on or after midnight of this day. */
   since?: string;
   limit?: number;
@@ -57,13 +61,23 @@ export async function listOrders(options: OrderListOptions = {}): Promise<OrderS
   let query = supabase
     .from('orders')
     .select(
-      'id, user_id, status, route, delivery, total_cents, currency, status_reason, created_at, paid_at',
+      'id, user_id, status, route, delivery, total_cents, currency, status_reason, created_at, paid_at, payment_method',
     )
     .order('created_at', { ascending: false })
     .limit(options.limit ?? 100);
 
   if (options.status) query = query.eq('status', options.status);
   if (options.since) query = query.gte('created_at', `${options.since}T00:00:00Z`);
+
+  // The method is two columns: the route says which flow, `payment_method`
+  // says whether PayPal's card or the balance funded it.
+  if (options.method === 'card') {
+    query = query.eq('route', 'paypal').eq('payment_method', 'card');
+  } else if (options.method === 'paypal') {
+    query = query.eq('route', 'paypal').neq('payment_method', 'card');
+  } else if (options.method) {
+    query = query.eq('route', options.method);
+  }
 
   const { data } = await query;
   const rows = (data ?? []).map((o) => ({
@@ -77,6 +91,7 @@ export async function listOrders(options: OrderListOptions = {}): Promise<OrderS
     statusReason: o.status_reason,
     createdAt: o.created_at,
     paidAt: o.paid_at,
+    paymentMethod: o.payment_method,
   }));
   return attachEmails(supabase, rows);
 }
@@ -92,7 +107,16 @@ export interface OrderDetail extends OrderSummary {
   subtotalCents: number;
   discountCents: number;
   /** What this order actually opened, which is the question an office asks. */
-  granted: { label: string; expiresAt: string; status: string }[];
+  granted: {
+    id: string;
+    label: string;
+    expiresAt: string;
+    status: string;
+    scope: string;
+    courseId: string | null;
+    cursusId: string | null;
+    yearIndex: number;
+  }[];
   items: {
     productId: string;
     title: string;
@@ -103,6 +127,8 @@ export interface OrderDetail extends OrderSummary {
     durationDays: number;
     isFree: boolean;
   }[];
+  /** Swaps made after the sale, newest first. */
+  corrections: { fromLabel: string; toLabel: string; reason: string; at: string }[];
 }
 
 export async function getOrder(orderId: string): Promise<OrderDetail | null> {
@@ -114,7 +140,7 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     .select(
       `id, user_id, status, route, delivery, total_cents, currency, status_reason,
        created_at, paid_at, provider_order_id, provider_capture_id, coupon_id, pack_id,
-       subtotal_cents, discount_cents,
+       subtotal_cents, discount_cents, payment_method,
        order_items ( product_id, title, schedule_label, kind, delivery, unit_price_cents,
                      duration_days, is_free )`,
     )
@@ -134,7 +160,9 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
       // if a grant was later revoked or wound back by a refund.
       supabase
         .from('entitlements')
-        .select('scope, year_index, status, expires_at, courses ( title ), cursus ( title )')
+        .select(
+          'id, scope, course_id, cursus_id, year_index, status, expires_at, courses ( title ), cursus ( title )',
+        )
         .eq('source_order_id', orderId),
       o.coupon_id
         ? supabase.from('coupons').select('code').eq('id', o.coupon_id).maybeSingle()
@@ -144,6 +172,12 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
         : Promise.resolve({ data: null }),
     ],
   );
+
+  const { data: corrections } = await supabase
+    .from('order_corrections')
+    .select('from_label, to_label, reason, created_at')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: false });
 
   return {
     id: o.id,
@@ -157,6 +191,7 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     statusReason: o.status_reason,
     createdAt: o.created_at,
     paidAt: o.paid_at,
+    paymentMethod: o.payment_method,
     providerOrderId: o.provider_order_id,
     providerCaptureId: o.provider_capture_id,
     couponId: o.coupon_id,
@@ -166,10 +201,21 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     subtotalCents: o.subtotal_cents,
     discountCents: o.discount_cents,
     granted: (entitlements ?? []).map((e) => ({
+      id: e.id,
       label:
         e.courses?.title ?? (e.cursus?.title ? `${e.cursus.title} — ${e.year_index}` : 'Institut'),
       expiresAt: e.expires_at,
       status: e.status,
+      scope: e.scope,
+      courseId: e.course_id,
+      cursusId: e.cursus_id,
+      yearIndex: e.year_index,
+    })),
+    corrections: (corrections ?? []).map((c) => ({
+      fromLabel: c.from_label,
+      toLabel: c.to_label,
+      reason: c.reason,
+      at: c.created_at,
     })),
     items: (o.order_items ?? []).map((i) => ({
       productId: i.product_id,
@@ -225,6 +271,8 @@ export interface StudentAccountDetail {
   department: string;
   /** R2 key of the photo; the page signs it before display. */
   avatarKey: string | null;
+  /** May this account open an order? Null means still waiting. */
+  approvedAt: string | null;
 }
 
 export async function listStudents(search?: string): Promise<StudentSummary[]> {
@@ -318,7 +366,7 @@ export async function getStudent(userId: string): Promise<{
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      `id, full_name, role, created_at, anonymised_at, reviewed_at, phone, locale,
+      `id, full_name, role, created_at, anonymised_at, reviewed_at, approved_at, phone, locale,
        phone_landline, civility, first_name, last_name, birth_date,
        address, postal_code, city, department, avatar_key`,
     )
@@ -359,6 +407,7 @@ export async function getStudent(userId: string): Promise<{
       city: profile.city,
       department: profile.department,
       avatarKey: profile.avatar_key,
+      approvedAt: profile.approved_at,
     },
     student: {
       userId: profile.id,
@@ -460,14 +509,20 @@ export interface StudentPayment {
   userId: string;
   email: string | null;
   fullName: string;
-  /** Settled, in cents. Refunds are not deducted — they show as their own row. */
+  /**
+   * What the paid orders actually collected. A 100 % code collected nothing,
+   * and a plan has collected only the installments paid so far — neither is
+   * the order's total.
+   */
   paidCents: number;
-  /** Opened and not settled: a checkout left half-way, or an instalment due. */
+  /** Still owed: unpaid orders, plus the balance on any plan. */
   outstandingCents: number;
   currency: string;
   orders: number;
   lastPaidAt: string | null;
   standing: PaymentStanding;
+  /** What was paid for, from the order items' snapshot. */
+  items: string[];
 }
 
 /**
@@ -494,12 +549,14 @@ export async function studentPayments(): Promise<StudentPayment[]> {
 
   const { data: orders } = await supabase
     .from('orders')
-    .select('user_id, status, total_cents, currency, paid_at')
+    .select('id, user_id, status, total_cents, paid_cents, currency, paid_at')
     .in('status', ['paid', 'pending'])
     .order('created_at', { ascending: false })
     .limit(2000);
 
   const byUser = new Map<string, StudentPayment>();
+  const orderIdsByUser = new Map<string, string[]>();
+
   for (const order of orders ?? []) {
     const current = byUser.get(order.user_id) ?? {
       userId: order.user_id,
@@ -511,28 +568,66 @@ export async function studentPayments(): Promise<StudentPayment[]> {
       orders: 0,
       lastPaidAt: null,
       standing: 'pending' as PaymentStanding,
+      items: [],
     };
 
     current.orders += 1;
+
     if (order.status === 'paid') {
-      current.paidCents += order.total_cents;
+      // What was COLLECTED, not what was charged: a plan has a balance, and an
+      // order settled by a 100 % code collected nothing.
+      current.paidCents += order.paid_cents;
       // The list is newest first, so the first settled row seen is the latest.
       current.lastPaidAt ??= order.paid_at;
+      orderIdsByUser.set(order.user_id, [...(orderIdsByUser.get(order.user_id) ?? []), order.id]);
     } else {
       current.outstandingCents += order.total_cents;
     }
+
+    // A plan's balance is still owed even though the order reads as paid.
+    if (order.status === 'paid' && order.paid_cents < order.total_cents) {
+      current.outstandingCents += order.total_cents - order.paid_cents;
+    }
+
     byUser.set(order.user_id, current);
   }
 
-  const rows = [...byUser.values()].map((row) => ({
-    ...row,
-    standing:
-      row.paidCents > 0 && row.outstandingCents > 0
-        ? ('partial' as const)
-        : row.paidCents > 0
-          ? ('paid' as const)
-          : ('pending' as const),
-  }));
+  // What each student actually bought, from the snapshot on the order items.
+  const paidOrderIds = [...orderIdsByUser.values()].flat();
+  if (paidOrderIds.length > 0) {
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('order_id, title, kind, year_index')
+      .in('order_id', paidOrderIds);
+
+    for (const [userId, ids] of orderIdsByUser) {
+      const row = byUser.get(userId);
+      if (!row) continue;
+      for (const item of (items ?? []).filter((i) => ids.includes(i.order_id))) {
+        const label =
+          item.kind === 'cursus' && item.year_index > 0
+            ? `${item.title} — Année ${item.year_index}`
+            : item.title;
+        if (label && !row.items.includes(label)) row.items.push(label);
+      }
+    }
+  }
+
+  // The standing comes from what the ORDERS are, not from a total: an order
+  // settled by a code collected 0 € and is still paid.
+  const rows = [...byUser.values()].map((row) => {
+    const anyPaid = (orders ?? []).some(
+      (order) => order.user_id === row.userId && order.status === 'paid',
+    );
+    return {
+      ...row,
+      standing: anyPaid
+        ? row.outstandingCents > 0
+          ? ('partial' as const)
+          : ('paid' as const)
+        : ('pending' as const),
+    };
+  });
 
   if (rows.length === 0) return [];
 

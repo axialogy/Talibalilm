@@ -78,6 +78,15 @@ const courseSchema = z.object({
   department_body: z.string().max(4000).default(''),
   requirements: z.string().max(4000).default('').transform(parseBullets),
   highlights: z.string().max(4000).default('').transform(parseHighlights),
+
+  /**
+   * What the footer's save meant: keep it a draft, or publish it.
+   *
+   * One action rather than two, so the module and its status cannot end up
+   * half-applied — a saved draft that was meant to be published is a module
+   * nobody can find, and the office has no way to tell it happened.
+   */
+  intent: z.enum(['draft', 'publish']).optional(),
 });
 
 export async function createCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
@@ -115,6 +124,67 @@ export async function createCourse(_prev: AdminState, formData: FormData): Promi
   redirect(`/admin/courses/${data.id}`);
 }
 
+export interface FillState {
+  ok: boolean;
+  error?: string;
+  /** What to write into the form; the office reviews it before saving. */
+  title?: string;
+  content?: string;
+  videoId?: string;
+}
+
+/**
+ * Fill a lesson from its video link.
+ *
+ * The office pastes a link; this asks the video's own metadata what it is
+ * called and writes the title, the type and a content line. YouTube's oEmbed
+ * endpoint is free, needs no key, and returns the title and the channel —
+ * Drive publishes no such endpoint, so there the link's own filename is the
+ * best there is. Nothing is saved here: the values go back to the form, where
+ * the office can change them before pressing save.
+ */
+export async function fillLessonFromVideo(url: string): Promise<FillState> {
+  await requireStaff();
+
+  const parsed = z.string().trim().min(4).max(500).safeParse(url);
+  if (!parsed.success) return { ok: false, error: 'videoUnrecognised' };
+
+  const ref = parseVideoRef(parsed.data);
+  if (ref.provider === 'none' || !ref.id) return { ok: false, error: 'videoUnrecognised' };
+
+  let title: string | null = null;
+  let author: string | null = null;
+
+  if (ref.provider === 'youtube') {
+    try {
+      const response = await fetch(
+        `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(parsed.data)}`,
+        { cache: 'no-store' },
+      );
+      if (response.ok) {
+        const body = (await response.json()) as { title?: string; author_name?: string };
+        title = body.title?.trim() || null;
+        author = body.author_name?.trim() || null;
+      }
+    } catch (cause) {
+      // The link is still usable; only the automatic title is lost.
+      console.error('[admin] oEmbed lookup failed:', cause instanceof Error ? cause.message : cause);
+    }
+  } else if (ref.provider === 'drive') {
+    const fromUrl = parsed.data.match(/\/([^/?#]+?)(?:\.(?:mp4|webm|mov))?(?:[?#]|$)/);
+    title = fromUrl?.[1] ? decodeURIComponent(fromUrl[1]).replace(/[_-]+/g, ' ') : null;
+  }
+
+  const lines = [title, author ? `${author}` : null, parsed.data].filter(Boolean) as string[];
+
+  return {
+    ok: true,
+    ...(title ? { title } : {}),
+    content: lines.join('\n'),
+    videoId: parsed.data,
+  };
+}
+
 export async function updateCourse(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const parsed = courseSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -132,11 +202,17 @@ export async function updateCourse(_prev: AdminState, formData: FormData): Promi
 
   // `slug` is deliberately absent from the schema: the address is settled at
   // creation and kept, so renaming a course does not break the links to it.
-  const { id, highlights, ...fields } = parsed.data;
+  const { id, highlights, intent, ...fields } = parsed.data;
   const supabase = await client();
   const { error } = await supabase
     .from('courses')
-    .update({ ...fields, highlights: highlightsToJson(highlights) })
+    .update({
+      ...fields,
+      highlights: highlightsToJson(highlights),
+      // The footer's choice travels with the save when it made one.
+      ...(intent ? { status: intent === 'publish' ? 'published' : 'draft' } : {}),
+      ...(intent === 'publish' ? { published_at: new Date().toISOString() } : {}),
+    })
     .eq('id', id);
   if (error)
     return {

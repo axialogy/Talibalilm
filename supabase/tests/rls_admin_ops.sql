@@ -298,6 +298,195 @@ begin
     'and a webhook retry racing the return route is refused — sent at most once');
 end $$;
 
+-- --- who may buy: the approval gate ----------------------------------------
+
+do $$
+declare
+  refused boolean := false;
+  returned text;
+  audit_count integer;
+begin
+  raise notice 'an account is let in deliberately';
+
+  -- A fresh registration is pending. The migration approved everyone who
+  -- existed before the gate came back, so this is set directly.
+  update public.profiles set approved_at = null
+   where id = 'a0000000-0000-4000-8000-000000000001';
+
+  perform public.assert(
+    not public.is_approved('a0000000-0000-4000-8000-000000000001'),
+    'a pending student may not open an order');
+
+  perform public.assert(
+    public.is_approved('a0000000-0000-4000-8000-000000000002'),
+    'staff are never pending — a promotion must not put somebody in a queue');
+
+  -- A student cannot approve themselves, or anybody else.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    perform public.admin_set_approval('a0000000-0000-4000-8000-000000000001', true);
+  exception when insufficient_privilege then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'and cannot approve themselves');
+
+  -- The admin can.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  returned := public.admin_set_approval('a0000000-0000-4000-8000-000000000001', true);
+  reset role;
+
+  perform public.assert(returned = 'student@test.fr',
+    'approving returns the address to write to, and only when something changed');
+  perform public.assert(
+    public.is_approved('a0000000-0000-4000-8000-000000000001'),
+    'and the account may now buy');
+
+  -- Idempotent: a second press is not an event, so nothing is returned and no
+  -- second message can be sent.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  returned := public.admin_set_approval('a0000000-0000-4000-8000-000000000001', true);
+  reset role;
+  perform public.assert(returned is null,
+    'approving an approved account is a no-op rather than a second welcome');
+
+  select count(*) into audit_count from public.admin_audit
+   where action = 'student.approve' and target_id = 'a0000000-0000-4000-8000-000000000001';
+  perform public.assert(audit_count = 1,
+    'and exactly one audit row names who let them in');
+
+  -- Putting them back in the queue is the same decision, the other way.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  returned := public.admin_set_approval('a0000000-0000-4000-8000-000000000001', false);
+  reset role;
+  perform public.assert(
+    returned = 'student@test.fr'
+      and not public.is_approved('a0000000-0000-4000-8000-000000000001'),
+    'an admin can put an account back in the queue');
+
+  -- Staff are not a student account: the RPC refuses rather than quietly
+  -- clearing a colleague's approval.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  begin
+    perform public.admin_set_approval('a0000000-0000-4000-8000-000000000002', false);
+  exception when check_violation then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'and a staff account is not something to approve');
+
+  -- The queue count is a staff answer, and zero for anyone else.
+  call auth.login_as('a0000000-0000-4000-8000-000000000002');
+  perform public.assert(public.pending_student_count() = 1,
+    'the office sees exactly who is waiting');
+  reset role;
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  perform public.assert(public.pending_student_count() = 0,
+    'and a student asking gets nothing');
+  reset role;
+
+  -- Leave the fixture as the rest of the suite expects it.
+  update public.profiles set approved_at = now()
+   where id = 'a0000000-0000-4000-8000-000000000001';
+end $$;
+
+-- --- correcting a wrong choice ---------------------------------------------
+
+do $$
+declare
+  refused boolean := false;
+  granted_id uuid;
+  old_id uuid;
+begin
+  raise notice 'a wrong module can be swapped, and the money is left alone';
+
+  -- A second module to correct TO, and an order that opened the first.
+  insert into public.courses (id, slug, title, status, published_at) values
+    ('c0000000-0000-4000-8000-000000000002', 'aqida', 'Aqida', 'published', now());
+
+  insert into public.orders
+    (id, user_id, route, delivery, subtotal_cents, total_cents, status, paid_at)
+  values ('33330000-0000-4000-8000-000000000011',
+          'a0000000-0000-4000-8000-000000000001', 'paypal', 'online',
+          18000, 18000, 'paid', now());
+
+  insert into public.entitlements
+    (user_id, scope, course_id, delivery, expires_at, source_order_id, note)
+  values ('a0000000-0000-4000-8000-000000000001', 'course',
+          'c0000000-0000-4000-8000-000000000001', 'online',
+          now() + interval '300 days', '33330000-0000-4000-8000-000000000011', 'achat')
+  returning id into old_id;
+
+  -- A student cannot correct anything.
+  call auth.login_as('a0000000-0000-4000-8000-000000000001');
+  begin
+    perform public.admin_correct_order(
+      '33330000-0000-4000-8000-000000000011', old_id,
+      'c0000000-0000-4000-8000-000000000002', null, null, 'je préfère');
+  exception when insufficient_privilege then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'a student cannot correct their own order');
+
+  -- The admin can.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  granted_id := public.admin_correct_order(
+    '33330000-0000-4000-8000-000000000011', old_id,
+    'c0000000-0000-4000-8000-000000000002', null, null, 'mauvais module choisi');
+  reset role;
+
+  perform public.assert(granted_id is not null, 'the replacement is granted');
+
+  perform public.assert(
+    (select status from public.entitlements where id = old_id) = 'cancelled',
+    'and the wrong one is cancelled rather than deleted — history stands');
+
+  perform public.assert(
+    public.has_course_access('c0000000-0000-4000-8000-000000000002',
+                             'a0000000-0000-4000-8000-000000000001'),
+    'the student can now read the right module');
+  perform public.assert(
+    not public.has_course_access('c0000000-0000-4000-8000-000000000001',
+                                 'a0000000-0000-4000-8000-000000000001'),
+    'and no longer the wrong one');
+
+  perform public.assert(
+    (select expires_at from public.entitlements where id = granted_id)
+      <= now() + interval '301 days',
+    'the replacement keeps the REMAINING days, not a fresh term');
+
+  perform public.assert(
+    (select source_order_id from public.entitlements where id = granted_id)
+      = '33330000-0000-4000-8000-000000000011',
+    'and still points at the order that paid for it');
+
+  perform public.assert(
+    (select count(*) from public.order_corrections
+      where order_id = '33330000-0000-4000-8000-000000000011') = 1,
+    'the correction is recorded on the order');
+
+  -- A reason is required, and an entitlement this order did not buy is refused.
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  begin
+    perform public.admin_correct_order(
+      '33330000-0000-4000-8000-000000000011', granted_id,
+      'c0000000-0000-4000-8000-000000000001', null, null, '   ');
+  exception when check_violation then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'a correction without a reason is refused');
+
+  call auth.login_as('a0000000-0000-4000-8000-000000000003');
+  refused := false;
+  begin
+    perform public.admin_correct_order(
+      '33330000-0000-4000-8000-000000000011', '11111111-1111-1111-1111-111111111111',
+      'c0000000-0000-4000-8000-000000000001', null, null, 'pas la mienne');
+  exception when check_violation then refused := true;
+  end;
+  reset role;
+  perform public.assert(refused, 'and an entitlement from another order is refused');
+end $$;
+
 drop function public.assert(boolean, text);
 
 \echo ''

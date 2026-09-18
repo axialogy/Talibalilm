@@ -139,6 +139,42 @@ export async function notifyStaff(payload: PushPayload): Promise<void> {
   }
 }
 
+/**
+ * Buzz one person's devices.
+ *
+ * The same rules as `notifyStaff`: optional, best-effort, never allowed to fail
+ * the thing it announces. The row is read through the admin client for the
+ * same reason — the caller is a server action acting on somebody else's
+ * behalf, so there is no session of theirs to read their rows through.
+ */
+export async function notifyUser(userId: string, payload: PushPayload): Promise<void> {
+  const config = vapid();
+  if (!config) {
+    console.warn('[push] VAPID keys not set — would have sent:', payload.title);
+    return;
+  }
+  if (!supabaseConfigured) return;
+
+  try {
+    const admin = createAdminClient();
+    const { data: rows } = await admin
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth')
+      .eq('user_id', userId);
+    if (!rows || rows.length === 0) return;
+
+    const results = await Promise.all(rows.map((row) => sendOne(config, row as Row, payload)));
+    const dead = rows.filter((_, i) => results[i]).map((row) => row.id);
+    if (dead.length > 0) {
+      await admin.from('push_subscriptions').delete().in('id', dead);
+    }
+  } catch (cause) {
+    reportError('push.notifyUser', cause, {
+      note: 'the thing being announced still happened; only the notification failed',
+    });
+  }
+}
+
 /** The one alert the school asked for: somebody has registered. */
 export async function notifyStaffOfRegistration(input: {
   fullName: string;

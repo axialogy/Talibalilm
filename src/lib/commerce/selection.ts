@@ -28,6 +28,12 @@ export const selectionSchema = z.object({
    */
   courseId: z.string().uuid().nullable().default(null),
   couponCode: z.string().max(32).nullable().default(null),
+  /**
+   * How many payments the student is spreading this over. 1 is the ordinary
+   * single payment; 3 is the plan the school offers. The split itself is
+   * computed server-side from the priced total, never from here.
+   */
+  installments: z.number().int().min(1).max(3).default(1),
 });
 
 export type Selection = z.infer<typeof selectionSchema>;
@@ -40,6 +46,7 @@ export const EMPTY_SELECTION: Selection = {
   productIds: [],
   courseId: null,
   couponCode: null,
+  installments: 1,
 };
 
 const COOKIE = 'tal_checkout';

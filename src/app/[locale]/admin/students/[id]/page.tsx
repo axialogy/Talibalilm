@@ -11,6 +11,7 @@ import { getStudent } from '@/lib/data/admin';
 import { avatarUrl } from '@/lib/data/profile';
 import { currentViewer } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * One student: who they are, what access they hold, and the controls to open
@@ -23,6 +24,7 @@ export default async function AdminStudentDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');
@@ -108,8 +110,8 @@ export default async function AdminStudentDetailPage({
               phone={account.phone}
               phoneLandline={account.phoneLandline}
               locale={account.locale}
-              hasOrders={account.hasOrders}
               reviewed={student.reviewedAt !== null}
+              approved={account.approvedAt !== null}
               details={{
                 civility: account.civility,
                 firstName: account.firstName,

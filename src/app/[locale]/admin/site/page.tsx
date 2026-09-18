@@ -6,6 +6,7 @@ import { EventsEditor } from '@/components/admin/EventsEditor';
 import { ReviewsEditor } from '@/components/admin/ReviewsEditor';
 import { MessagesInbox } from '@/components/admin/MessagesInbox';
 import { requireStaff } from '@/lib/auth/guards';
+import { requireLocale } from '@/i18n/routing';
 import {
   getSiteSettings,
   listAllEvents,
@@ -29,6 +30,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function AdminSitePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireStaff();

@@ -14,10 +14,11 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { PushToggle } from '@/components/admin/PushToggle';
+import { NotificationsToggle } from '@/components/notifications/NotificationsToggle';
 import { formatBytes } from '@/lib/media/video';
 import { createClient } from '@/lib/supabase/server';
 import { currentViewer } from '@/lib/auth/guards';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * The overview.
@@ -37,6 +38,7 @@ export default async function AdminOverviewPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');
@@ -188,7 +190,7 @@ export default async function AdminOverviewPage({
           screen: it is per-device, so it has to be somewhere the office lands
           on each new phone or laptop without going looking for it. */}
       <section className="mt-10">
-        <PushToggle />
+        <NotificationsToggle audience="admin" />
       </section>
 
       {/* The numbers. */}

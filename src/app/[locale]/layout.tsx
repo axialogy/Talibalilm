@@ -2,7 +2,7 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { routing, directionOf, type Locale } from '@/i18n/routing';
+import { directionOf, requireLocale, routing, type Locale } from '@/i18n/routing';
 import { siteUrl } from '@/lib/env';
 import '../globals.css';
 
@@ -16,6 +16,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  requireLocale(locale);
   if (!hasLocale(routing.locales, locale)) notFound();
 
   const t = await getTranslations({ locale, namespace: 'meta' });
@@ -59,6 +60,7 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   if (!hasLocale(routing.locales, locale)) notFound();
 
   // Opts this subtree into static rendering; without it every page under

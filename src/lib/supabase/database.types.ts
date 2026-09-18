@@ -52,6 +52,7 @@ export interface Database {
           locale: AppLocale;
           role: UserRole;
           reviewed_at: string | null;
+          approved_at: string | null;
           anonymised_at: string | null;
           created_at: string;
           updated_at: string;
@@ -72,6 +73,7 @@ export interface Database {
           avatar_key?: string | null;
           locale?: AppLocale;
           role?: UserRole;
+          approved_at?: string | null;
           anonymised_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -755,6 +757,9 @@ export interface Database {
           coupon_released_at: string | null;
           pack_released_at: string | null;
           status_reason: string;
+          plan_size: number;
+          paid_cents: number;
+          payment_method: string | null;
           confirmation_sent_at: string | null;
           created_at: string;
           updated_at: string;
@@ -774,6 +779,9 @@ export interface Database {
           coupon_id?: string | null;
           pack_id?: string | null;
           provider_order_id?: string | null;
+          plan_size?: number;
+          paid_cents?: number;
+          payment_method?: string | null;
         };
         Update: Partial<{
           status: OrderStatus;
@@ -782,8 +790,111 @@ export interface Database {
           provider_capture_id: string | null;
           paid_at: string | null;
           confirmation_sent_at: string | null;
+          paid_cents: number;
+          payment_method: string | null;
         }>;
         Relationships: [];
+      };
+      order_corrections: {
+        Row: {
+          id: string;
+          order_id: string;
+          from_entitlement_id: string | null;
+          from_label: string;
+          to_label: string;
+          to_course_id: string | null;
+          to_cursus_id: string | null;
+          to_year_index: number | null;
+          to_delivery: DeliveryMode;
+          reason: string;
+          actor_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          from_entitlement_id?: string | null;
+          from_label?: string;
+          to_label?: string;
+          to_course_id?: string | null;
+          to_cursus_id?: string | null;
+          to_year_index?: number | null;
+          to_delivery: DeliveryMode;
+          reason: string;
+          actor_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{ reason: string }>;
+        Relationships: [];
+      };
+      admin_security: {
+        Row: {
+          user_id: string;
+          pin_hash: string;
+          pin_salt: string;
+          failed_attempts: number;
+          locked_until: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          pin_hash: string;
+          pin_salt: string;
+          failed_attempts?: number;
+          locked_until?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          pin_hash: string;
+          pin_salt: string;
+          failed_attempts: number;
+          locked_until: string | null;
+          updated_at: string;
+        }>;
+        Relationships: [];
+      };
+      installments: {
+        Row: {
+          id: string;
+          order_id: string;
+          sequence: number;
+          amount_cents: number;
+          due_at: string;
+          status: 'pending' | 'paid' | 'cancelled';
+          provider_order_id: string | null;
+          provider_capture_id: string | null;
+          paid_at: string | null;
+          coupon_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          sequence: number;
+          amount_cents: number;
+          due_at: string;
+          status?: 'pending' | 'paid' | 'cancelled';
+          provider_order_id?: string | null;
+          provider_capture_id?: string | null;
+          paid_at?: string | null;
+          coupon_id?: string | null;
+        };
+        Update: Partial<{
+          status: 'pending' | 'paid' | 'cancelled';
+          provider_order_id: string | null;
+          provider_capture_id: string | null;
+          paid_at: string | null;
+          coupon_id: string | null;
+        }>;
+        Relationships: [
+          {
+            foreignKeyName: 'installments_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       order_items: {
         Row: {
@@ -1114,6 +1225,48 @@ export interface Database {
       unreviewed_student_count: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      is_approved: {
+        Args: { uid?: string };
+        Returns: boolean;
+      };
+      pending_student_count: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      admin_set_approval: {
+        Args: { uid: string; approve: boolean };
+        Returns: string | null;
+      };
+      end_stale_live_sessions: {
+        Args: { max_hours?: number };
+        Returns: number;
+      };
+      unconfirmed_users: {
+        Args: { older_than: string };
+        Returns: { id: string; email: string; created_at: string }[];
+      };
+      admin_correct_order: {
+        Args: {
+          target_order: string;
+          old_entitlement: string;
+          new_course: string | null;
+          new_cursus: string | null;
+          new_year: number | null;
+          reason: string;
+        };
+        Returns: string;
+      };
+      claim_due_installment_notices: {
+        Args: Record<string, never>;
+        Returns: {
+          installment_id: string;
+          order_id: string;
+          user_id: string;
+          kind: string;
+          amount_cents: number;
+          due_at: string;
+        }[];
       };
       admin_generate_coupons: {
         Args: {

@@ -408,6 +408,8 @@ model profiles {
   avatar_key       String?
   locale           app_locale         @default(fr)
   role             user_role          @default(student)
+  reviewed_at      DateTime?          @db.Timestamptz(6)
+  approved_at      DateTime?          @db.Timestamptz(6)
   created_at       DateTime           @default(now()) @db.Timestamptz(6)
   updated_at       DateTime           @default(now()) @db.Timestamptz(6)
   coupons          coupons[]

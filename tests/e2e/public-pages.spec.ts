@@ -45,6 +45,16 @@ test.describe('public catalogue', () => {
     const response = await page.goto('/courses/ce-cours-nexiste-pas');
     expect(response?.status()).toBe(404);
   });
+
+  test('an unknown first segment is a 404, never a 500', async ({ page }) => {
+    // A layout does not stop its page: this used to reach the home page with
+    // "wp-admin" as the locale, and `Intl.DateTimeFormat` threw — a 500 for
+    // every probe, for hours. The guard in each page turns it into a 404.
+    for (const path of ['/wp-admin', '/not-a-locale', '/fr_FR']) {
+      const response = await page.goto(path);
+      expect(response?.status()).toBe(404);
+    }
+  });
 });
 
 test.describe('SEO', () => {

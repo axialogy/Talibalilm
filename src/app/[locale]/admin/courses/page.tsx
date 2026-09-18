@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { NewCourseForm } from '@/components/admin/NewCourseForm';
 import { createClient } from '@/lib/supabase/server';
+import { requireLocale } from '@/i18n/routing';
 
 /** Staff see drafts here; the `courses_select_staff` policy is what allows it. */
 export default async function AdminCoursesPage({
@@ -14,6 +15,7 @@ export default async function AdminCoursesPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');

@@ -1,12 +1,13 @@
 'use server';
 
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
-import { getStudentProfile, profileComplete } from '@/lib/data/profile';
+import { getStudentProfile, isApproved, profileComplete } from '@/lib/data/profile';
 import { loadBasket } from '@/lib/commerce/basket';
 import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
 import { clearSelection } from '@/lib/commerce/selection';
@@ -15,6 +16,7 @@ import {
   attachProviderOrder,
   settleFreeOrder,
   settleOrder,
+  settleInstallmentWithCoupon,
   releaseHolds,
   PackExhaustedError,
 } from '@/lib/commerce/orders';
@@ -87,7 +89,7 @@ async function markOrderFailed(orderId: string, reason: string): Promise<void> {
 async function claimCoupon(
   code: string | null,
   subtotalCents: number,
-): Promise<{ id: string; discountCents: number } | null> {
+): Promise<{ id: string; discountCents: number; isOffice: boolean } | null> {
   if (!code) return null;
 
   const supabase = createAdminClient();
@@ -96,13 +98,14 @@ async function claimCoupon(
 
   const { data: coupon } = await supabase
     .from('coupons')
-    .select('id, code, percent_off, amount_off_cents')
+    .select('id, code, percent_off, amount_off_cents, is_office')
     .eq('id', couponId)
     .single();
 
   if (!coupon) return null;
   return {
     id: coupon.id,
+    isOffice: coupon.is_office,
     discountCents: couponDiscount(
       {
         id: coupon.id,
@@ -140,6 +143,10 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
   // caller can churn through those holds.
   if (!(await throttle('checkout-start', 20, user.id))) return { ok: false, error: 'rateLimited' };
 
+  // The account has to be let in before it can order. Browsing and trial
+  // lessons stay open; this is the school deciding who joins, not a paywall.
+  if (!(await isApproved())) return { ok: false, error: 'notApproved' };
+
   // The enrolment details are required before money moves. The wizard only
   // reaches this step once they are saved, but a hand-posted action must not
   // be able to pay on a half-filled profile.
@@ -167,10 +174,15 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
     order = await createPendingOrder({
       userId: user.id,
       delivery: selection.delivery,
-      route: 'paypal',
+      // A desk code is cash the office took, whatever page the student was on
+      // when they typed it: the route says how it was paid, not where.
+      route: coupon?.isOffice ? 'office' : 'paypal',
       quote,
       couponId: coupon?.id ?? null,
       couponDiscountCents: coupon?.discountCents ?? 0,
+      // The plan the student chose. A coupon that zeroes the basket ignores
+      // it — there is nothing to split.
+      planSize: selection.installments,
     });
   } catch (cause) {
     // The order never opened, so nothing will ever release the coupon this
@@ -195,7 +207,8 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
   try {
     const created = await createPayPalOrder({
       config,
-      amountCents: order.totalCents,
+      // On a plan this is the first installment, not the order total.
+      amountCents: order.firstPaymentCents,
       currency: order.currency,
       referenceId: order.id,
       returnUrl: `${base}/api/paypal/return?order=${order.id}`,
@@ -241,13 +254,29 @@ export async function completePayPalCheckout(
   const admin = createAdminClient();
   const { data: order } = await admin
     .from('orders')
-    .select('id, user_id, status')
+    .select('id, user_id, status, plan_size')
     .eq('provider_order_id', parsed.data)
     .maybeSingle();
 
-  if (!order || order.user_id !== user.id) return { ok: false, error: 'payUnexpected' };
+  // Not an order's own PayPal id: it may belong to one installment of a plan,
+  // which the student pays from their space months after the first one.
+  let targetOrderId = order?.id ?? null;
+  if (order && order.user_id !== user.id) return { ok: false, error: 'payUnexpected' };
 
-  if (order.status === 'paid') {
+  if (!targetOrderId) {
+    const { data: installment } = await admin
+      .from('installments')
+      .select('id, order_id, status, orders ( user_id )')
+      .eq('provider_order_id', parsed.data)
+      .maybeSingle();
+
+    const owner = installment?.orders?.user_id ?? null;
+    if (!installment || owner !== user.id) return { ok: false, error: 'payUnexpected' };
+    if (installment.status === 'paid') return { ok: true, orderId: installment.order_id };
+    targetOrderId = installment.order_id;
+  }
+
+  if (order && order.status === 'paid' && order.plan_size === 1) {
     await clearSelection();
     return { ok: true, orderId: order.id };
   }
@@ -258,11 +287,14 @@ export async function completePayPalCheckout(
   try {
     const capture = await capturePayPalOrder(config, parsed.data);
     const settled = await settleOrder({
-      orderId: order.id,
+      orderId: targetOrderId,
       capturedCents: capture.amountCents,
       currency: capture.currency,
       captureId: capture.captureId,
       status: capture.status,
+      // Identifies WHICH installment when the order carries a plan.
+      paypalOrderId: parsed.data,
+      paymentMethod: capture.paymentMethod,
     });
 
     if (!settled.ok) {
@@ -279,7 +311,130 @@ export async function completePayPalCheckout(
   }
 
   await clearSelection();
-  return { ok: true, orderId: order.id };
+  return { ok: true, orderId: targetOrderId };
+}
+
+/**
+ * Pay the next installment of a plan, from the student's own space.
+ *
+ * The amount comes from the installment row, never from the browser: the
+ * client sends an id, and the server decides what that id costs. The same
+ * embedded PayPal flow then captures it — `completePayPalCheckout` finds the
+ * installment by the PayPal order id and settles that one.
+ */
+export async function beginInstallmentPayment(installmentId: string): Promise<BeginPayState> {
+  const user = await requireUser();
+
+  if (!(await throttle('checkout-start', 20, user.id))) return { ok: false, error: 'rateLimited' };
+  if (!(await isApproved())) return { ok: false, error: 'notApproved' };
+
+  const parsed = z.string().uuid().safeParse(installmentId);
+  if (!parsed.success) return { ok: false, error: 'payUnexpected' };
+
+  const admin = createAdminClient();
+  const { data: installment } = await admin
+    .from('installments')
+    .select('id, order_id, sequence, amount_cents, status')
+    .eq('id', parsed.data)
+    .maybeSingle();
+  if (!installment || installment.status !== 'pending') {
+    return { ok: false, error: 'payUnexpected' };
+  }
+
+  const { data: order } = await admin
+    .from('orders')
+    .select('id, user_id, status, currency')
+    .eq('id', installment.order_id)
+    .maybeSingle();
+  // The plan has to be open — the first payment is what grants the course.
+  if (!order || order.user_id !== user.id || order.status !== 'paid') {
+    return { ok: false, error: 'payUnexpected' };
+  }
+
+  const config = await getPayPalConfig();
+  if (!config) return { ok: false, error: 'unavailable' };
+
+  const base = siteUrl();
+  try {
+    const created = await createPayPalOrder({
+      config,
+      amountCents: installment.amount_cents,
+      currency: order.currency,
+      referenceId: order.id,
+      returnUrl: `${base}/api/paypal/return?order=${order.id}`,
+      cancelUrl: `${base}/api/paypal/cancel?order=${order.id}`,
+      description: `Institut Talib Alim — échéance ${installment.sequence}`,
+    });
+
+    await admin
+      .from('installments')
+      .update({ provider_order_id: created.id })
+      .eq('id', installment.id);
+
+    return { ok: true, free: false, orderId: order.id, paypalOrderId: created.id };
+  } catch {
+    return { ok: false, error: 'paypalRefused' };
+  }
+}
+
+/**
+ * Pay one installment with a code from the desk.
+ *
+ * The school's codes are 100 % ones, so a code covers an installment whole; a
+ * partial code is refused rather than half-settling a payment. The coupon is
+ * claimed atomically first and released if anything after it fails.
+ */
+export async function redeemInstallmentCode(
+  _previous: PayState,
+  formData: FormData,
+): Promise<PayState> {
+  const user = await requireUser();
+
+  if (!(await throttle('office-code', 10, user.id))) return { error: 'rateLimited' };
+
+  const parsed = z
+    .object({ installmentId: z.string().uuid(), code: codeSchema })
+    .safeParse({ installmentId: formData.get('installmentId'), code: formData.get('code') ?? '' });
+  if (!parsed.success) return { error: 'codeInvalid' };
+
+  const admin = createAdminClient();
+  const { data: installment } = await admin
+    .from('installments')
+    .select('id, order_id, status')
+    .eq('id', parsed.data.installmentId)
+    .maybeSingle();
+  if (!installment || installment.status !== 'pending') return { error: 'codeRefused' };
+
+  const { data: order } = await admin
+    .from('orders')
+    .select('id, user_id')
+    .eq('id', installment.order_id)
+    .maybeSingle();
+  if (!order || order.user_id !== user.id) return { error: 'codeRefused' };
+
+  const { data: couponId } = await admin.rpc('redeem_coupon', {
+    coupon_code: parsed.data.code,
+  });
+  if (!couponId) return { error: 'codeRefused' };
+
+  const { data: coupon } = await admin
+    .from('coupons')
+    .select('percent_off')
+    .eq('id', couponId)
+    .maybeSingle();
+  if (!coupon || coupon.percent_off !== 100) {
+    await releaseCoupon(couponId);
+    return { error: 'codePartial' };
+  }
+
+  const settled = await settleInstallmentWithCoupon(installment.id, couponId);
+  if (!settled.ok) {
+    await releaseCoupon(couponId);
+    return { error: 'codeRefused' };
+  }
+
+  revalidatePath('/[locale]/dashboard', 'page');
+  return {};
 }
 
 /**
@@ -304,6 +459,7 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
   const user = await requireUser();
 
   if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
+  if (!(await isApproved())) return { error: 'notApproved' };
   if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
 
   const { selection, quote } = await loadBasket();
@@ -317,7 +473,7 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
     order = await createPendingOrder({
       userId: user.id,
       delivery: selection.delivery,
-      route: 'free',
+      route: coupon?.isOffice ? 'office' : 'free',
       quote,
       couponId: coupon?.id ?? null,
       couponDiscountCents: coupon?.discountCents ?? 0,
@@ -363,6 +519,7 @@ export async function redeemOfficeCode(_previous: PayState, formData: FormData):
   // The one path where guessing pays: a valid office code is a year of access
   // for free. A shared, durable counter is what makes brute force uneconomical.
   if (!(await throttle('office-code', 10, user.id))) return { error: 'rateLimited' };
+  if (!(await isApproved())) return { error: 'notApproved' };
   if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
 
   const parsed = codeSchema.safeParse(formData.get('code') ?? '');

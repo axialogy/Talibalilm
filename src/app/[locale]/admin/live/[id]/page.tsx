@@ -3,13 +3,10 @@ import { notFound } from 'next/navigation';
 import { BackLink } from '@/components/admin/BackLink';
 import { Badge } from '@/components/ui/badge';
 import { LiveSessionControls } from '@/components/admin/LiveSessionControls';
-import { SlideDeck } from '@/components/admin/SlideDeck';
-import { JoinRequestActions } from '@/components/admin/JoinRequestActions';
-import { Tabs } from '@/components/ui/tabs';
-import { getLiveSession, listSlides, listJoinRequests } from '@/lib/data/live';
-import { r2Configured, r2Missing } from '@/lib/storage/r2';
+import { getLiveSession, listAttendance } from '@/lib/data/live';
 import { requireStaff } from '@/lib/auth/guards';
 import type { LiveStatus } from '@/lib/supabase/database.types';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * One live class: its deck, its door, and the controls to run it.
@@ -25,6 +22,7 @@ export default async function AdminLiveSessionPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireStaff();
@@ -33,9 +31,15 @@ export default async function AdminLiveSessionPage({
   const session = await getLiveSession(id);
   if (!session) notFound();
 
-  const [slides, waiting] = await Promise.all([listSlides(id), listJoinRequests(id)]);
+  const attendance = await listAttendance(id);
 
   const when = new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeStyle: 'short' });
+  // The log is read to the second: "he joined at 18:31:04" settles an argument
+  // that "he was late" does not.
+  const logFmt = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  });
   const label: Record<LiveStatus, string> = {
     scheduled: t('liveStatusScheduled'),
     live: t('liveStatusLive'),
@@ -73,61 +77,54 @@ export default async function AdminLiveSessionPage({
         />
       </div>
 
-      <div className="mt-8">
-        <Tabs
-          tabs={[
-            {
-              key: 'slides',
-              label: t('slidesTab'),
-              content: (
-                <>
-                  <p className="mb-4 max-w-2xl text-[12px] leading-relaxed text-ink-muted">
-                    {t('slidesLead')}
-                  </p>
-                  <SlideDeck
-                    sessionId={session.id}
-                    slides={slides}
-                    storageReady={r2Configured}
-                    missing={r2Missing()}
-                  />
-                </>
-              ),
-            },
-            {
-              key: 'door',
-              label: t('liveDoorTab', { count: waiting.length }),
-              content:
-                waiting.length === 0 ? (
-                  <p className="rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6 text-center text-[13px] text-ink-muted">
-                    {t('liveDoorEmpty')}
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
-                    {waiting.map((request) => (
-                      <li key={request.id} className="flex flex-wrap items-center gap-3 p-4">
-                        <p className="min-w-0 flex-1 text-[13px] text-ink">
-                          {request.displayName || t('liveGuest')}
-                        </p>
-                        <p className="text-[11px] text-ink-muted">
-                          {new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(
-                            new Date(request.requestedAt),
-                          )}
-                        </p>
-                        {request.status === 'pending' ? (
-                          <JoinRequestActions requestId={request.id} />
-                        ) : (
-                          <Badge variant={request.status === 'approved' ? 'success' : 'muted'}>
-                            {request.status === 'approved' ? t('liveAdmit') : t('liveRefuse')}
-                          </Badge>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ),
-            },
-          ]}
-        />
-      </div>
+      {/* The log. A class that happened leaves its attendance behind, and
+          "who was there, at what time" is the question the office actually
+          asks — the deck is managed inside the room now, where it is used. */}
+      <section className="mt-10">
+        <h2 className="font-display text-[15px] font-semibold text-ink">{t('liveLogTitle')}</h2>
+        <p className="mt-1 text-[12px] text-ink-muted">{t('liveLogLead')}</p>
+
+        {attendance.length === 0 ? (
+          <p className="mt-4 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6 text-center text-[13px] text-ink-muted">
+            {t('liveDoorEmpty')}
+          </p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-[var(--radius-card)] border border-line">
+            <table className="w-full min-w-[560px] border-collapse text-[13px]">
+              <thead>
+                <tr className="bg-surface/60 text-left text-[11px] tracking-wide text-ink-muted uppercase">
+                  <th className="p-3 font-medium">{t('colStudent')}</th>
+                  <th className="p-3 font-medium">{t('liveJoinedAt')}</th>
+                  <th className="p-3 font-medium">{t('liveLeftAt')}</th>
+                  <th className="p-3 font-medium">{t('colStatus')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {attendance.map((row) => (
+                  <tr key={row.id} className="transition-colors hover:bg-brand-50/40">
+                    <td className="p-3 text-ink">{row.name || t('liveGuest')}</td>
+                    <td className="p-3 whitespace-nowrap text-ink-muted tabular-nums">
+                      {logFmt.format(new Date(row.joinedAt))}
+                    </td>
+                    <td className="p-3 whitespace-nowrap text-ink-muted tabular-nums">
+                      {row.leftAt ? logFmt.format(new Date(row.leftAt)) : '—'}
+                    </td>
+                    <td className="p-3">
+                      {row.banned ? (
+                        <Badge variant="danger">{t('liveRefuse')}</Badge>
+                      ) : row.present ? (
+                        <Badge variant="success">{t('livePresent')}</Badge>
+                      ) : (
+                        <Badge variant="muted">{t('liveLeft')}</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

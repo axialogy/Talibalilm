@@ -161,6 +161,181 @@ export interface NewRegistrationData {
  * school reads French. It carries the link to the person's page so the office
  * is one tap from seeing who registered rather than hunting through a list.
  */
+export interface StudentApprovedData {
+  to: string;
+  fullName: string;
+  locale: string;
+  spaceUrl: string;
+}
+
+/**
+ * The student's account was let in.
+ *
+ * Sent the moment an admin approves, and it is what closes the loop for the
+ * student: they can now open an order, and their space is already theirs — no
+ * second sign-up, no waiting for a second e-mail.
+ */
+export function studentApproved(data: StudentApprovedData): Mail {
+  const fr = data.locale === 'fr';
+  const name = data.fullName.trim();
+  const shell: Shell = {
+    heading: fr ? 'Votre inscription est validée' : 'Your registration is approved',
+    intro: fr
+      ? `${name ? `${name}, v` : 'V'}otre compte a été validé par l’institut. Vous pouvez dès maintenant vous inscrire à un module ou à un cursus et suivre vos cours.`
+      : `${name ? `${name}, y` : 'Y'}our account has been approved by the institute. You can now enrol in a module or a programme and follow your classes.`,
+    lines: [
+      { title: fr ? 'Votre espace' : 'Your space', detail: data.spaceUrl },
+    ],
+    outro: fr
+      ? 'Une question ? Répondez simplement à cet e-mail, nous vous répondrons.'
+      : 'A question? Just reply to this email and we will answer.',
+  };
+  return {
+    to: data.to,
+    subject: fr ? 'Votre inscription est validée' : 'Your registration is approved',
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
+export interface SecurityAlertData {
+  to: string;
+  /** What happened, in French: this goes to the school. */
+  action: string;
+  actor: string;
+  detail: string;
+  /** The one-click "it was not me", when the change can be undone. */
+  revertUrl: string | null;
+}
+
+/**
+ * Something sensitive was changed.
+ *
+ * Always in French, always to the office mailbox. The point is not the
+ * notification — it is the LINK: one click closes the money path and starts
+ * the password reset, without waiting for anyone to be at a computer.
+ */
+export function securityAlert(data: SecurityAlertData): Mail {
+  const shell: Shell = {
+    heading: data.action,
+    intro: `Ce changement a été fait depuis le compte ${data.actor}. Si c’est bien vous, ignorez ce message.`,
+    lines: [
+      { title: 'Détail', detail: data.detail },
+      ...(data.revertUrl
+        ? [{ title: 'Ce n’était pas moi', detail: data.revertUrl }]
+        : []),
+    ],
+    outro: data.revertUrl
+      ? 'Le lien ci-dessus coupe immédiatement le paiement en ligne et vide les identifiants enregistrés, puis vous recevrez un e-mail pour changer votre mot de passe. Vous pourrez ensuite remettre les identifiants.'
+      : 'Sans clé STEPUP_SECRET configurée, ce lien ne peut pas être généré : changez le mot de passe du compte administrateur dès maintenant.',
+  };
+  return {
+    to: data.to,
+    subject: `Sécurité — ${data.action}`,
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
+export interface PaymentDueData {
+  to: string;
+  fullName: string;
+  locale: string;
+  /** Already formatted for the reader, by the caller that knows the locale. */
+  amount: string;
+  due: string;
+  spaceUrl: string;
+  /** True on the day itself and after: the door is closed until it is paid. */
+  overdue: boolean;
+}
+
+/**
+ * An installment is due, or has been missed.
+ *
+ * Sent by the sweep a week before, the day before, and on the day. It names
+ * the amount and the date, and links straight to the space where it can be
+ * paid — the message is useless if finding the button takes five minutes.
+ */
+export function paymentDue(data: PaymentDueData): Mail {
+  const fr = data.locale === 'fr';
+  const name = data.fullName.trim();
+  const shell: Shell = {
+    heading: data.overdue
+      ? fr
+        ? 'Échéance à régler'
+        : 'Installment to settle'
+      : fr
+        ? 'Votre prochaine échéance'
+        : 'Your next installment',
+    intro: data.overdue
+      ? fr
+        ? `${name ? `${name}, l` : 'L'}’échéance de ${data.amount} était due le ${data.due}. L’accès aux cours est suspendu jusqu’au règlement.`
+        : `${name ? `${name}, t` : 'T'}he ${data.amount} installment was due on ${data.due}. Access to the courses is suspended until it is settled.`
+      : fr
+        ? `${name ? `${name}, v` : 'V'}otre prochaine échéance de ${data.amount} arrive le ${data.due}.`
+        : `${name ? `${name}, y` : 'Y'}our next installment of ${data.amount} is due on ${data.due}.`,
+    lines: [
+      { title: fr ? 'Montant' : 'Amount', detail: data.amount },
+      { title: fr ? 'Échéance' : 'Due date', detail: data.due },
+      { title: fr ? 'Payer depuis votre espace' : 'Pay from your space', detail: data.spaceUrl },
+    ],
+    outro: fr
+      ? 'Vous pouvez aussi régler en espèces à l’institut : un code remis à l’accueil règle l’échéance.'
+      : 'You can also pay in cash at the institute: a code from the desk settles the installment.',
+  };
+  return {
+    to: data.to,
+    subject: data.overdue
+      ? fr
+        ? `Échéance à régler : ${data.amount}`
+        : `Installment to settle: ${data.amount}`
+      : fr
+        ? `Prochaine échéance : ${data.amount}`
+        : `Next installment: ${data.amount}`,
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
+export interface OfficeApprovalData {
+  to: string;
+  fullName: string;
+  email: string;
+  approved: boolean;
+}
+
+/**
+ * What the office is told once it has decided.
+ *
+ * A copy for the record: the admin who clicked knows what they clicked, but
+ * the mailbox is shared and a second person reading it later should be able to
+ * see that an account was let in — and which one.
+ */
+export function officeApprovalNotice(data: OfficeApprovalData): Mail {
+  const shell: Shell = {
+    heading: data.approved ? 'Compte validé' : 'Compte remis en attente',
+    intro: data.approved
+      ? 'L’étudiant peut désormais s’inscrire à un module ou à un cursus.'
+      : 'L’étudiant ne peut plus ouvrir de commande tant que le compte n’est pas validé.',
+    lines: [
+      { title: data.fullName || '—', detail: data.email },
+      {
+        title: 'Décision',
+        detail: data.approved ? 'Validé' : 'Remis en attente',
+      },
+    ],
+    outro: 'Vous pouvez modifier cette décision depuis Administration → Étudiants.',
+  };
+  return {
+    to: data.to,
+    subject: data.approved
+      ? `Compte validé : ${data.fullName || data.email}`
+      : `Compte remis en attente : ${data.fullName || data.email}`,
+    html: render(shell),
+    text: plain(shell),
+  };
+}
+
 export function newRegistration(data: NewRegistrationData): Mail {
   const shell: Shell = {
     heading: 'Nouvelle inscription à valider',

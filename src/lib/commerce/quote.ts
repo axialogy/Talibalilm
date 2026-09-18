@@ -81,6 +81,9 @@ export interface Quote {
 /** Only used when there is nothing to read a currency from — an empty basket. */
 const FALLBACK_CURRENCY = 'EUR';
 
+/** The language a formatter falls back to when it is handed a tag Intl refuses. */
+const FALLBACK_LOCALE = 'fr';
+
 /**
  * Raised when a basket mixes currencies.
  *
@@ -123,12 +126,72 @@ export function currencyOf(products: readonly PricedProduct[]): string {
  */
 export function packApplies(pack: OfferPack, selectedIds: readonly string[]): boolean {
   const selected = new Set(selectedIds);
+
+  // "Buy this, get that" applies on the PAID half. The gift is not something
+  // the student has to find and add — `bonusItems` puts it in the basket — so
+  // demanding it here would mean the offer only ever applied to people who had
+  // already worked out the trick.
+  if (pack.pricing === 'sum') {
+    if (pack.paidProductIds.length === 0) return false;
+    return pack.paidProductIds.every((id) => selected.has(id));
+  }
+
   const members = [...pack.paidProductIds, ...pack.freeProductIds];
   if (members.length === 0) return false;
   if (!members.every((id) => selected.has(id))) return false;
 
-  if (pack.pricing === 'sum') return true;
   return members.length === selected.size;
+}
+
+/**
+ * The products a bonus adds to a basket the student has already chosen.
+ *
+ * A `sum` pack ("take Arabic, French is free") is priced by zeroing the gift's
+ * line, so the gift has to BE a line — otherwise there is nothing to zero and
+ * no entitlement is ever granted for it. This is what puts it there.
+ *
+ * Only the best offer contributes, by the same rule `bestPack` uses: the
+ * largest saving, ties broken on slug so the answer cannot flicker between two
+ * equal offers. Packs that are not `sum` price the basket as a whole and add
+ * nothing.
+ */
+export function bonusItems(
+  selected: readonly PricedProduct[],
+  catalogue: readonly PricedProduct[],
+  packs: readonly OfferPack[],
+  delivery: DeliveryMode,
+): PricedProduct[] {
+  const selectedIds = new Set(selected.map((p) => p.id));
+  const byId = new Map(catalogue.map((product) => [product.id, product]));
+
+  const candidates = packs
+    .filter((pack) => pack.delivery === delivery && pack.pricing === 'sum')
+    .filter(
+      (pack) =>
+        pack.paidProductIds.length > 0 && pack.paidProductIds.every((id) => selectedIds.has(id)),
+    )
+    .map((pack) => ({
+      pack,
+      gifts: pack.freeProductIds
+        .filter((id) => !selectedIds.has(id))
+        .map((id) => byId.get(id))
+        .filter((product): product is PricedProduct => product !== undefined),
+    }))
+    .filter((candidate) => candidate.gifts.length > 0);
+
+  if (candidates.length === 0) return [];
+
+  const saving = (candidate: (typeof candidates)[number]) =>
+    candidate.gifts.reduce((total, gift) => total + gift.priceCents, 0);
+
+  const best = candidates.reduce((a, b) => {
+    const sa = saving(a);
+    const sb = saving(b);
+    if (sa !== sb) return sa > sb ? a : b;
+    return a.pack.slug < b.pack.slug ? a : b;
+  });
+
+  return best.gifts;
 }
 
 /** What an offer takes off, in cents. Never more than the basket is worth. */
@@ -159,7 +222,12 @@ export function bestPack(
   delivery: DeliveryMode,
 ): OfferPack | null {
   const ids = products.map((p) => p.id);
-  const eligible = packs.filter((p) => p.delivery === delivery && packApplies(p, ids));
+  // A pack that applies but saves nothing is not an offer. Without this, a
+  // "buy X get Y" whose gift is not in the basket would win the comparison on
+  // a zero discount and shadow a real offer next to it.
+  const eligible = packs.filter(
+    (p) => p.delivery === delivery && packApplies(p, ids) && packDiscount(p, products) > 0,
+  );
   if (eligible.length === 0) return null;
 
   return eligible.reduce((best, pack) => {
@@ -244,6 +312,39 @@ export function priceSelection(options: {
   };
 }
 
+/**
+ * Cents to a display string for an ADMIN money column.
+ *
+ * `formatPrice` says "Gratuit" for zero, which is right on the catalogue — a
+ * line the school gives away — and wrong in a ledger: a student who has paid
+ * nothing read as "free" next to a balance of 900 €, which is how a real bug
+ * was reported. Zero is zero here.
+ */
+export function formatAmount(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
+  return money(cents, locale, currency);
+}
+
+/**
+ * Money, and never a thrown page.
+ *
+ * `Intl.NumberFormat` throws `RangeError: Incorrect locale information
+ * provided` on a tag it does not recognise, and this function is called from
+ * every price on the site — one bad locale upstream and a page 500s over a
+ * currency label. The pages guard their locale; this is the second lock.
+ */
+function money(cents: number, locale: string, currency: string): string {
+  const options = {
+    style: 'currency' as const,
+    currency,
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  };
+  try {
+    return new Intl.NumberFormat(locale, options).format(cents / 100);
+  } catch {
+    return new Intl.NumberFormat(FALLBACK_LOCALE, options).format(cents / 100);
+  }
+}
+
 /** Cents to a display string, in the reader's locale. */
 /**
  * Money for a reader.
@@ -254,10 +355,5 @@ export function priceSelection(options: {
  */
 export function formatPrice(cents: number, locale: string, currency = FALLBACK_CURRENCY): string {
   if (cents === 0) return locale.startsWith('en') ? 'Free' : 'Gratuit';
-
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(cents / 100);
+  return money(cents, locale, currency);
 }

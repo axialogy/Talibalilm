@@ -8,11 +8,16 @@ import { GalleryUpload } from '@/components/admin/GalleryUpload';
 import { readBullets, readGallery, readHighlights } from '@/lib/content/presentation';
 import { CourseOutline } from '@/components/admin/CourseOutline';
 import { PublishControls } from '@/components/admin/PublishControls';
-import { Tabs } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { CourseSteps } from '@/components/admin/CourseSteps';
+import { CursusForm } from '@/components/admin/CursusForm';
+import { CursusDeleteButton } from '@/components/admin/CursusDeleteButton';
+import { CursusTariff, type CursusPrice } from '@/components/admin/CursusTariff';
 import { CourseFees, type CourseFee } from '@/components/admin/CourseFees';
 import { CourseCursus, membershipKey } from '@/components/admin/CourseCursus';
 import { createClient } from '@/lib/supabase/server';
 import { reportError } from '@/lib/observability/report';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * The course builder — the screen the school lives in.
@@ -27,6 +32,7 @@ export default async function CourseBuilderPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('admin');
@@ -100,18 +106,42 @@ export default async function CourseBuilderPage({
   // Everything else this course needs, in parallel: what it costs and which
   // cursus carry it. Live classes are no longer read here — they have their own
   // screen, and a module is attached to a session from that side.
-  const [{ data: feeRows }, { data: cursusRows }, { data: linkRows }] = await Promise.all([
-    supabase
-      .from('products')
-      .select(
-        'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
-      )
-      .eq('kind', 'module')
-      .eq('course_id', id)
-      .order('delivery'),
-    supabase.from('cursus').select('id, kind, title, year_count').order('display_order'),
-    supabase.from('cursus_courses').select('cursus_id, year_index, delivery').eq('course_id', id),
-  ]);
+  const [{ data: feeRows }, { data: cursusRows }, { data: linkRows }, { data: cursusFeeRows }] =
+    await Promise.all([
+      supabase
+        .from('products')
+        .select(
+          'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
+        )
+        .eq('kind', 'module')
+        .eq('course_id', id)
+        .order('delivery'),
+      // The cursus in full: this page now owns what the Cursus screen used to,
+      // so the programme text, the poster and the year prices are edited here.
+      supabase
+        .from('cursus')
+        .select(
+          'id, slug, kind, title, subtitle, description, details, image_url, year_count, status, display_order',
+        )
+        .order('display_order'),
+      supabase.from('cursus_courses').select('cursus_id, year_index, delivery').eq('course_id', id),
+      supabase
+        .from('products')
+        .select('id, cursus_id, delivery, year_index, price_cents, duration_days, status')
+        .eq('kind', 'cursus'),
+    ]);
+
+  const pricesFor = (cursusId: string): CursusPrice[] =>
+    (cursusFeeRows ?? [])
+      .filter((price) => price.cursus_id === cursusId)
+      .map((price) => ({
+        id: price.id,
+        delivery: price.delivery,
+        yearIndex: price.year_index,
+        priceCents: price.price_cents,
+        durationDays: price.duration_days,
+        status: price.status,
+      }));
 
   const fees: CourseFee[] = (feeRows ?? []).map((f) => ({
     id: f.id,
@@ -170,8 +200,30 @@ export default async function CourseBuilderPage({
       </div>
 
       <div className="mt-6">
-        <Tabs
-          tabs={[
+        <CourseSteps
+          formId="course-details"
+          needsStatusChoice={course.status === 'draft'}
+          steps={[
+            {
+              key: 'details',
+              label: t('tabDetails'),
+              content: <CourseSettingsForm
+                formId="course-details"
+                course={{
+                  id: course.id,
+                  title: course.title,
+                  slug: course.slug,
+                  subtitle: course.subtitle,
+                  description: course.description,
+                  title_ar: course.title_ar,
+                  level: course.level,
+                  format: course.format,
+                  duration_weeks: course.duration_weeks,
+                  requirements: readBullets(course.requirements),
+                  highlights: readHighlights(course.highlights),
+                }}
+              />,
+            },
             {
               key: 'content',
               label: t('tabContent'),
@@ -181,21 +233,6 @@ export default async function CourseBuilderPage({
                   <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
                     <CoverUpload courseId={course.id} coverUrl={course.cover_url} />
                     <GalleryUpload courseId={course.id} images={readGallery(course.gallery)} />
-                    <CourseSettingsForm
-                      course={{
-                        id: course.id,
-                        title: course.title,
-                        slug: course.slug,
-                        subtitle: course.subtitle,
-                        description: course.description,
-                        title_ar: course.title_ar,
-                        level: course.level,
-                        format: course.format,
-                        duration_weeks: course.duration_weeks,
-                        requirements: readBullets(course.requirements),
-                        highlights: readHighlights(course.highlights),
-                      }}
-                    />
                   </aside>
                 </div>
               ),
@@ -230,6 +267,48 @@ export default async function CourseBuilderPage({
                     }))}
                     included={included}
                   />
+
+                  {/* What the Cursus screen used to own, per cursus: the year
+                      prices, and the programme text and poster the home page
+                      shows inside "Voir le cursus". */}
+                  {(cursusRows ?? []).map((option) => (
+                    <section key={option.id} className="mt-10 space-y-6">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="font-display text-lg font-semibold text-ink">
+                          {option.title}
+                        </h3>
+                        {option.status !== 'published' && (
+                          <Badge variant="soft">{t(option.status as 'draft')}</Badge>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="font-display text-[15px] font-semibold text-ink">
+                          {t('cursusTariff')}
+                        </h4>
+                        <p className="mt-1 mb-3 max-w-2xl text-[12px] leading-relaxed text-ink-muted">
+                          {t('cursusTariffLead')}
+                        </p>
+                        <CursusTariff
+                          cursusId={option.id}
+                          yearCount={option.year_count}
+                          prices={pricesFor(option.id)}
+                        />
+                      </div>
+
+                      <div>
+                        <h4 className="font-display text-[15px] font-semibold text-ink">
+                          {t('cursusDetails')}
+                        </h4>
+                        <div className="mt-3">
+                          <CursusForm cursus={option} />
+                        </div>
+                        <div className="mt-3">
+                          <CursusDeleteButton cursusId={option.id} />
+                        </div>
+                      </div>
+                    </section>
+                  ))}
                 </div>
               ),
             },

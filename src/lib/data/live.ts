@@ -154,6 +154,58 @@ export async function listJoinRequests(sessionId: string): Promise<JoinRequestVi
   }));
 }
 
+export interface AttendanceView {
+  id: string;
+  userId: string;
+  name: string;
+  joinedAt: string;
+  leftAt: string | null;
+  /** Still in the room as far as the record knows. */
+  present: boolean;
+  muted: boolean;
+  banned: boolean;
+}
+
+/**
+ * Who was in the room, and when.
+ *
+ * The attendance rows are the record — a class that happened leaves them
+ * behind — so this is the session's log: who joined at what second, who left,
+ * and who is still in. Read through the ordinary client, so staff see every
+ * row and a student sees only their own.
+ */
+export async function listAttendance(sessionId: string): Promise<AttendanceView[]> {
+  if (!supabaseConfigured) return [];
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('live_participants')
+    .select('id, user_id, joined_at, left_at, muted, banned_at')
+    .eq('session_id', sessionId)
+    .order('joined_at', { ascending: true });
+
+  if (error) {
+    reportError('live.attendance', error, { sessionId });
+    return [];
+  }
+  if (!data || data.length === 0) return [];
+
+  const ids = [...new Set(data.map((row) => row.user_id))];
+  const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+  const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? '']));
+
+  return data.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    name: names.get(row.user_id) ?? '',
+    joinedAt: row.joined_at,
+    leftAt: row.left_at,
+    present: row.left_at === null && row.banned_at === null,
+    muted: row.muted,
+    banned: row.banned_at !== null,
+  }));
+}
+
 export interface SlideView {
   id: string;
   storageKey: string;

@@ -27,7 +27,14 @@ export interface CourseSettings {
   highlights: Highlight[];
 }
 
-export function CourseSettingsForm({ course }: { course: CourseSettings }) {
+export function CourseSettingsForm({
+  course,
+  formId,
+}: {
+  course: CourseSettings;
+  /** Set when the page's footer submits this form from another step. */
+  formId?: string;
+}) {
   const t = useTranslations('admin');
   const tc = useTranslations('courses');
   const [state, action] = useActionState(updateCourse, EMPTY);
@@ -48,6 +55,7 @@ export function CourseSettingsForm({ course }: { course: CourseSettings }) {
   return (
     <form
       ref={formRef}
+      id={formId}
       action={action}
       className="space-y-3 rounded-[var(--radius-card)] border border-line bg-white p-5"
     >

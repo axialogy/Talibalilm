@@ -2,15 +2,15 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, MailCheck, Trash2 } from 'lucide-react';
+import { Check, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import {
   confirmStudentEmail,
-  deleteStudent,
   markStudentReviewed,
+  setStudentApproval,
   updateStudent,
 } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
@@ -41,8 +41,8 @@ export function StudentAccount({
   phone,
   phoneLandline,
   locale,
-  hasOrders,
   reviewed,
+  approved,
   details,
 }: {
   userId: string;
@@ -50,9 +50,10 @@ export function StudentAccount({
   phone: string;
   phoneLandline: string;
   locale: string;
-  hasOrders: boolean;
   /** Has the office looked at this registration yet? */
   reviewed: boolean;
+  /** Has the office let this account buy? */
+  approved: boolean;
   /** The enrolment form's fields, so the office can correct a typo. */
   details: {
     civility: string | null;
@@ -67,12 +68,45 @@ export function StudentAccount({
 }) {
   const t = useTranslations('admin');
   const [saveState, save] = useActionState(updateStudent, EMPTY);
-  const [removeState, remove] = useActionState(deleteStudent, EMPTY);
+  const [approvalState, setApproval] = useActionState(setStudentApproval, EMPTY);
   const [confirmState, confirmEmail] = useActionState(confirmStudentEmail, IDLE);
   const [seenState, markSeen] = useActionState(markStudentReviewed, IDLE);
 
   return (
     <div className="space-y-4">
+      <div
+        className={
+          approved
+            ? 'rounded-[var(--radius-card)] border border-brand-200 bg-brand-50/60 p-5'
+            : 'rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/60 p-5'
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[13px] font-medium text-ink">{t('studentApproval')}</p>
+          <Badge variant={approved ? 'success' : 'warn'}>
+            {approved ? t('studentApproved') : t('studentPendingApproval')}
+          </Badge>
+        </div>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+          {t('studentApprovalLead')}
+        </p>
+
+        <form action={setApproval} className="mt-3">
+          <input type="hidden" name="userId" value={userId} />
+          <input type="hidden" name="approve" value={approved ? 'no' : 'yes'} />
+          <Button type="submit" size="sm" variant={approved ? 'outline' : 'primary'}>
+            {approved ? t('unapproveCta') : t('approveCta')}
+          </Button>
+        </form>
+
+        {approvalState.ok && !approvalState.error && (
+          <p role="status" className="mt-2 text-[12px] text-brand-600">
+            {t('saved')}
+          </p>
+        )}
+        <ActionError state={approvalState} />
+      </div>
+
       <form
         action={save}
         className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
@@ -241,28 +275,12 @@ export function StudentAccount({
         )}
       </form>
 
-      {hasOrders ? (
-        <p className="text-[12px] leading-relaxed text-ink-muted">{t('studentHasOrdersNote')}</p>
-      ) : (
-        <form
-          action={remove}
-          onSubmit={(event) => {
-            if (!window.confirm(t('studentDeleteConfirm'))) event.preventDefault();
-          }}
-        >
-          <input type="hidden" name="userId" value={userId} />
-          <Button
-            type="submit"
-            size="sm"
-            variant="ghost"
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            {t('studentDelete')}
-          </Button>
-          <ActionError state={removeState} />
-        </form>
-      )}
+      {/*
+        Deleting the account outright is gone from here on purpose: the
+        Effacement section below does the same job and explains itself, and two
+        buttons that remove a person, one of them unlabelled, is one too many.
+        `studentHasOrdersNote` still appears there.
+      */}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { logoLockupSrc } from '@/lib/artwork';
 import { clientMessages } from '@/i18n/client-messages';
 import { getSiteSettings } from '@/lib/data/site';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * The public site: header, page, footer.
@@ -25,6 +26,7 @@ export default async function SiteLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
   const messages = await getMessages();
 

@@ -39,9 +39,9 @@ export function SlideDeck({
   const t = useTranslations('admin');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
-  const { busy, converting, error, detail, upload } = useSlideUpload(sessionId, () =>
-    router.refresh(),
-  );
+  const { busy, converting, error, detail, upload } = useSlideUpload(sessionId, {
+    onDone: () => router.refresh(),
+  });
 
   const [, remove] = useActionState(deleteSlide, EMPTY);
   const [, move] = useActionState(moveSlide, EMPTY);

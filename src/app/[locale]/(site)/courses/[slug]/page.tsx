@@ -15,7 +15,7 @@ import { listLiveSessions } from '@/lib/data/live';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
 import { siteUrl } from '@/lib/env';
-import { routing } from '@/i18n/routing';
+import { requireLocale, routing } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
 /**
@@ -39,6 +39,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
+  requireLocale(locale);
   const course = await getCourse(slug);
   if (!course) return {};
 
@@ -74,6 +75,7 @@ export default async function CoursePage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const course = await getCourse(slug);

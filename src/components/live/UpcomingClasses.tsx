@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { upcomingLiveSessions } from '@/lib/data/live';
+import { safeLocale } from '@/i18n/routing';
 
 /**
  * A student's live classes, on the dashboard and on the course they bought.
@@ -33,7 +34,7 @@ export async function UpcomingClasses({
 
   if (sessions.length === 0) return null;
 
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
     <section>

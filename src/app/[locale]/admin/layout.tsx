@@ -8,7 +8,8 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { isStaff, requireViewer } from '@/lib/auth/guards';
 import { supabaseConfigured } from '@/lib/env';
 import { logoLockupSrc } from '@/lib/artwork';
-import { unreviewedStudentCount } from '@/lib/auth/registrations';
+import { pendingApprovalCount } from '@/lib/auth/registrations';
+import { requireLocale } from '@/i18n/routing';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -27,6 +28,7 @@ export default async function AdminLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   if (!supabaseConfigured) redirect('/login');
@@ -53,7 +55,7 @@ export default async function AdminLayout({
         isAdmin={viewer.role === 'admin'}
         title={t('title')}
         logoSrc={logoLockupSrc()}
-        newStudents={await unreviewedStudentCount()}
+        newStudents={await pendingApprovalCount()}
       >
         {children}
       </AdminShell>

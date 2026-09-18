@@ -20,6 +20,7 @@ import { courseLessons } from '@/lib/content/types';
 import { embedUrl, type VideoProvider } from '@/lib/content/video';
 import { cn } from '@/lib/utils';
 import { UpcomingClasses } from '@/components/live/UpcomingClasses';
+import { requireLocale } from '@/i18n/routing';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -38,6 +39,7 @@ export default async function LessonPage({
   params: Promise<{ locale: string; slug: string; lessonId: string }>;
 }) {
   const { locale, slug, lessonId } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   if (!supabaseConfigured) redirect('/login');

@@ -20,14 +20,18 @@ import { savePushSubscription, removePushSubscription } from '@/app/actions/push
  * "This device", not "this account", is the honest framing: a subscription
  * belongs to one browser on one machine. Turning it on here does nothing for
  * the phone, which is why the copy says so.
+ *
+ * One component for both audiences. The office is told about registrations,
+ * a student about their approval and their due dates; only the two notes
+ * differ, and a second copy of this would be a second copy to keep in step.
  */
 
 type State = 'loading' | 'unsupported' | 'unconfigured' | 'denied' | 'off' | 'on' | 'busy';
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
-export function PushToggle() {
-  const t = useTranslations('admin');
+export function NotificationsToggle({ audience }: { audience: 'admin' | 'student' }) {
+  const t = useTranslations('notifications');
   const [state, setState] = useState<State>('loading');
   const [failed, setFailed] = useState(false);
 
@@ -127,14 +131,14 @@ export function PushToggle() {
 
   const note =
     state === 'unsupported'
-      ? t('pushUnsupported')
+      ? t('unsupported')
       : state === 'unconfigured'
-        ? t('pushUnconfigured')
+        ? t('unconfigured')
         : state === 'denied'
-          ? t('pushDenied')
+          ? t('denied')
           : state === 'on'
-            ? t('pushOnNote')
-            : t('pushOffNote');
+            ? t(audience === 'admin' ? 'adminOnNote' : 'studentOnNote')
+            : t(audience === 'admin' ? 'adminOffNote' : 'studentOffNote');
 
   return (
     <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
@@ -146,7 +150,7 @@ export function PushToggle() {
         ) : (
           <Bell className="size-4 text-ink-muted" aria-hidden="true" />
         )}
-        <p className="text-[13px] font-medium text-ink">{t('pushTitle')}</p>
+        <p className="text-[13px] font-medium text-ink">{t('title')}</p>
       </div>
 
       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{note}</p>
@@ -160,13 +164,13 @@ export function PushToggle() {
           disabled={state === 'busy'}
           onClick={state === 'on' ? disable : enable}
         >
-          {state === 'on' ? t('pushDisable') : t('pushEnable')}
+          {state === 'on' ? t('disable') : t('enable')}
         </Button>
       )}
 
       {failed && (
         <p role="alert" className="mt-2 text-[12px] text-red-600">
-          {t('pushFailed')}
+          {t('failed')}
         </p>
       )}
     </div>

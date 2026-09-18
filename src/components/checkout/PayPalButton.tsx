@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import { beginPayPalCheckout, completePayPalCheckout } from '@/app/actions/pay';
+import {
+  beginInstallmentPayment,
+  beginPayPalCheckout,
+  completePayPalCheckout,
+} from '@/app/actions/pay';
 
 /**
  * PayPal's own buttons, loaded in the page.
@@ -49,6 +53,7 @@ const MESSAGE: Record<string, string> = {
   packExhausted: 'packExhausted',
   mixedCurrency: 'mixedCurrency',
   profileRequired: 'profileRequired',
+  notApproved: 'notApproved',
   emptyBasket: 'emptyBasket',
   payMismatch: 'payMismatch',
   payNotCompleted: 'payNotCompleted',
@@ -61,10 +66,16 @@ export function PayPalButton({
   clientId,
   currency,
   locale,
+  installmentId,
 }: {
   clientId: string;
   currency: string;
   locale: string;
+  /**
+   * Pay one installment of a plan instead of the basket. The amount still
+   * comes from the server — this only says WHICH row is being settled.
+   */
+  installmentId?: string;
 }) {
   const t = useTranslations('checkout');
   const router = useRouter();
@@ -93,7 +104,9 @@ export function PayPalButton({
           createOrder: async () => {
             setError(null);
             settled.current = false;
-            const result = await beginPayPalCheckout();
+            const result = installmentId
+              ? await beginInstallmentPayment(installmentId)
+              : await beginPayPalCheckout();
             if (!result.ok) {
               showError(result.error);
               throw new Error(result.error);
@@ -132,7 +145,7 @@ export function PayPalButton({
       // not a page error; the payment block reports it like any other outage.
       setFailed(true);
     }
-  }, [router, showError, t]);
+  }, [installmentId, router, showError, t]);
 
   useEffect(() => {
     let cancelled = false;

@@ -8,6 +8,7 @@ import { listLiveSessions } from '@/lib/data/live';
 import { requireStaff } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import type { LiveStatus } from '@/lib/supabase/database.types';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * Live classes.
@@ -19,6 +20,7 @@ import type { LiveStatus } from '@/lib/supabase/database.types';
  */
 export default async function AdminLivePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   await requireStaff();
@@ -58,42 +60,71 @@ export default async function AdminLivePage({ params }: { params: Promise<{ loca
         </div>
       </section>
 
+      {/* One table, history included: a session that has ended is the record
+          of a class that happened, not something to sweep away. */}
       <section className="mt-10">
         {sessions.length === 0 ? (
           <p className="rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-6 text-center text-sm text-ink-muted">
             {t('liveNone')}
           </p>
         ) : (
-          <ul className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-white">
-            {sessions.map((s) => (
-              <li
-                key={s.id}
-                className="relative flex flex-wrap items-center gap-3 p-4 transition-colors hover:bg-brand-50/40 focus-within:bg-brand-50/40 focus-within:ring-2 focus-within:ring-brand-300 focus-within:ring-inset"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/admin/live/${s.id}`}
-                      className="font-medium text-ink transition-colors after:absolute after:inset-0 hover:text-brand-600"
-                    >
-                      {s.title}
-                    </Link>
-                    <Badge variant={tone[s.status]}>{label[s.status]}</Badge>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-ink-muted">
-                    {s.courseTitle}
-                    {' · '}
-                    {s.scheduledAt ? when.format(new Date(s.scheduledAt)) : t('liveNotScheduled')}
-                    {' · '}
-                    {t('liveCapacityShort', { count: s.maxParticipants })}
-                  </p>
-                </div>
-                <div className="relative">
-                  <LiveSessionControls id={s.id} roomToken={s.roomToken} status={s.status} />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line">
+            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+              <thead>
+                <tr className="bg-surface/60 text-left text-[11px] tracking-wide text-ink-muted uppercase">
+                  <th className="p-3 font-medium">{t('liveCourse')}</th>
+                  <th className="p-3 font-medium">{t('liveClassTitle')}</th>
+                  <th className="p-3 font-medium">{t('colStarted')}</th>
+                  <th className="p-3 font-medium">{t('colEnded')}</th>
+                  <th className="p-3 font-medium">{t('colDuration')}</th>
+                  <th className="p-3 font-medium">{t('colStatus')}</th>
+                  <th className="p-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {sessions.map((s) => {
+                  const duration =
+                    s.startedAt && s.endedAt
+                      ? Math.max(
+                          0,
+                          Math.round(
+                            (new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()) /
+                              60000,
+                          ),
+                        )
+                      : null;
+                  return (
+                    <tr key={s.id} className="transition-colors hover:bg-brand-50/40">
+                      <td className="p-3 text-ink-muted">{s.courseTitle}</td>
+                      <td className="p-3">
+                        <Link
+                          href={`/admin/live/${s.id}`}
+                          className="font-medium text-ink transition-colors hover:text-brand-600"
+                        >
+                          {s.title}
+                        </Link>
+                      </td>
+                      <td className="p-3 whitespace-nowrap text-ink-muted">
+                        {s.startedAt ? when.format(new Date(s.startedAt)) : '—'}
+                      </td>
+                      <td className="p-3 whitespace-nowrap text-ink-muted">
+                        {s.endedAt ? when.format(new Date(s.endedAt)) : '—'}
+                      </td>
+                      <td className="p-3 whitespace-nowrap text-ink-muted tabular-nums">
+                        {duration === null ? '—' : t('minutesShort', { count: duration })}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={tone[s.status]}>{label[s.status]}</Badge>
+                      </td>
+                      <td className="p-3">
+                        <LiveSessionControls id={s.id} roomToken={s.roomToken} status={s.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
