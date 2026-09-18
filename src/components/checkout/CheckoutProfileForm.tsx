@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { saveCheckoutProfile, type ProfileState } from '@/app/actions/profile';
 import { DEPARTMENTS } from '@/lib/validation/profile';
@@ -50,7 +51,7 @@ export function CheckoutProfileForm({
   }, [state.ok, router]);
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <ActionForm action={action} className="space-y-4" noValidate>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="checkout-department" className="mb-1.5 block text-[13px] font-medium text-ink">
@@ -199,6 +200,6 @@ export function CheckoutProfileForm({
       )}
 
       <SubmitButton block>{submitLabel ?? t('saveInfo')}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

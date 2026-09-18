@@ -6,6 +6,7 @@ import { Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { ActionError } from '@/components/admin/ActionError';
+import { ActionForm } from '@/components/ui/action-form';
 import { correctOrder } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -36,7 +37,7 @@ export function CorrectOrderForm({
     'w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-400';
 
   return (
-    <form action={action} className="rounded-[var(--radius-card)] border border-line bg-white p-5">
+    <ActionForm action={action} className="rounded-[var(--radius-card)] border border-line bg-white p-5">
       <input type="hidden" name="orderId" value={orderId} />
 
       <p className="flex items-center gap-2 text-[13px] font-medium text-ink">
@@ -86,6 +87,6 @@ export function CorrectOrderForm({
         )}
         <ActionError state={state} />
       </div>
-    </form>
+    </ActionForm>
   );
 }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { createLiveSession } from '@/app/actions/live';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -30,7 +31,7 @@ export function LiveSessionForm({
     'w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 text-sm text-ink outline-none focus:border-brand-400';
 
   return (
-    <form
+    <ActionForm
       action={action}
       className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
     >
@@ -81,6 +82,6 @@ export function LiveSessionForm({
         </Button>
         <ActionError state={state} />
       </div>
-    </form>
+    </ActionForm>
   );
 }

@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, Send } from 'lucide-react';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { sendContactMessage, type ContactState } from '@/app/actions/contact';
 
@@ -37,7 +38,7 @@ export function ContactForm() {
   }
 
   return (
-    <form action={action} className="space-y-4">
+    <ActionForm action={action} className="space-y-4">
       <Field label={t('name')} name="name" required error={state.fieldErrors?.name} />
       <Field
         label={t('email')}
@@ -94,6 +95,6 @@ export function ContactForm() {
         <Send className="size-4" aria-hidden="true" />
         {t('send')}
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

@@ -7,6 +7,7 @@ import { Field } from '@/components/ui/field';
 import { CursusImageUpload } from '@/components/admin/CursusImageUpload';
 import { saveCursus } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -31,7 +32,7 @@ export function CursusForm({ cursus }: { cursus?: CursusView }) {
   const [state, action] = useActionState(saveCursus, EMPTY);
 
   return (
-    <form
+    <ActionForm
       action={action}
       className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
     >
@@ -112,6 +113,6 @@ export function CursusForm({ cursus }: { cursus?: CursusView }) {
           </span>
         )}
       </div>
-    </form>
+    </ActionForm>
   );
 }

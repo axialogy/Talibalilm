@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { AlertCircle, Store } from 'lucide-react';
 import { PayPalButton } from '@/components/checkout/PayPalButton';
 import { SubmitButton } from '@/components/ui/submit-button';
+import { ActionForm } from '@/components/ui/action-form';
 import { redeemInstallmentCode, type PayState } from '@/app/actions/pay';
 import type { PayPalPublicConfig } from '@/lib/paypal/types';
 
@@ -56,7 +57,7 @@ export function InstallmentPayment({
         <p className="text-[12px] leading-relaxed text-ink-muted">{t('payUnavailable')}</p>
       )}
 
-      <form action={action} className="flex flex-wrap items-end gap-2">
+      <ActionForm action={action} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="installmentId" value={installmentId} />
         <label className="min-w-[160px] flex-1">
           <span className="mb-1.5 flex items-center gap-1.5 text-[12px] font-medium text-ink">
@@ -74,7 +75,7 @@ export function InstallmentPayment({
         <SubmitButton variant="outline" size="sm">
           {t('officeCodeApply')}
         </SubmitButton>
-      </form>
+      </ActionForm>
 
       {error && (
         <p role="alert" className="flex items-center gap-1.5 text-[12px] text-red-600">

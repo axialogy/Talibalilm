@@ -7,6 +7,7 @@ import { SubmitButton } from '@/components/auth/SubmitButton';
 import { updateCourse, type AdminState } from '@/app/actions/admin';
 import { formatBullets, formatHighlights, type Highlight } from '@/lib/content/presentation';
 import { ActionError } from '@/components/admin/ActionError';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -53,7 +54,7 @@ export function CourseSettingsForm({
   }, [state]);
 
   return (
-    <form
+    <ActionForm
       ref={formRef}
       id={formId}
       action={action}
@@ -137,7 +138,7 @@ export function CourseSettingsForm({
       )}
 
       <SubmitButton size="md">{t('save')}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
 

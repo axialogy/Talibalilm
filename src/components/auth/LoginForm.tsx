@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { FormMessage } from '@/components/auth/AuthCard';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { login, type ActionState } from '@/app/actions/auth';
@@ -15,7 +16,7 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
   const [state, action] = useActionState(login, EMPTY);
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <ActionForm action={action} className="space-y-4" noValidate>
       {notice && <FormMessage tone="success">{notice}</FormMessage>}
       {state.message && <FormMessage tone="error">{state.message}</FormMessage>}
 
@@ -45,6 +46,6 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
       </div>
 
       <SubmitButton>{t('submitLogin')}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
