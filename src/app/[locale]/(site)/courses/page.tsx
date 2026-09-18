@@ -5,6 +5,7 @@ import { CourseFilters } from '@/components/marketing/CourseFilters';
 import { PageHero } from '@/components/marketing/PageHero';
 import { listCourses } from '@/lib/data/courses';
 import type { CourseCategory } from '@/lib/content/types';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * Filters live in the URL, not in component state, so a filtered catalogue is
@@ -21,6 +22,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  requireLocale(locale);
   const t = await getTranslations({ locale, namespace: 'courses' });
   return { title: t('title'), description: t('lead') };
 }
@@ -47,6 +49,7 @@ export default async function CoursesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('courses');

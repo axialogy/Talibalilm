@@ -10,7 +10,8 @@
  *   * Host-only messages are ignored from anyone else. `acceptFrom` below is
  *     the rule, applied on receipt rather than trusted on send — a student who
  *     hand-crafts a `slide` or `board-clear` gets it dropped by every browser
- *     in the room.
+ *     in the room. Asking for the lesson's state is not host-only: a student
+ *     may ask, but only the teacher's answer is acted on.
  *
  * Anything that must SURVIVE the lesson does not travel here at all. Muting,
  * removing, allowing a camera: those are server actions that write to the
@@ -20,7 +21,13 @@
 
 /** One mark on the whiteboard. Small and self-contained: never the whole canvas. */
 export type BoardOp =
-  | { t: 'stroke'; pts: number[]; color: string; w: number }
+  /**
+   * A pen stroke — or, when `erase` is set, a pass of the rubber. The flag is
+   * what makes the eraser erase: the receiver clears those pixels rather than
+   * painting the board's colour over them, so a board with a background of its
+   * own keeps it, and a redraw after a resize is identical to what was drawn.
+   */
+  | { t: 'stroke'; pts: number[]; color: string; w: number; erase?: boolean }
   | {
       t: 'shape';
       kind: 'rect' | 'ellipse' | 'line';
@@ -38,11 +45,31 @@ export type RoomMessage =
   | { t: 'chat'; body: string }
   | { t: 'hand'; up: boolean }
   | { t: 'ask'; what: 'camera' | 'screen' }
+  /**
+   * "Where are we?" — sent by a browser that has just joined. The teacher
+   * answers with `focus` and the current slide, so a latecomer lands on the
+   * lesson rather than on the tab they would have seen at the door. Anyone may
+   * ask; only the teacher answers, and the answer is idempotent.
+   */
+  | { t: 'sync' }
   /** Said only by the teacher. Dropped if it arrives from anyone else. */
   | { t: 'board'; op: BoardOp }
   | { t: 'board-clear' }
   | { t: 'slide'; i: number }
   | { t: 'rec'; on: boolean }
+  /**
+   * The deck changed — slides were just added. The message carries no slide
+   * data: each viewer re-reads the deck from the server, because a slide link
+   * is signed for the person who may open it and a URL from the teacher's
+   * browser is not one a student should be handed.
+   */
+  | { t: 'deck' }
+  /**
+   * Where the teacher is looking, so the class follows: the panel tab, and
+   * whether the board is on the main stage. A student may look elsewhere
+   * between these — it only moves when the teacher does.
+   */
+  | { t: 'focus'; tab: 'chat' | 'people' | 'board' | 'slides'; boardOnStage?: boolean }
   | { t: 'ended' };
 
 export type RoomMessageKind = RoomMessage['t'];
@@ -60,6 +87,8 @@ const HOST_ONLY: ReadonlySet<RoomMessageKind> = new Set<RoomMessageKind>([
   'board-clear',
   'slide',
   'rec',
+  'deck',
+  'focus',
   'ended',
 ]);
 
@@ -108,6 +137,8 @@ export function decodeMessage(payload: Uint8Array): RoomMessage | null {
         if (what !== 'camera' && what !== 'screen') return null;
         return { t: 'ask', what };
       }
+      case 'sync':
+        return { t: 'sync' };
       case 'board': {
         const op = (parsed as { op?: unknown }).op;
         return isBoardOp(op) ? { t: 'board', op } : null;
@@ -121,6 +152,17 @@ export function decodeMessage(payload: Uint8Array): RoomMessage | null {
       }
       case 'rec':
         return { t: 'rec', on: Boolean((parsed as { on?: unknown }).on) };
+      case 'deck':
+        return { t: 'deck' };
+      case 'focus': {
+        const tab = (parsed as { tab?: unknown }).tab;
+        if (tab !== 'chat' && tab !== 'people' && tab !== 'board' && tab !== 'slides') return null;
+        const boardOnStage = (parsed as { boardOnStage?: unknown }).boardOnStage;
+        if (boardOnStage !== undefined && typeof boardOnStage !== 'boolean') return null;
+        return boardOnStage === undefined
+          ? { t: 'focus', tab }
+          : { t: 'focus', tab, boardOnStage };
+      }
       case 'ended':
         return { t: 'ended' };
       default:
@@ -141,7 +183,8 @@ function isBoardOp(value: unknown): value is BoardOp {
       op.pts.length <= 4000 &&
       op.pts.every((n) => typeof n === 'number' && Number.isFinite(n)) &&
       typeof op.color === 'string' &&
-      typeof op.w === 'number'
+      typeof op.w === 'number' &&
+      (op.erase === undefined || typeof op.erase === 'boolean')
     );
   }
   if (op.t === 'shape') {

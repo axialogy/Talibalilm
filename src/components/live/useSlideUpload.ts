@@ -35,18 +35,38 @@ export interface SlideUploadState {
   upload: (files: FileList | File[]) => Promise<void>;
 }
 
-export function useSlideUpload(sessionId: string, onDone: () => void): SlideUploadState {
+export interface SlideUploadHandlers {
+  /** The deck needs re-reading from the server (the admin preparation screen). */
+  onDone?: () => void;
+  /**
+   * One slide landed, with its position in this batch. The room uses this to
+   * put the new page in front of the class the moment it is up, without
+   * rebuilding the page a lesson is happening on.
+   */
+  onAdded?: (slide: { id: string; url: string | null; filename: string }, index: number) => void;
+}
+
+export function useSlideUpload(
+  sessionId: string,
+  handlers: SlideUploadHandlers = {},
+): SlideUploadState {
   const [busy, setBusy] = useState(0);
   const [converting, setConverting] = useState<{ page: number; pages: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const addedRef = useRef(false);
+  // Kept in refs so `upload` is not rebuilt — and cannot go stale — every time
+  // the caller re-renders.
+  const onDoneRef = useRef(handlers.onDone);
+  onDoneRef.current = handlers.onDone;
+  const onAddedRef = useRef(handlers.onAdded);
+  onAddedRef.current = handlers.onAdded;
 
   const putOne = useCallback(
-    async (file: File) => {
+    async (file: File): Promise<{ id: string; url: string | null; filename: string } | null> => {
       if (file.size > MAX_IMAGE_BYTES) {
         setError('tooLarge');
-        return;
+        return null;
       }
       const ticket = await requestSlideUpload({
         sessionId,
@@ -55,7 +75,7 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
       });
       if (!ticket.ok || !ticket.url || !ticket.key) {
         setError(ticket.error ?? 'uploadFailed');
-        return;
+        return null;
       }
 
       const put = await fetch(ticket.url, {
@@ -65,12 +85,16 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
       });
       if (!put.ok) {
         setError('uploadFailed');
-        return;
+        return null;
       }
 
       const done = await confirmSlide({ sessionId, key: ticket.key, filename: file.name });
-      if (!done.ok) setError(done.error ?? 'uploadFailed');
-      else addedRef.current = true;
+      if (!done.ok || !done.slide) {
+        setError(done.error ?? 'uploadFailed');
+        return null;
+      }
+      addedRef.current = true;
+      return done.slide;
     },
     [sessionId],
   );
@@ -81,6 +105,7 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
       setDetail(null);
       addedRef.current = false;
       const chosen = Array.from(input);
+      let added = 0;
 
       for (const file of chosen) {
         const kind = classifyUpload(file);
@@ -110,9 +135,13 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
               setError('pdfEmpty');
               continue;
             }
-            for (const page of pages) await putOne(page);
+            for (const page of pages) {
+              const slide = await putOne(page);
+              if (slide) onAddedRef.current?.(slide, added++);
+            }
           } else {
-            await putOne(file);
+            const slide = await putOne(file);
+            if (slide) onAddedRef.current?.(slide, added++);
           }
         } catch (thrown) {
           setConverting(null);
@@ -140,11 +169,10 @@ export function useSlideUpload(sessionId: string, onDone: () => void): SlideUplo
         }
       }
 
-      // The deck is rendered from the server, so it needs re-reading once
-      // anything actually landed. Nothing added, nothing to refresh.
-      if (addedRef.current) onDone();
+      // Nothing added, nothing to refresh.
+      if (addedRef.current) onDoneRef.current?.();
     },
-    [onDone, putOne],
+    [putOne],
   );
 
   return {

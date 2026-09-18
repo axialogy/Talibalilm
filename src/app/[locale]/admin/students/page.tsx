@@ -1,9 +1,10 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
-import { Search } from 'lucide-react';
+import { LiveSearch } from '@/components/admin/LiveSearch';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { listStudents } from '@/lib/data/admin';
+import { requireLocale } from '@/i18n/routing';
 
 /** Find a student by name or email, and see at a glance how much access they hold. */
 export default async function AdminStudentsPage({
@@ -14,6 +15,7 @@ export default async function AdminStudentsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   const { q } = await searchParams;
   setRequestLocale(locale);
 
@@ -29,21 +31,12 @@ export default async function AdminStudentsPage({
         {t('studentsLead')}
       </p>
 
-      <form className="mt-6 flex items-center gap-2">
-        <div className="relative flex-1 sm:max-w-sm">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
-            aria-hidden="true"
-          />
-          <input
-            name="q"
-            defaultValue={q ?? ''}
-            placeholder={t('searchStudents')}
-            aria-label={t('searchStudents')}
-            className="w-full rounded-full border border-line bg-white py-2.5 pr-4 pl-10 text-sm text-ink outline-none focus:border-brand-400"
-          />
-        </div>
-      </form>
+      <LiveSearch
+        action="/admin/students"
+        defaultValue={q ?? ''}
+        placeholder={t('searchStudents')}
+        label={t('searchStudents')}
+      />
 
       {students.length === 0 ? (
         <p className="mt-8 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-8 text-center text-sm text-ink-muted">

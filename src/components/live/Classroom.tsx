@@ -9,6 +9,7 @@ import {
   Minimize2,
   PresentationIcon,
   SquarePen,
+  Upload,
   Users,
   X,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import { ChatPanel } from './ChatPanel';
 import { ParticipantsPanel, type HostAction } from './ParticipantsPanel';
 import { Whiteboard } from './Whiteboard';
 import { SlidesPanel } from './SlidesPanel';
+import { useSlideUpload } from './useSlideUpload';
 import { useRecorder } from './useRecorder';
 import {
   clearBoard as clearBoardAction,
@@ -28,10 +30,12 @@ import {
   saveBoardOp,
   saveMessage,
 } from '@/app/actions/live';
+import { roomSlides } from '@/app/actions/slides';
 import type { BoardOp, RoomMessage } from '@/lib/live/protocol';
 import type { LiveRoomState } from '@/lib/supabase/database.types';
 
 type Tab = 'chat' | 'people' | 'board' | 'slides';
+type SlideItem = { id: string; url: string | null; filename: string };
 
 /**
  * The classroom.
@@ -46,6 +50,10 @@ type Tab = 'chat' | 'people' | 'board' | 'slides';
  * rather than a rule: a student's LiveKit token carries no camera source until
  * the teacher allows one, and every browser drops a host-only message that did
  * not come from the teacher's signed identity.
+ *
+ * What the teacher is looking at travels as `focus`, and the class follows it.
+ * A student may wander between tabs, and stays where they wandered until the
+ * teacher moves again — following is not the same as being pulled around.
  */
 export function Classroom({
   roomToken,
@@ -55,6 +63,7 @@ export function Classroom({
   slides,
   boardHistory,
   chatHistory,
+  removedPeople,
   recordingBaseName,
 }: {
   roomToken: string;
@@ -62,9 +71,11 @@ export function Classroom({
   title: string;
   /** What the server says this viewer may do. The UI never infers it. */
   room: LiveRoomState;
-  slides: { id: string; url: string | null; filename: string }[];
+  slides: SlideItem[];
   boardHistory: BoardOp[];
   chatHistory: { id: string; name: string; isHost: boolean; body: string; at: number }[];
+  /** Banned and not yet allowed back — staff-visible attendance rows. */
+  removedPeople: { userId: string; name: string }[];
   recordingBaseName: string;
 }) {
   const t = useTranslations('live');
@@ -73,6 +84,7 @@ export function Classroom({
   const [tab, setTab] = useState<Tab>(isHost ? 'people' : 'chat');
   const [panelOpen, setPanelOpen] = useState(false);
   const [slide, setSlide] = useState(-1);
+  const [deck, setDeck] = useState<SlideItem[]>(slides);
   const [board, setBoard] = useState<{ ops: BoardOp[]; clearedAt: number }>({
     ops: [],
     clearedAt: 0,
@@ -80,19 +92,75 @@ export function Classroom({
   /** The board in a 320px column is not something anyone can teach on. */
   const [boardOnStage, setBoardOnStage] = useState(false);
   const [panelWidth, setPanelWidth] = useState(340);
+  const [removed, setRemoved] = useState(removedPeople);
+  /** A file is over the room; the class is about to get a new slide. */
+  const [dropping, setDropping] = useState(false);
+  /** Bumped by a `sync` message, so the teacher re-announces where the lesson is. */
+  const [syncAsk, setSyncAsk] = useState(0);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const deckRef = useRef(deck);
+  /** The tab strip and controls, measured so the phone sheet can stop above them. */
+  const footRef = useRef<HTMLDivElement | null>(null);
+  const [footHeight, setFootHeight] = useState(0);
 
-  const onMessage = useCallback((message: RoomMessage) => {
-    // Only messages that survived `acceptFrom` reach here, so anything below
-    // genuinely came from the teacher.
-    if (message.t === 'slide') setSlide(message.i);
-    else if (message.t === 'board') setBoard((b) => ({ ...b, ops: [...b.ops, message.op] }));
-    else if (message.t === 'board-clear') setBoard({ ops: [], clearedAt: Date.now() });
-    else if (message.t === 'ended') window.location.assign('/dashboard');
-  }, []);
+  /**
+   * The deck, re-read from the server.
+   *
+   * Called when the teacher announces one changed: the slides were signed for
+   * each viewer separately, so the class cannot be handed the teacher's links.
+   */
+  const refreshDeck = useCallback(() => {
+    void roomSlides(sessionId).then(setDeck);
+  }, [sessionId]);
+
+  const onMessage = useCallback(
+    (message: RoomMessage) => {
+      // Only messages that survived `acceptFrom` reach here, so anything below
+      // genuinely came from the teacher.
+      if (message.t === 'slide') setSlide(message.i);
+      else if (message.t === 'board') setBoard((b) => ({ ...b, ops: [...b.ops, message.op] }));
+      else if (message.t === 'board-clear') setBoard({ ops: [], clearedAt: Date.now() });
+      else if (message.t === 'focus') {
+        setTab(message.tab);
+        if (message.boardOnStage !== undefined) setBoardOnStage(message.boardOnStage);
+      } else if (message.t === 'deck') refreshDeck();
+      else if (message.t === 'sync') setSyncAsk((n) => n + 1);
+      else if (message.t === 'ended') window.location.assign('/dashboard');
+    },
+    [refreshDeck],
+  );
 
   const live = useRoom({ roomToken, isHost, onMessage });
+  // Pulled out for the effect below: `live` is a fresh object each render, and
+  // the effect must fire on the room's state, not on React re-rendering.
+  const { status: roomStatus, send: sendToRoom } = live;
+
+  /** Show one slide to the class — the teacher's move, refused from anyone else. */
+  const present = (index: number) => {
+    setSlide(index);
+    live.send({ t: 'slide', i: index });
+  };
+
+  /**
+   * A slide that just landed, from a drop on the room or the panel's button.
+   *
+   * The deck is kept here rather than re-read after a reload, because the room
+   * is mid-lesson: the new page goes up in front of the class, and everyone
+   * else is told the deck changed so each browser fetches its own signed copy.
+   */
+  const addSlide = (slide: SlideItem, index: number) => {
+    const at = deckRef.current.length + index;
+    const next = [...deckRef.current, slide];
+    deckRef.current = next;
+    setDeck(next);
+    if (index === 0) {
+      live.send({ t: 'deck' });
+      present(at);
+    }
+  };
+
+  const deckUpload = useSlideUpload(sessionId, { onAdded: addSlide });
 
   /**
    * What the recorder captures.
@@ -129,6 +197,61 @@ export function Classroom({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the deck ref level with the state, so a batch of uploads appended in
+  // the same tick counts from the right place.
+  useEffect(() => {
+    deckRef.current = deck;
+  }, [deck]);
+
+  // The current slide, for the one effect that answers a latecomer without
+  // re-announcing the lesson every time the teacher advances a page.
+  const slideRef = useRef(slide);
+  useEffect(() => {
+    slideRef.current = slide;
+  }, [slide]);
+
+  // The controls are the one thing that must stay under a thumb while a sheet
+  // is open, so the sheet's content stops where they begin.
+  useEffect(() => {
+    const foot = footRef.current;
+    if (!foot) return;
+    const measure = () => setFootHeight(foot.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(foot);
+    return () => observer.disconnect();
+  }, []);
+
+  /**
+   * Tell the class where the lesson is.
+   *
+   * Sent on connect as well as on every move, so a student who joins halfway
+   * through finds the teacher's tab and stage rather than the default ones.
+   */
+  useEffect(() => {
+    if (!isHost || roomStatus !== 'connected') return;
+    sendToRoom({ t: 'focus', tab, boardOnStage });
+  }, [isHost, tab, boardOnStage, roomStatus, sendToRoom]);
+
+  // A student asks once, on entry. The teacher's answer arrives as an ordinary
+  // focus message, so a browser that joins halfway through opens on the lesson
+  // rather than on whatever tab the door led to.
+  useEffect(() => {
+    if (isHost || roomStatus !== 'connected') return;
+    sendToRoom({ t: 'sync' });
+  }, [isHost, roomStatus, sendToRoom]);
+
+  // The teacher's half: answer a latecomer with the tab, the stage and the
+  // page the class is on. Only when asked — this must not fire on every slide.
+  useEffect(() => {
+    if (!isHost || roomStatus !== 'connected' || syncAsk === 0) return;
+    sendToRoom({ t: 'focus', tab, boardOnStage });
+    if (slideRef.current >= 0) sendToRoom({ t: 'slide', i: slideRef.current });
+    // Depends on the ask alone: `tab`, `boardOnStage` and the slide are read
+    // through refs or sent by the effects that already watch them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncAsk, isHost, roomStatus, sendToRoom]);
+
   const presenting = useMemo(
     () =>
       live.people.find((p) => p.sharing && !p.isLocal)?.identity ??
@@ -136,11 +259,11 @@ export function Classroom({
     [live.people, live.sharing],
   );
 
-  const currentSlideUrl = slide >= 0 ? (slides[slide]?.url ?? null) : null;
+  const currentSlideUrl = slide >= 0 ? (deck[slide]?.url ?? null) : null;
 
   const goToSlide = (index: number) => {
-    setSlide(index);
-    live.send({ t: 'slide', i: index });
+    if (!isHost) return;
+    present(index);
   };
 
   const drawOp = (op: BoardOp) => {
@@ -165,12 +288,33 @@ export function Classroom({
   };
 
   const hostAction = async (identity: string, action: HostAction) => {
+    if (action === 'remove') {
+      // Listed under the participants straight away: the ban is already on its
+      // way to the database, and a person the teacher just removed should not
+      // need a reload to become visible again.
+      const person = live.people.find((p) => p.identity === identity);
+      setRemoved((list) =>
+        list.some((r) => r.userId === identity)
+          ? list
+          : [...list, { userId: identity, name: person?.name ?? '' }],
+      );
+    }
+
     const form = new FormData();
     form.set('sessionId', sessionId);
     form.set('userId', identity);
     form.set('action', action);
     // Authorised inside the database, not here: `live_set_participant` refuses
     // anyone who is not staff, whatever this page believes about itself.
+    await controlParticipant({ ok: true }, form);
+  };
+
+  const restorePerson = async (userId: string) => {
+    setRemoved((list) => list.filter((r) => r.userId !== userId));
+    const form = new FormData();
+    form.set('sessionId', sessionId);
+    form.set('userId', userId);
+    form.set('action', 'restore');
     await controlParticipant({ ok: true }, form);
   };
 
@@ -193,17 +337,25 @@ export function Classroom({
     // open" — which sent a teacher hunting for a class nobody had cancelled.
     // They are told apart here, and the underlying reason is shown to staff so
     // a misconfiguration can be fixed rather than guessed at.
-    const removed = live.error === 'removed';
+    const removedByTeacher = live.error === 'removed';
     const unreachable = live.error === 'unavailable';
 
     return (
       <main className="flex min-h-dvh items-center justify-center bg-ink px-6 text-center">
         <div className="max-w-md">
           <h1 className="font-display text-xl font-semibold text-white">
-            {removed ? t('removedTitle') : unreachable ? t('unreachableTitle') : t('closedTitle')}
+            {removedByTeacher
+              ? t('removedTitle')
+              : unreachable
+                ? t('unreachableTitle')
+                : t('closedTitle')}
           </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-white/60">
-            {removed ? t('removedBody') : unreachable ? t('unreachableBody') : t('closedBody')}
+            {removedByTeacher
+              ? t('removedBody')
+              : unreachable
+                ? t('unreachableBody')
+                : t('closedBody')}
           </p>
 
           {isHost && live.detail && (
@@ -224,8 +376,96 @@ export function Classroom({
     );
   }
 
+  /**
+   * One strip of tabs, in the two places it lives: across the top of the side
+   * panel on a wide screen, and along the bottom of the stage on a phone,
+   * where a thumb can reach it. The bar opens the sheet; the panel is already
+   * open.
+   */
+  const tabStrip = (variant: 'panel' | 'bar') => (
+    <div
+      role="tablist"
+      className={cn(
+        variant === 'panel'
+          ? 'hidden border-b border-white/10 lg:flex'
+          : 'flex border-t border-white/10 lg:hidden',
+      )}
+    >
+      {tabs.map(({ key, label, Icon }) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={tab === key}
+          title={label}
+          onClick={() => {
+            if (variant === 'bar') {
+              // Tapping the open tab again puts the sheet away.
+              if (panelOpen && tab === key) {
+                setPanelOpen(false);
+                return;
+              }
+              setTab(key);
+              setPanelOpen(true);
+              return;
+            }
+            setTab(key);
+          }}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-1.5 px-2 py-2.5 text-[12px] transition-colors',
+            variant === 'panel' && 'border-b-2',
+            variant === 'bar' && 'flex-col gap-0.5 py-2 text-[10px]',
+            tab === key
+              ? variant === 'panel'
+                ? 'border-brand-400 text-white'
+                : 'text-brand-300'
+              : 'text-white/50 hover:text-white/80',
+          )}
+        >
+          <Icon className={variant === 'bar' ? 'size-5' : 'size-4'} aria-hidden="true" />
+          {variant === 'panel' ? (
+            <span className="sr-only sm:not-sr-only">{label}</span>
+          ) : (
+            label
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
+  const boardCanvas = (
+    <Whiteboard
+      canDraw={isHost}
+      history={boardHistory}
+      incoming={board}
+      onOp={drawOp}
+      onLiveOp={(op) => live.sendLossy({ t: 'board', op })}
+      onClear={clearBoard}
+    />
+  );
+
   return (
-    <div className="flex h-dvh flex-col bg-ink text-white">
+    <div
+      className="relative flex h-dvh flex-col bg-ink text-white"
+      onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes('Files')) return;
+        // Swallowed for everyone, so a dropped file never navigates a student
+        // away from the lesson. Only the teacher's drop becomes a slide.
+        event.preventDefault();
+        if (isHost && !dropping) setDropping(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        setDropping(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDropping(false);
+        if (!isHost) return;
+        const files = event.dataTransfer.files;
+        if (files?.length) void deckUpload.upload(files);
+      }}
+    >
       <header className="flex items-center gap-3 border-b border-white/10 px-4 py-2.5">
         <h1 className="min-w-0 flex-1 truncate font-display text-[15px] font-semibold">{title}</h1>
 
@@ -241,20 +481,6 @@ export function Classroom({
             {t('recording')}
           </span>
         )}
-
-        <button
-          type="button"
-          onClick={() => setPanelOpen((open) => !open)}
-          className="rounded-lg p-2 text-white/70 transition-colors hover:bg-white/10 lg:hidden"
-          aria-expanded={panelOpen}
-        >
-          {panelOpen ? (
-            <X className="size-5" aria-hidden="true" />
-          ) : (
-            <Users className="size-5" aria-hidden="true" />
-          )}
-          <span className="sr-only">{t('tabPeople')}</span>
-        </button>
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -269,14 +495,7 @@ export function Classroom({
               </div>
             ) : boardOnStage ? (
               <div className="relative m-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
-                <Whiteboard
-                  canDraw={isHost}
-                  history={boardHistory}
-                  incoming={board}
-                  onOp={drawOp}
-                  onLiveOp={(op) => live.sendLossy({ t: 'board', op })}
-                  onClear={clearBoard}
-                />
+                {boardCanvas}
                 <button
                   type="button"
                   onClick={() => setBoardOnStage(false)}
@@ -297,35 +516,43 @@ export function Classroom({
             )}
           </div>
 
-          <Controls
-            isHost={isHost}
-            micOn={live.micOn}
-            camOn={live.camOn}
-            sharing={live.sharing}
-            handUp={live.handUp}
-            canMic={isHost || !initial.muted}
-            canCam={isHost || initial.camera_allowed}
-            canShare={isHost || initial.screen_allowed}
-            recording={recorder.state}
-            onMic={() => void live.toggleMic()}
-            onCam={() => void live.toggleCam()}
-            onShare={() => void live.toggleShare()}
-            onHand={() => live.raiseHand(!live.handUp)}
-            onAskCamera={() => live.send({ t: 'ask', what: 'camera' })}
-            onAskScreen={() => live.send({ t: 'ask', what: 'screen' })}
-            onRecord={() => {
-              if (recorder.state === 'idle') {
-                void recorder.start();
-                live.send({ t: 'rec', on: true });
-              } else {
-                recorder.stop();
-                live.send({ t: 'rec', on: false });
-              }
-            }}
-            onPauseRecord={recorder.togglePause}
-            onLeave={() => window.location.assign(isHost ? '/admin/live' : '/dashboard')}
-            onEnd={() => void endClass()}
-          />
+          {/* The strip and the controls, kept above the phone sheet so a
+              teacher can still mute and raise a hand with the panel open. */}
+          <div ref={footRef} className="relative z-50 bg-ink lg:z-auto">
+            {tabStrip('bar')}
+
+            <Controls
+              isHost={isHost}
+              micOn={live.micOn}
+              camOn={live.camOn}
+              sharing={live.sharing}
+              handUp={live.handUp}
+              // The grant the media server currently holds, not the page the
+              // student loaded: an approval mid-lesson must produce a button.
+              canMic={isHost || (live.abilities?.mic ?? !initial.muted)}
+              canCam={isHost || (live.abilities?.camera ?? initial.camera_allowed)}
+              canShare={isHost || (live.abilities?.screen ?? initial.screen_allowed)}
+              recording={recorder.state}
+              onMic={() => void live.toggleMic()}
+              onCam={() => void live.toggleCam()}
+              onShare={() => void live.toggleShare()}
+              onHand={() => live.raiseHand(!live.handUp)}
+              onAskCamera={() => live.send({ t: 'ask', what: 'camera' })}
+              onAskScreen={() => live.send({ t: 'ask', what: 'screen' })}
+              onRecord={() => {
+                if (recorder.state === 'idle') {
+                  void recorder.start();
+                  live.send({ t: 'rec', on: true });
+                } else {
+                  recorder.stop();
+                  live.send({ t: 'rec', on: false });
+                }
+              }}
+              onPauseRecord={recorder.togglePause}
+              onLeave={() => window.location.assign(isHost ? '/admin/live' : '/dashboard')}
+              onEnd={() => void endClass()}
+            />
+          </div>
         </div>
 
         {/* Drag to widen the panel. The board is the reason it exists: a
@@ -356,33 +583,39 @@ export function Classroom({
         />
 
         <aside
-          style={{ width: panelOpen ? undefined : `${panelWidth}px` }}
+          style={
+            {
+              width: panelOpen ? undefined : `${panelWidth}px`,
+              // Where the strip and controls begin: the sheet stops there, so
+              // they stay reachable while it is open.
+              '--foot': `${footHeight}px`,
+            } as React.CSSProperties
+          }
           className={cn(
-            'flex w-full max-w-sm shrink-0 flex-col border-s border-white/10 bg-black/25',
-            panelOpen ? 'fixed inset-y-0 end-0 z-40 max-w-xs' : 'hidden',
-            'lg:static lg:flex lg:max-w-none',
+            'flex flex-col border-white/10 bg-black/25',
+            // On a phone it is a sheet over the stage, tall enough to read a
+            // chat and shallow enough to keep the lesson in sight.
+            'max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-40 max-lg:max-h-[70dvh] max-lg:rounded-t-2xl max-lg:border-t max-lg:bg-ink/95 max-lg:pb-[var(--foot)]',
+            panelOpen ? 'max-lg:flex' : 'max-lg:hidden',
+            // On a wide screen it is a column that is always there.
+            'lg:static lg:flex lg:max-w-none lg:border-s',
           )}
         >
-          <div className="flex border-b border-white/10" role="tablist">
-            {tabs.map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={tab === key}
-                title={label}
-                onClick={() => setTab(key)}
-                className={cn(
-                  'flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-2.5 text-[12px] transition-colors',
-                  tab === key
-                    ? 'border-brand-400 text-white'
-                    : 'border-transparent text-white/50 hover:text-white/80',
-                )}
-              >
-                <Icon className="size-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only">{label}</span>
-              </button>
-            ))}
+          {tabStrip('panel')}
+
+          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 lg:hidden">
+            <span className="text-[12px] font-medium text-white/60">
+              {tabs.find((item) => item.key === tab)?.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPanelOpen(false)}
+              title={t('closePanel')}
+              className="rounded-lg p-1.5 text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X className="size-4" aria-hidden="true" />
+              <span className="sr-only">{t('closePanel')}</span>
+            </button>
           </div>
 
           {tab === 'chat' && (
@@ -397,7 +630,9 @@ export function Classroom({
             <ParticipantsPanel
               people={live.people}
               isHost={isHost}
+              removed={removed}
               onAction={(identity, action) => void hostAction(identity, action)}
+              onRestore={(userId) => void restorePerson(userId)}
               onClearAsk={live.clearAsk}
             />
           )}
@@ -414,27 +649,30 @@ export function Classroom({
                   <Maximize2 className="size-3.5" aria-hidden="true" />
                   {t('boardExpand')}
                 </button>
-                <Whiteboard
-                  canDraw={isHost}
-                  history={boardHistory}
-                  incoming={board}
-                  onOp={drawOp}
-                  onLiveOp={(op) => live.sendLossy({ t: 'board', op })}
-                  onClear={clearBoard}
-                />
+                {boardCanvas}
               </div>
             ))}
           {tab === 'slides' && (
             <SlidesPanel
-              sessionId={sessionId}
-              slides={slides}
+              slides={deck}
               current={slide}
               canPresent={isHost}
               onGo={goToSlide}
+              upload={deckUpload}
             />
           )}
         </aside>
       </div>
+
+      {dropping && (
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-ink/80 p-6">
+          <div className="rounded-2xl border-2 border-dashed border-brand-400 bg-ink/60 px-10 py-12 text-center">
+            <Upload className="mx-auto size-8 text-brand-300" aria-hidden="true" />
+            <p className="mt-3 font-display text-[15px] font-semibold">{t('dropSlides')}</p>
+            <p className="mt-1 text-[12px] text-white/50">{t('slidesHint')}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

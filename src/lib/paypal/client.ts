@@ -199,6 +199,12 @@ export interface CaptureResult {
   captureId: string | null;
   amountCents: number | null;
   currency: string | null;
+  /**
+   * Which of PayPal's sources paid: 'paypal' or 'card' (PayPal also reports
+   * 'paypal_credit' and others, which are PayPal-funded as far as the school
+   * is concerned). Null when PayPal did not say.
+   */
+  paymentMethod: 'paypal' | 'card' | null;
 }
 
 /** Take the money. The caller checks the result against its own order row. */
@@ -223,6 +229,7 @@ export async function capturePayPalOrder(
 
   const body = (await response.json()) as {
     status?: string;
+    payment_source?: Record<string, unknown>;
     purchase_units?: {
       payments?: {
         captures?: {
@@ -241,11 +248,20 @@ export async function capturePayPalOrder(
   }
 
   const capture = body.purchase_units?.[0]?.payments?.captures?.[0];
+
+  // The keys of `payment_source` are the source: `{ card: {...} }` means a
+  // card, `{ paypal: {...} }` means the balance. Anything else (a wallet, a
+  // credit product) is PayPal-funded and reads as PayPal to the office.
+  const sourceKeys = Object.keys(body.payment_source ?? {});
+  const paymentMethod: 'paypal' | 'card' | null =
+    sourceKeys.length === 0 ? null : sourceKeys.includes('card') ? 'card' : 'paypal';
+
   return {
     status: capture?.status ?? body.status ?? 'UNKNOWN',
     captureId: capture?.id ?? null,
     amountCents: capture?.amount ? fromPayPalAmount(capture.amount.value) : null,
     currency: capture?.amount?.currency_code ?? null,
+    paymentMethod,
   };
 }
 

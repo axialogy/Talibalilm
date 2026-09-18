@@ -9,6 +9,7 @@ import { formatPrice } from '@/lib/commerce/quote';
 import { couponBatches, listCoupons } from '@/lib/data/admin';
 import { requireAdmin } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { requireLocale } from '@/i18n/routing';
 
 /** Cash codes for the front desk: generate, track, export, void. Admin only. */
 export default async function AdminCouponsPage({
@@ -19,6 +20,7 @@ export default async function AdminCouponsPage({
   searchParams: Promise<{ batch?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   const { batch } = await searchParams;
   setRequestLocale(locale);
 

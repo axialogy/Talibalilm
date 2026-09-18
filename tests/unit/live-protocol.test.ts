@@ -4,6 +4,7 @@ import {
   decodeMessage,
   encodeMessage,
   participantIsHost,
+  type BoardOp,
   type RoomMessage,
 } from '@/lib/live/protocol';
 
@@ -18,6 +19,8 @@ describe('acceptFrom — what a student may not announce', () => {
       { t: 'board', op: { t: 'stroke', pts: [0, 0, 1, 1], color: '#000', w: 2 } },
       { t: 'board-clear' },
       { t: 'rec', on: true },
+      { t: 'deck' },
+      { t: 'focus', tab: 'board', boardOnStage: true },
       { t: 'ended' },
     ] as RoomMessage[]) {
       expect(acceptFrom(m, false)).toBe(false);
@@ -25,11 +28,12 @@ describe('acceptFrom — what a student may not announce', () => {
     }
   });
 
-  it('lets anyone chat, raise a hand, or ask for a camera', () => {
+  it('lets anyone chat, raise a hand, ask for a camera, or ask where the lesson is', () => {
     for (const m of [
       { t: 'chat', body: 'bonjour' },
       { t: 'hand', up: true },
       { t: 'ask', what: 'camera' },
+      { t: 'sync' },
     ] as RoomMessage[]) {
       expect(acceptFrom(m, false)).toBe(true);
     }
@@ -41,7 +45,20 @@ describe('decodeMessage — everything on the wire is another browser’s word',
     expect(round({ t: 'chat', body: 'salam' })).toEqual({ t: 'chat', body: 'salam' });
     expect(round({ t: 'hand', up: true })).toEqual({ t: 'hand', up: true });
     expect(round({ t: 'slide', i: 4 })).toEqual({ t: 'slide', i: 4 });
+    expect(round({ t: 'deck' })).toEqual({ t: 'deck' });
+    expect(round({ t: 'sync' })).toEqual({ t: 'sync' });
+    expect(round({ t: 'focus', tab: 'board', boardOnStage: true })).toEqual({
+      t: 'focus',
+      tab: 'board',
+      boardOnStage: true,
+    });
+    expect(round({ t: 'focus', tab: 'chat' })).toEqual({ t: 'focus', tab: 'chat' });
     expect(round({ t: 'ended' })).toEqual({ t: 'ended' });
+  });
+
+  it('round-trips the eraser as a stroke that erases', () => {
+    const op: BoardOp = { t: 'stroke', pts: [0, 0, 1, 1], color: '#000', w: 24, erase: true };
+    expect(round({ t: 'board', op })).toEqual({ t: 'board', op });
   });
 
   it('drops malformed or unknown payloads rather than throwing', () => {
@@ -71,6 +88,26 @@ describe('decodeMessage — everything on the wire is another browser’s word',
     ).toBeNull();
     expect(
       decodeMessage(encodeMessage({ t: 'board', op: { t: 'evil' } } as unknown as RoomMessage)),
+    ).toBeNull();
+    // The eraser flag is a boolean or absent — a truthy string is not one.
+    expect(
+      decodeMessage(
+        encodeMessage({
+          t: 'board',
+          op: { t: 'stroke', pts: [0, 0], color: '#000', w: 1, erase: 'yes' },
+        } as unknown as RoomMessage),
+      ),
+    ).toBeNull();
+  });
+
+  it('refuses a focus message naming a tab that does not exist', () => {
+    expect(
+      decodeMessage(encodeMessage({ t: 'focus', tab: 'secrets' } as unknown as RoomMessage)),
+    ).toBeNull();
+    expect(
+      decodeMessage(
+        encodeMessage({ t: 'focus', tab: 'board', boardOnStage: 'yes' } as unknown as RoomMessage),
+      ),
     ).toBeNull();
   });
 

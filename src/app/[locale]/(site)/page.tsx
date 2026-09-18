@@ -11,9 +11,11 @@ import { listCursus } from '@/lib/data/commerce';
 import { listEvents, listReviews } from '@/lib/data/site';
 import { institut } from '@/lib/content/institut';
 import { siteUrl } from '@/lib/env';
+import { requireLocale } from '@/i18n/routing';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('home');

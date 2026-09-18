@@ -294,6 +294,7 @@ export async function completePayPalCheckout(
       status: capture.status,
       // Identifies WHICH installment when the order carries a plan.
       paypalOrderId: parsed.data,
+      paymentMethod: capture.paymentMethod,
     });
 
     if (!settled.ok) {

@@ -29,11 +29,16 @@ $$;
 grant usage on schema public to anon, authenticated, service_role;
 grant usage on schema auth to anon, authenticated, service_role;
 
+-- The columns the migrations actually read. `email_confirmed_at` is the one
+-- that matters: the spam sweep asks whether a signup ever confirmed, and a
+-- harness without it fails while APPLYING the migration rather than at an
+-- assertion — every test file then reports a failure that names none of them.
 create table if not exists auth.users (
   id                  uuid primary key default gen_random_uuid(),
   email               text unique,
   raw_user_meta_data  jsonb not null default '{}'::jsonb,
-  created_at          timestamptz not null default now()
+  created_at          timestamptz not null default now(),
+  email_confirmed_at  timestamptz
 );
 
 -- Supabase reads the subject out of the request's JWT claims. Tests set the

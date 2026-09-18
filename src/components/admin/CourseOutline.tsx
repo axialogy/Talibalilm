@@ -1,12 +1,13 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Loader2, Plus, Trash2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
 import { LessonVideoUpload } from '@/components/admin/LessonVideoUpload';
+import { fillLessonFromVideo } from '@/app/actions/admin';
 import {
   addLesson,
   addModule,
@@ -173,6 +174,39 @@ function LessonRow({
   const t = useTranslations('admin');
   const [open, setOpen] = useState(false);
   const [state, updateAction] = useActionState(updateLesson, EMPTY);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [filling, startFill] = useTransition();
+  const [fillNote, setFillNote] = useState<string | null>(null);
+
+  /**
+   * "Remplir": read the video link in the form, ask the video what it is, and
+   * write the title, the type and a content line into the fields. Nothing is
+   * saved — the office reviews it and presses save.
+   */
+  const fill = () => {
+    const form = formRef.current;
+    if (!form) return;
+    const link = (form.elements.namedItem('video_id') as HTMLInputElement | null)?.value ?? '';
+    setFillNote(null);
+
+    startFill(async () => {
+      const result = await fillLessonFromVideo(link);
+      if (!result.ok) {
+        setFillNote(t('errors.videoUnrecognised'));
+        return;
+      }
+
+      const set = (name: string, value: string) => {
+        const field = form.elements.namedItem(name) as HTMLInputElement | null;
+        if (field && value) field.value = value;
+      };
+      if (result.title) set('title', result.title);
+      if (result.content) set('content', result.content);
+      if (result.videoId) set('video_id', result.videoId);
+      set('type', 'video');
+      setFillNote(t('lessonFilled'));
+    });
+  };
   const [, deleteAction] = useActionState(deleteLesson, EMPTY);
   const [, moveAction] = useActionState(moveLesson, EMPTY);
 
@@ -210,13 +244,47 @@ function LessonRow({
 
       {open && (
         <form
+          ref={formRef}
           action={updateAction}
           className="mt-4 space-y-3 rounded-[var(--radius-input)] bg-surface/50 p-4"
         >
           <input type="hidden" name="id" value={lesson.id} />
 
+          {/* The title is the first thing read and the first thing filled, so
+              it is bigger than the rest of the form and carries the one button
+              that can write it for you. */}
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block min-w-[220px] flex-1">
+              <span className="mb-1.5 block text-[13px] font-medium text-ink">
+                {t('lessonTitle')}
+              </span>
+              <input
+                name="title"
+                defaultValue={lesson.title}
+                required
+                maxLength={200}
+                className="w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 font-display text-[17px] font-medium text-ink outline-none focus:border-brand-400"
+              />
+            </label>
+            <Button
+              type="button"
+              size="md"
+              variant="goldOutline"
+              disabled={filling}
+              onClick={() => void fill()}
+            >
+              {filling ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+              {t('lessonFill')}
+            </Button>
+          </div>
+
+          {fillNote && (
+            <p role="status" className="text-[12px] text-ink-muted">
+              {fillNote}
+            </p>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t('lessonTitle')} name="title" defaultValue={lesson.title} required />
             <label className="block">
               <span className="mb-1.5 block text-[13px] font-medium text-ink">
                 {t('lessonType')}

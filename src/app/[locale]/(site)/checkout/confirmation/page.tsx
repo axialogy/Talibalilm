@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/commerce/quote';
 import { getCourse } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
+import { requireLocale } from '@/i18n/routing';
 
 /**
  * After the money has moved.
@@ -28,6 +29,7 @@ export default async function ConfirmationPage({
   searchParams: Promise<{ order?: string }>;
 }) {
   const { locale } = await params;
+  requireLocale(locale);
   const { order: orderId } = await searchParams;
   setRequestLocale(locale);
 

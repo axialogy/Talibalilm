@@ -41,10 +41,14 @@ export interface OrderSummary {
   statusReason: string;
   createdAt: string;
   paidAt: string | null;
+  /** paypal or card on a PayPal payment; null for the desk and free. */
+  paymentMethod: string | null;
 }
 
 export interface OrderListOptions {
   status?: OrderStatus;
+  /** How the money arrived: paypal, card, office or free. */
+  method?: 'paypal' | 'card' | 'office' | 'free';
   /** ISO date; orders created on or after midnight of this day. */
   since?: string;
   limit?: number;
@@ -57,13 +61,23 @@ export async function listOrders(options: OrderListOptions = {}): Promise<OrderS
   let query = supabase
     .from('orders')
     .select(
-      'id, user_id, status, route, delivery, total_cents, currency, status_reason, created_at, paid_at',
+      'id, user_id, status, route, delivery, total_cents, currency, status_reason, created_at, paid_at, payment_method',
     )
     .order('created_at', { ascending: false })
     .limit(options.limit ?? 100);
 
   if (options.status) query = query.eq('status', options.status);
   if (options.since) query = query.gte('created_at', `${options.since}T00:00:00Z`);
+
+  // The method is two columns: the route says which flow, `payment_method`
+  // says whether PayPal's card or the balance funded it.
+  if (options.method === 'card') {
+    query = query.eq('route', 'paypal').eq('payment_method', 'card');
+  } else if (options.method === 'paypal') {
+    query = query.eq('route', 'paypal').neq('payment_method', 'card');
+  } else if (options.method) {
+    query = query.eq('route', options.method);
+  }
 
   const { data } = await query;
   const rows = (data ?? []).map((o) => ({
@@ -77,6 +91,7 @@ export async function listOrders(options: OrderListOptions = {}): Promise<OrderS
     statusReason: o.status_reason,
     createdAt: o.created_at,
     paidAt: o.paid_at,
+    paymentMethod: o.payment_method,
   }));
   return attachEmails(supabase, rows);
 }
@@ -125,7 +140,7 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     .select(
       `id, user_id, status, route, delivery, total_cents, currency, status_reason,
        created_at, paid_at, provider_order_id, provider_capture_id, coupon_id, pack_id,
-       subtotal_cents, discount_cents,
+       subtotal_cents, discount_cents, payment_method,
        order_items ( product_id, title, schedule_label, kind, delivery, unit_price_cents,
                      duration_days, is_free )`,
     )
@@ -176,6 +191,7 @@ export async function getOrder(orderId: string): Promise<OrderDetail | null> {
     statusReason: o.status_reason,
     createdAt: o.created_at,
     paidAt: o.paid_at,
+    paymentMethod: o.payment_method,
     providerOrderId: o.provider_order_id,
     providerCaptureId: o.provider_capture_id,
     couponId: o.coupon_id,

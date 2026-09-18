@@ -7,10 +7,12 @@ import {
   Room,
   RoomEvent,
   Track,
+  VideoPresets,
   type LocalTrackPublication,
   type Participant,
   type RemoteParticipant,
 } from 'livekit-client';
+import { TrackSource as ProtoTrackSource } from '@livekit/protocol';
 import {
   acceptFrom,
   decodeMessage,
@@ -63,8 +65,33 @@ interface Options {
   onMessage?: (message: RoomMessage, fromHost: boolean) => void;
 }
 
+/** What the media server currently accepts from this viewer. */
+export interface RoomAbilities {
+  mic: boolean;
+  camera: boolean;
+  screen: boolean;
+}
+
 export function useRoom({ roomToken, isHost, onMessage }: Options) {
-  const room = useMemo(() => new Room({ adaptiveStream: true, dynacast: true }), []);
+  const room = useMemo(
+    () =>
+      new Room({
+        // The lesson is watched on phone screens as often as on a laptop, so
+        // the server sends each viewer a layer it can actually take. 720p is
+        // the capture ceiling: enough to read a shared document, and the one
+        // this platform can afford to carry for a class.
+        adaptiveStream: true,
+        dynacast: true,
+        videoCaptureDefaults: { resolution: VideoPresets.h720.resolution },
+        audioCaptureDefaults: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        publishDefaults: { simulcast: true },
+      }),
+    [],
+  );
   const [status, setStatus] = useState<RoomStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
   /** The underlying failure, shown to staff and logged. Never guessed at. */
@@ -75,6 +102,7 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
   const [camOn, setCamOn] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [handUp, setHandUp] = useState(false);
+  const [abilities, setAbilities] = useState<RoomAbilities | null>(null);
 
   // Hands and pending requests live outside LiveKit's own state, so they are
   // kept here and merged into the participant list when it is rebuilt.
@@ -88,6 +116,24 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
       room.localParticipant,
       ...Array.from(room.remoteParticipants.values()),
     ];
+
+    // The teacher's decision reaches LiveKit as a permission change, so the
+    // buttons a student sees come from the media server's answer rather than
+    // from the page they loaded an hour ago. Without this, a student the
+    // teacher unmuted mid-lesson still had no microphone to click.
+    const permissions = room.localParticipant.permissions;
+    if (permissions) {
+      const sources = permissions.canPublishSources ?? [];
+      const allows = (source: ProtoTrackSource) =>
+        // An empty list with canPublish set is LiveKit's "no restriction".
+        sources.length > 0 ? sources.includes(source) : Boolean(permissions.canPublish);
+      setAbilities({
+        mic: allows(ProtoTrackSource.MICROPHONE),
+        camera: allows(ProtoTrackSource.CAMERA),
+        screen: allows(ProtoTrackSource.SCREEN_SHARE),
+      });
+    }
+
     setPeople(
       all.map((p) => ({
         identity: p.identity,
@@ -248,22 +294,37 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
     [room],
   );
 
+  // A refusal here is the media server saying no — the permission changed
+  // under the button, or the device is gone. The state stays as it was and
+  // the button remains honest; the next permission change rebuilds it.
   const toggleMic = useCallback(async () => {
     const next = !room.localParticipant.isMicrophoneEnabled;
-    await room.localParticipant.setMicrophoneEnabled(next);
-    setMicOn(next);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(next);
+      setMicOn(next);
+    } catch {
+      /* Refused or no device: leave the button as it was. */
+    }
   }, [room]);
 
   const toggleCam = useCallback(async () => {
     const next = !room.localParticipant.isCameraEnabled;
-    await room.localParticipant.setCameraEnabled(next);
-    setCamOn(next);
+    try {
+      await room.localParticipant.setCameraEnabled(next);
+      setCamOn(next);
+    } catch {
+      /* Refused or no device: leave the button as it was. */
+    }
   }, [room]);
 
   const toggleShare = useCallback(async () => {
     const next = !room.localParticipant.isScreenShareEnabled;
-    await room.localParticipant.setScreenShareEnabled(next, { audio: true });
-    setSharing(next);
+    try {
+      await room.localParticipant.setScreenShareEnabled(next, { audio: true });
+      setSharing(next);
+    } catch {
+      /* Refused or no screen: leave the button as it was. */
+    }
   }, [room]);
 
   const raiseHand = useCallback(
@@ -316,6 +377,7 @@ export function useRoom({ roomToken, isHost, onMessage }: Options) {
     camOn,
     sharing,
     handUp,
+    abilities,
     send,
     sendLossy,
     sendChat,

@@ -40,6 +40,7 @@ import { getStudentProfile, isApproved, profileComplete } from '@/lib/data/profi
 import { getPayPalPublicConfig } from '@/lib/paypal/client';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
+import { safeLocale } from '@/i18n/routing';
 
 /** Errors handed back by the PayPal return and cancel routes, in the URL. */
 const RETURN_ERRORS: Record<string, string> = {
@@ -117,7 +118,7 @@ export async function CheckoutFlow({
   // compute it — the student sees the three amounts before choosing.
   const planAmounts = priced ? splitInstallments(priced.totalCents, selection.installments) : [];
   const planDates = planDueDates(new Date(), selection.installments);
-  const planDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long' });
+  const planDateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'long' });
 
   // Signing in is required to pay, because an entitlement has to belong to
   // somebody. The selection survives in its cookie across the round trip.

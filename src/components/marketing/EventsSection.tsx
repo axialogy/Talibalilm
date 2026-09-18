@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { EventCard } from '@/components/marketing/EventCard';
 import type { EventView } from '@/lib/data/site';
+import { safeLocale } from '@/i18n/routing';
 
 /**
  * Actualités & événements.
@@ -17,7 +18,7 @@ export async function EventsSection({ events, locale }: { events: EventView[]; l
   if (events.length === 0) return null;
 
   const t = await getTranslations('home');
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'long', timeStyle: 'short' });
 
   return (
     <section className="pattern-islamic py-16 sm:py-20">

@@ -23,6 +23,7 @@ import { supabaseConfigured } from '@/lib/env';
 import { courseLessons } from '@/lib/content/types';
 import { signOut } from '@/app/actions/auth';
 import { redirect } from 'next/navigation';
+import { requireLocale, safeLocale } from '@/i18n/routing';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -41,6 +42,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  */
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  requireLocale(locale);
   setRequestLocale(locale);
 
   if (!supabaseConfigured) redirect('/login');
@@ -95,7 +97,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       ? `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim()
       : viewer.fullName || viewer.email || tProfile('title');
 
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'long' });
+  const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'long' });
 
   const courseTitles = new Map(published.map((course) => [course.id, course.title]));
   const cursusTitles = new Map(cursusList.map((cursus) => [cursus.id, cursus.title]));
