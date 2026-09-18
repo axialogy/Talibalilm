@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { deleteProduct, saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -60,7 +61,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
             <li key={fee.id} className="p-4">
               {/* Editing posts the whole row back, so the price and the mode it
                   belongs to can never drift apart. */}
-              <form action={add} className="flex flex-wrap items-end gap-3">
+              <ActionForm action={add} className="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="id" value={fee.id} />
                 <input type="hidden" name="kind" value="module" />
                 <input type="hidden" name="course_id" value={courseId} />
@@ -173,9 +174,9 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
                     </label>
                   </div>
                 </details>
-              </form>
+              </ActionForm>
 
-              <form action={remove} className="mt-2">
+              <ActionForm action={remove} className="mt-2">
                 <input type="hidden" name="id" value={fee.id} />
                 <button
                   type="submit"
@@ -184,7 +185,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
                   <Trash2 className="size-3.5" aria-hidden="true" />
                   {t('feeRemove')}
                 </button>
-              </form>
+              </ActionForm>
             </li>
           ))}
         </ul>
@@ -194,7 +195,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
           course and mode have no answer to "which one is charged?", and the
           database's partial unique index refuses them anyway. */}
       {free.length > 0 && (
-        <form
+        <ActionForm
           action={add}
           className="flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-4"
         >
@@ -228,7 +229,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
           </Button>
 
           <p className="w-full text-[11px] text-ink-muted">{t('feeHint')}</p>
-        </form>
+        </ActionForm>
       )}
 
       <ActionError state={addState} />

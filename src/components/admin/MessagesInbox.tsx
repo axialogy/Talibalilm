@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { setMessageHandled } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { ContactMessageView } from '@/lib/data/site';
+import { ActionForm } from '@/components/ui/action-form';
 
 const IDLE: AdminState = { ok: false };
 
@@ -95,12 +96,12 @@ function HandledButton({ id, handled }: { id: string; handled: boolean }) {
   const t = useTranslations('admin');
   const [, action] = useActionState(setMessageHandled, IDLE);
   return (
-    <form action={action}>
+    <ActionForm action={action}>
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="handled" value={handled ? 'no' : 'yes'} />
       <Button type="submit" size="sm" variant="ghost">
         {handled ? t('messageMarkPending') : t('messageMarkHandled')}
       </Button>
-    </form>
+    </ActionForm>
   );
 }

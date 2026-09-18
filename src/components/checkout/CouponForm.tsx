@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertCircle, CheckCircle2, Tag } from 'lucide-react';
 import { SubmitButton } from '@/components/ui/submit-button';
+import { ActionForm } from '@/components/ui/action-form';
 import { applyCoupon, type CouponState } from '@/app/actions/checkout';
 import { formatPrice } from '@/lib/commerce/quote';
 import type { CouponPreview } from '@/lib/commerce/coupons';
@@ -40,7 +41,7 @@ export function CouponForm({
 
   return (
     <div>
-      <form action={action} className="flex flex-wrap items-end gap-3">
+      <ActionForm action={action} className="flex flex-wrap items-end gap-3">
         <label className="min-w-[200px] flex-1">
           <span className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-ink">
             <Tag className="size-3.5 text-ink-muted" aria-hidden="true" />
@@ -59,7 +60,7 @@ export function CouponForm({
         <SubmitButton variant="outline" size="md">
           {t('couponApply')}
         </SubmitButton>
-      </form>
+      </ActionForm>
 
       {fieldError ? (
         <p role="alert" className="mt-2 flex items-center gap-1.5 text-[12px] text-red-600">

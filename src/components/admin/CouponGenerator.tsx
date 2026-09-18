@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Check, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { generateCoupons, type GenerateState } from '@/app/actions/office';
 
 const EMPTY: GenerateState = { ok: true };
@@ -36,7 +37,7 @@ export function CouponGenerator() {
 
   return (
     <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
-      <form action={action} className="space-y-4">
+      <ActionForm action={action} className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1.5 block text-[13px] font-medium text-ink">
@@ -121,7 +122,7 @@ export function CouponGenerator() {
             {state.detail}
           </pre>
         )}
-      </form>
+      </ActionForm>
 
       {state.codes && state.codes.length > 0 && (
         <div className="mt-5 rounded-[var(--radius-input)] border border-brand-200 bg-brand-50/60 p-4">

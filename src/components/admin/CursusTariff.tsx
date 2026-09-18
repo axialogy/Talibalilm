@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -57,7 +58,7 @@ export function CursusTariff({
   return (
     <div className="space-y-2">
       {rows.map(({ year, delivery, existing }) => (
-        <form
+        <ActionForm
           key={`${year}-${delivery}`}
           action={save}
           className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-line bg-white px-4 py-3 text-[13px]"
@@ -94,7 +95,7 @@ export function CursusTariff({
           <Button type="submit" size="sm" variant="ghost">
             {existing ? t('save') : t('feeAdd')}
           </Button>
-        </form>
+        </ActionForm>
       ))}
 
       <ActionError state={state} />

@@ -8,6 +8,7 @@ import { saveSiteSettings } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { SiteSettings } from '@/lib/data/site';
 import { ActionError } from '@/components/admin/ActionError';
+import { ActionForm } from '@/components/ui/action-form';
 
 /** `ok` means "the save succeeded", so nothing has succeeded yet. */
 const IDLE: AdminState = { ok: false };
@@ -23,7 +24,7 @@ export function AnnouncementSettings({ settings }: { settings: SiteSettings }) {
   const [state, action] = useActionState(saveSiteSettings, IDLE);
 
   return (
-    <form action={action} className="max-w-2xl space-y-6">
+    <ActionForm action={action} className="max-w-2xl space-y-6">
       <div className="space-y-3 rounded-[var(--radius-card)] border border-line bg-white p-5">
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-medium text-ink">
@@ -82,6 +83,6 @@ export function AnnouncementSettings({ settings }: { settings: SiteSettings }) {
       <SubmitButton size="md" block={false}>
         {t('save')}
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

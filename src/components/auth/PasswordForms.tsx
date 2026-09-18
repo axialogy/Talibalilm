@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { FormMessage } from '@/components/auth/AuthCard';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 import { forgotPassword, resetPassword, type ActionState } from '@/app/actions/auth';
@@ -14,7 +15,7 @@ export function ForgotPasswordForm() {
   const [state, action] = useActionState(forgotPassword, EMPTY);
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <ActionForm action={action} className="space-y-4" noValidate>
       {state.message && (
         <FormMessage tone={state.ok ? 'success' : 'error'}>{state.message}</FormMessage>
       )}
@@ -27,7 +28,7 @@ export function ForgotPasswordForm() {
         error={state.fieldErrors?.['email']}
       />
       <SubmitButton>{t('submitForgot')}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
 
@@ -36,7 +37,7 @@ export function ResetPasswordForm() {
   const [state, action] = useActionState(resetPassword, EMPTY);
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <ActionForm action={action} className="space-y-4" noValidate>
       {state.message && <FormMessage tone="error">{state.message}</FormMessage>}
       <Field
         label={t('password')}
@@ -56,6 +57,6 @@ export function ResetPasswordForm() {
         error={state.fieldErrors?.['passwordConfirm']}
       />
       <SubmitButton>{t('submitReset')}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

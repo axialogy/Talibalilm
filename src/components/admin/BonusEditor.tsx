@@ -8,6 +8,7 @@ import { ActionError } from '@/components/admin/ActionError';
 import { Badge } from '@/components/ui/badge';
 import { deletePack, saveBonus } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
+import { ActionForm } from '@/components/ui/action-form';
 
 const EMPTY: AdminState = { ok: true };
 
@@ -92,7 +93,7 @@ export function BonusEditor({
         <ul className="space-y-3">
           {bonuses.map((b) => (
             <li key={b.id} className="rounded-[var(--radius-card)] border border-line bg-white p-4">
-              <form action={save} className="flex flex-wrap items-center gap-2 text-[13px]">
+              <ActionForm action={save} className="flex flex-wrap items-center gap-2 text-[13px]">
                 <input type="hidden" name="id" value={b.id} />
 
                 <Gift className="size-4 text-brand-500" aria-hidden="true" />
@@ -123,7 +124,7 @@ export function BonusEditor({
                 <Button type="submit" size="sm" variant="ghost">
                   {t('save')}
                 </Button>
-              </form>
+                </ActionForm>
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 {b.maxRedemptions !== null && (
@@ -131,7 +132,7 @@ export function BonusEditor({
                     {b.redeemedCount}/{b.maxRedemptions}
                   </Badge>
                 )}
-                <form
+                <ActionForm
                   action={remove}
                   onSubmit={(event) => {
                     if (!window.confirm(t('bonusDeleteConfirm'))) event.preventDefault();
@@ -145,14 +146,14 @@ export function BonusEditor({
                     <Trash2 className="size-3.5" aria-hidden="true" />
                     {t('bonusDelete')}
                   </button>
-                </form>
+              </ActionForm>
               </div>
             </li>
           ))}
         </ul>
       )}
 
-      <form
+      <ActionForm
         action={save}
         className="flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-4 text-[13px]"
       >
@@ -171,7 +172,7 @@ export function BonusEditor({
         <Button type="submit" size="sm">
           {t('bonusAdd')}
         </Button>
-      </form>
+      </ActionForm>
 
       <ActionError state={state} />
     </div>

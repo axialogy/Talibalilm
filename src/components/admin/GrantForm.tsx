@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Field } from '@/components/ui/field';
+import { ActionForm } from '@/components/ui/action-form';
 import { grantEntitlement } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
@@ -36,7 +37,7 @@ export function GrantForm({
   const [scope, setScope] = useState<'course' | 'cursus' | 'site'>('course');
 
   return (
-    <form
+    <ActionForm
       action={action}
       className="space-y-4 rounded-[var(--radius-card)] border border-line bg-white p-5"
     >
@@ -139,6 +140,6 @@ export function GrantForm({
         )}
         <ActionError state={state} />
       </div>
-    </form>
+    </ActionForm>
   );
 }
