@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { reportError } from '@/lib/observability/report';
+import { malformedR2Config } from '@/lib/storage/r2-config';
 
 /**
  * Cloudflare R2.
@@ -56,6 +57,17 @@ export function r2Missing(): string[] {
   ]
     .filter(([, value]) => !value)
     .map(([name]) => name as string);
+}
+
+/**
+ * Which of the four is present but impossible, by name.
+ *
+ * A value that is set is not the same as a value that is right: the S3 API URL
+ * pasted into `R2_ACCOUNT_ID` is present and produces a hostname no resolver
+ * can answer. The shape rules live in `r2-config.ts`, pure and unit-tested.
+ */
+export function r2Malformed(): string[] {
+  return malformedR2Config(ACCOUNT, BUCKET);
 }
 
 let client: S3Client | null = null;

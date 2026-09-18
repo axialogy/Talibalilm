@@ -225,6 +225,23 @@ function LessonRow({
           </span>
         </button>
 
+        {/* On the row, before the details are open: the office asked for the
+            way in to be visible rather than hidden behind the title, and for
+            this button to be what opens the lesson. Once it is open, the same
+            action lives beside the title field and this one steps aside. */}
+        {!open && (
+          <Button
+            type="button"
+            size="sm"
+            variant="goldOutline"
+            onClick={() => setOpen(true)}
+            title={t('lessonFill')}
+          >
+            <Wand2 className="size-3.5" aria-hidden="true" />
+            {t('lessonFill')}
+          </Button>
+        )}
+
         {lesson.isPreview && <Badge variant="gold">{t('isPreview')}</Badge>}
 
         <MoveButtons formAction={moveAction} item={lesson} previous={previous} next={next} />

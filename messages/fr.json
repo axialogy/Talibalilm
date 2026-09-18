@@ -1279,6 +1279,8 @@
     "share": "Partager l’écran",
     "slideNext": "Diapositive suivante",
     "slidePrev": "Diapositive précédente",
+    "slideRemove": "Retirer la diapositive",
+    "slideRemoveConfirm": "Retirer cette diapositive de la séance ? Les élèves ne la verront plus.",
     "slidesAdd": "Ajouter des diapositives",
     "slidesHint": "PDF, PNG, JPEG ou WebP · un PDF devient une diapositive par page",
     "slidesNone": "L’enseignant n’a pas encore partagé de diapositives.",

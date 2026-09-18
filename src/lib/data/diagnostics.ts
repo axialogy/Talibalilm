@@ -2,7 +2,7 @@ import 'server-only';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseConfigured, siteUrl } from '@/lib/env';
-import { checkCors, r2Configured, r2Missing } from '@/lib/storage/r2';
+import { checkCors, r2Configured, r2Malformed, r2Missing } from '@/lib/storage/r2';
 import { smtpProbe } from '@/lib/email/send';
 import { liveKitConfigured } from '@/lib/live/server';
 
@@ -649,11 +649,21 @@ export async function runDiagnostics(): Promise<Check[]> {
   }
 
   const missingR2 = r2Missing();
+  const malformedR2 = r2Malformed();
   checks.push({
     group: 'Configuration',
     name: 'Cloudflare R2 (diapositives et vidéos)',
-    state: r2Configured ? 'ok' : 'unset',
-    detail: r2Configured ? 'les quatre variables sont lues' : missingR2.join(', '),
+    // "Set" and "right" are different questions. The S3 API URL pasted into
+    // R2_ACCOUNT_ID is set, and every upload dies at the resolver — which the
+    // CORS probe below can only report as "fetch failed". Naming the malformed
+    // variable here is the difference between a two-minute fix and an
+    // afternoon of bucket policies.
+    state: !r2Configured ? 'unset' : malformedR2.length ? 'error' : 'ok',
+    detail: !r2Configured
+      ? missingR2.join(', ')
+      : malformedR2.length
+        ? `${malformedR2.join(', ')} : valeur impossible. R2_ACCOUNT_ID est l’identifiant de 32 caractères hexadécimaux (celui de l’adresse S3), et R2_BUCKET le nom du bucket seul — pas une URL, pas un chemin.`
+        : 'les quatre variables sont lues',
   });
 
   // The one fault a browser cannot report. A CORS refusal and a dropped

@@ -1279,6 +1279,8 @@
     "share": "Share screen",
     "slideNext": "Next slide",
     "slidePrev": "Previous slide",
+    "slideRemove": "Remove slide",
+    "slideRemoveConfirm": "Remove this slide from the session? Students will no longer see it.",
     "slidesAdd": "Add slides",
     "slidesHint": "PDF, PNG, JPEG or WebP · a PDF becomes one slide per page",
     "slidesNone": "The teacher has not shared any slides yet.",
