@@ -305,11 +305,12 @@ export async function completePayPalCheckout(
     }
 
     // PayPal named a reason. It goes on the order and into the log where the
-    // office can read it; the student still gets a plain sentence.
+    // office can read it; the student gets "the payment did not go through",
+    // not "try again" — retrying cannot fix a refused capture.
     if (thrown instanceof PayPalRefusal) {
       reportError('paypal.capture', thrown, { orderId: targetOrderId, issue: thrown.issue });
       await markOrderFailed(targetOrderId, `capture refused: ${thrown.issue}`);
-      return { ok: false, error: 'paypalRefused' };
+      return { ok: false, error: 'payNotCompleted' };
     }
 
     // A transient failure (network, 5xx). The order stays pending so a retry
