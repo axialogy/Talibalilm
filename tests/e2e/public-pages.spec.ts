@@ -26,19 +26,15 @@ test.describe('public catalogue', () => {
     expect(html).not.toMatch(/mux\.com|bunnycdn|b-cdn\.net|\.m3u8|\.mp4/i);
   });
 
-  test('filters live in the URL so a filtered catalogue is shareable', async ({ page }) => {
+  test('the catalogue lists every module, with no facets', async ({ page }) => {
     await page.goto('/courses');
-    const before = await page.getByRole('article').count();
 
-    await page.getByRole('link', { name: 'Jurisprudence', exact: true }).click();
-    await expect(page).toHaveURL(/category=fiqh/);
+    // The category chips are gone: one list, no filter to split it.
+    await expect(page.getByRole('link', { name: 'Jurisprudence', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Toutes', exact: true })).toHaveCount(0);
 
-    const after = await page.getByRole('article').count();
-    expect(after).toBeLessThan(before);
-
-    // Reload proves the filter is server-rendered rather than client state.
-    await page.reload();
-    expect(await page.getByRole('article').count()).toBe(after);
+    // The modules themselves are still listed.
+    await expect(page.getByRole('article').first()).toBeVisible();
   });
 
   test('unknown course slugs 404 rather than rendering an empty shell', async ({ page }) => {

@@ -1,21 +1,19 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { Metadata } from 'next';
 import { CourseCard } from '@/components/marketing/CourseCard';
-import { CourseFilters } from '@/components/marketing/CourseFilters';
 import { PageHero } from '@/components/marketing/PageHero';
 import { listCourses } from '@/lib/data/courses';
-import type { CourseCategory } from '@/lib/content/types';
 import { requireLocale } from '@/i18n/routing';
 
 /**
- * Filters live in the URL, not in component state, so a filtered catalogue is
- * a shareable link and stays server-rendered and indexable — which the spec
- * requires of every public page.
+ * One list, no facets.
+ *
+ * The catalogue used to carry a category filter — a row of chips above the
+ * grid, fed from the URL. The school asked for it gone: a module is taught to
+ * whoever enrols, and splitting a small catalogue by subject offered a
+ * distinction it does not actually make. The `category` column stays (the
+ * generated cover art used to print it), it just no longer drives a screen.
  */
-interface SearchParams {
-  category?: string;
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -27,61 +25,30 @@ export async function generateMetadata({
   return { title: t('title'), description: t('lead') };
 }
 
-const CATEGORIES: CourseCategory[] = [
-  'aqida',
-  'fiqh',
-  'coran',
-  'hadith',
-  'tafsir',
-  'langue',
-  'histoire',
-];
-
-function asCategory(value: string | undefined): CourseCategory | null {
-  return value && (CATEGORIES as string[]).includes(value) ? (value as CourseCategory) : null;
-}
-
 export default async function CoursesPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await params;
   requireLocale(locale);
   setRequestLocale(locale);
 
   const t = await getTranslations('courses');
-  const { category: rawCategory } = await searchParams;
-
-  const category = asCategory(rawCategory);
-
-  const all = await listCourses();
-  // Subject only. The level filter is gone: the school teaches a module to
-  // whoever enrols on it, so splitting the catalogue by level offered a
-  // distinction the catalogue does not actually make.
-  const results = all.filter((c) => !category || c.category === category);
-
-  // Only offer a chip for a category the catalogue actually uses — a filter
-  // that can only return nothing is worse than no filter.
-  const used = new Set(all.map((c) => c.category));
-  const categories = CATEGORIES.filter((c) => used.has(c));
+  const results = await listCourses();
 
   return (
     <>
       <PageHero
         crumb={t('title')}
-        eyebrow={t('filterSubject')}
+        eyebrow={t('eyebrow')}
         title={t('title')}
         lead={t('lead')}
       />
 
       <section className="pattern-islamic py-14 sm:py-16">
         <div className="shell">
-          <CourseFilters categories={categories} activeCategory={category} />
-
-          <p className="mt-8 text-xs text-ink-muted" aria-live="polite">
+          <p className="text-xs text-ink-muted" aria-live="polite">
             {t('resultCount', { count: results.length })}
           </p>
 
