@@ -88,7 +88,7 @@ test.describe('the module page and who holds it', () => {
 
     await page.goto(`/courses/${slug}`);
 
-    await expect(page.getByText('Votre accès')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Votre accès' })).toBeVisible();
     const open = page.getByRole('link', { name: 'Ouvrir le module' });
     await expect(open).toBeVisible();
     await expect(open).toHaveAttribute('href', new RegExp(`/dashboard/courses/${slug}/lessons/`));
