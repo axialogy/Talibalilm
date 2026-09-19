@@ -44,12 +44,16 @@ test.describe('the module page and who holds it', () => {
     userId = ((await created.json()) as { id: string }).id;
 
     const courses = await request.get(
-      `${SUPABASE_URL}/rest/v1/courses?select=id,slug&status=eq.published&limit=1`,
+      `${SUPABASE_URL}/rest/v1/courses?select=id,slug,modules(count)&status=eq.published`,
       { headers: serviceHeaders },
     );
     expect(courses.ok(), await courses.text()).toBeTruthy();
-    const [course] = (await courses.json()) as { id: string; slug: string }[];
-    expect(course?.id, 'the seed must contain a published course').toBeTruthy();
+    // A course WITH lessons: the access panel opens the first lesson, and a
+    // lesson-less course would legitimately fall back to the dashboard.
+    const [course] = (
+      (await courses.json()) as { id: string; slug: string; modules: { count: number }[] }[]
+    ).filter((c) => (c.modules?.[0]?.count ?? 0) > 0);
+    expect(course?.id, 'the seed must contain a published course with lessons').toBeTruthy();
     slug = course.slug;
 
     // A paid year, in effect: the same row the grant path writes.
