@@ -51,7 +51,6 @@ const RETURN_ERRORS: Record<string, string> = {
   not_found: 'payUnexpected',
   unexpected: 'payUnexpected',
   unavailable: 'payUnavailable',
-  refused: 'payRefused',
   paypalRefused: 'payRefused',
 };
 

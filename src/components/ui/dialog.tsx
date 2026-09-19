@@ -9,6 +9,10 @@ import { useEffect, type ReactNode } from 'react';
  * small on purpose: a title, the message, and whatever buttons the caller
  * puts in. Escape closes it, and the backdrop is dimmed rather than clickable
  * — a payment result should be dismissed deliberately, not by a stray click.
+ *
+ * `z-[9999]`, not the admin dialog's `z-70`: PayPal's SDK renders its button
+ * container at a z-index of its own, and at 70 the result card sat UNDER the
+ * gold button — the message was on screen and buried at the same time.
  */
 export function Dialog({
   open,
@@ -37,7 +41,7 @@ export function Dialog({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-70 flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm"
     >
       <div className="w-full max-w-sm rounded-[var(--radius-card)] border border-line bg-white p-6 shadow-lifted">
         <p className="font-display text-lg font-semibold text-ink">{title}</p>
