@@ -40,11 +40,14 @@ export function CourseCursus({
   const t = useTranslations('admin');
 
   const perModule = cursus.find((c) => c.kind === 'module');
-  const approfondi = cursus.find((c) => c.kind === 'approfondi');
+  // One box per approfondi cursus. `.find` used to show only the first, which
+  // is invisible while the school runs one — and silently drops the others the
+  // day a second is created.
+  const approfondis = cursus.filter((c) => c.kind === 'approfondi');
 
   // Nothing to tick until the two cursus exist. Said plainly with the way out,
   // rather than an empty box that looks broken.
-  if (!perModule && !approfondi) {
+  if (!perModule && approfondis.length === 0) {
     return (
       <p className="rounded-[var(--radius-card)] border border-dashed border-line bg-surface/50 p-5 text-center text-[13px] text-ink-muted">
         {t('cursusNoneYet')}
@@ -74,30 +77,33 @@ export function CourseCursus({
         </div>
       )}
 
-      {approfondi && (
-        <div className="rounded-[var(--radius-card)] border border-line bg-white p-5">
-          <p className="text-[13px] font-medium text-ink">{t('cursusApprofondi')}</p>
+      {approfondis.map((option) => (
+        <div
+          key={option.id}
+          className="rounded-[var(--radius-card)] border border-line bg-white p-5"
+        >
+          <p className="text-[13px] font-medium text-ink">{option.title}</p>
           <p className="mt-1.5 text-[11px] leading-relaxed text-ink-muted">
             {t('cursusApprofondiHint')}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
             {Array.from(
-              { length: Math.min(approfondi.yearCount || MAX_YEARS, MAX_YEARS) },
+              { length: Math.min(option.yearCount || MAX_YEARS, MAX_YEARS) },
               (_, i) => i + 1,
             ).map((year) => (
               <Toggle
                 key={year}
                 courseId={courseId}
-                cursusId={approfondi.id}
+                cursusId={option.id}
                 year={year}
-                checked={on(approfondi.id, year)}
+                checked={on(option.id, year)}
                 label={`${t('grantYear')} ${year}`}
               />
             ))}
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
