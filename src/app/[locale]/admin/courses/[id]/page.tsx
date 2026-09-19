@@ -10,8 +10,6 @@ import { CourseOutline } from '@/components/admin/CourseOutline';
 import { PublishControls } from '@/components/admin/PublishControls';
 import { CourseSteps } from '@/components/admin/CourseSteps';
 import { CourseFees, type CourseFee } from '@/components/admin/CourseFees';
-import { CourseCursus } from '@/components/admin/CourseCursus';
-import { membershipKey } from '@/lib/content/cursus';
 import { createClient } from '@/lib/supabase/server';
 import { reportError } from '@/lib/observability/report';
 import { requireLocale } from '@/i18n/routing';
@@ -100,28 +98,18 @@ export default async function CourseBuilderPage({
     ]),
   );
 
-  // Everything else this course needs, in parallel: what it costs and which
-  // cursus carry it. Live classes are no longer read here — they have their own
-  // screen, and a module is attached to a session from that side.
-  const [{ data: feeRows }, { data: cursusRows }, { data: linkRows }] = await Promise.all([
-    supabase
-      .from('products')
-      .select(
-        'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
-      )
-      .eq('kind', 'module')
-      .eq('course_id', id)
-      .order('delivery'),
-    // Only what the tick boxes need: which cursus exist, what they are called
-    // and how many years each runs. The programme text, the poster and the
-    // year prices are not edited here any more — the Cursus step is the two
-    // routes this module can be sold by, and nothing else.
-    supabase
-      .from('cursus')
-      .select('id, kind, title, year_count, display_order')
-      .order('display_order'),
-    supabase.from('cursus_courses').select('cursus_id, year_index, delivery').eq('course_id', id),
-  ]);
+  // Everything else this course needs: what it costs. Which cursus carry it is
+  // no longer this page's question — a cursus is built on its own screen, where
+  // its modules and years are chosen. Live classes have their own screen too,
+  // and a module is attached to a session from that side.
+  const { data: feeRows } = await supabase
+    .from('products')
+    .select(
+      'id, delivery, price_cents, duration_days, status, time_slot, schedule_label, hours_per_year, hours_per_week',
+    )
+    .eq('kind', 'module')
+    .eq('course_id', id)
+    .order('delivery');
 
   const fees: CourseFee[] = (feeRows ?? []).map((f) => ({
     id: f.id,
@@ -134,10 +122,6 @@ export default async function CourseBuilderPage({
     hoursPerYear: f.hours_per_year,
     hoursPerWeek: f.hours_per_week,
   }));
-
-  const included = new Set(
-    (linkRows ?? []).map((l) => membershipKey(l.cursus_id, l.year_index, l.delivery)),
-  );
 
   const modules = (course.modules ?? [])
     .slice()
@@ -226,27 +210,6 @@ export default async function CourseBuilderPage({
                     {t('tabFeesLead')}
                   </p>
                   <CourseFees courseId={course.id} fees={fees} />
-                </div>
-              ),
-            },
-            {
-              key: 'cursus',
-              label: t('tabCursus'),
-              content: (
-                <div className="max-w-3xl">
-                  <p className="mb-4 text-[13px] leading-relaxed text-ink-muted">
-                    {t('tabCursusLead')}
-                  </p>
-                  <CourseCursus
-                    courseId={course.id}
-                    cursus={(cursusRows ?? []).map((c) => ({
-                      id: c.id,
-                      kind: c.kind,
-                      title: c.title,
-                      yearCount: c.year_count,
-                    }))}
-                    included={included}
-                  />
                 </div>
               ),
             },

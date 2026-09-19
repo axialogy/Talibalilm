@@ -75,13 +75,13 @@ test.describe('checkout', () => {
   });
 
   test('the approfondi route on a module page brings the year step back', async ({ page }) => {
-    await page.goto('/courses/fiqh-al-ibadat#inscription');
+    // `sciences-du-coran` is the seeded course that sits in the school's own
+    // approfondi (the one with a priced year). The e2e seed's course is in a
+    // different cursus, and the card is only offered for a cursus whose
+    // programme contains the module — which is the point of the gate.
+    await page.goto('/courses/sciences-du-coran#inscription');
     const card = page.locator('#inscription');
 
-    // The seed publishes two approfondi cursus, so the card is named by the
-    // cursus's own subtitle rather than by "the" approfondi. The one this
-    // module belongs to is the school's: "Un programme structuré sur plusieurs
-    // années".
     await card
       .locator('button[aria-pressed]')
       .filter({ hasText: 'Un programme structuré sur plusieurs années' })

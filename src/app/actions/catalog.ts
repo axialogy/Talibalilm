@@ -475,68 +475,6 @@ export async function setProgrammeEntry(formData: FormData): Promise<void> {
   refresh();
 }
 
-/**
- * Tick or untick a module's membership of a cursus year, BOTH modes at once.
- *
- * `cursus_courses` keys on delivery as well as year, so the old grid drew two
- * checkboxes per year — "Année 1 · en ligne" beside "Année 1 · présentiel" —
- * and the teacher ticked both every single time. The school does not teach a
- * module in one mode and not the other; it teaches the module, and the student
- * picks how they attend. So the unit of the decision is the YEAR, and the two
- * rows are maintained together beneath it.
- *
- * `setProgrammeEntry` above is still there for the cursus screen's grid, where
- * per-mode control is occasionally the point.
- */
-export async function setCursusYear(formData: FormData): Promise<void> {
-  const parsed = z
-    .object({
-      cursus_id: z.string().uuid(),
-      course_id: z.string().uuid(),
-      year_index: z.coerce.number().int().min(1).max(10),
-      included: z.enum(['yes', 'no']),
-    })
-    .safeParse({
-      cursus_id: formData.get('cursus_id'),
-      course_id: formData.get('course_id'),
-      year_index: formData.get('year_index'),
-      included: formData.get('included'),
-    });
-  if (!parsed.success) return;
-
-  const supabase = await client();
-  const { cursus_id, course_id, year_index, included } = parsed.data;
-  const modes = ['presentiel', 'online'] as const;
-
-  // A tick that fails must not take the module's page down with it: this is a
-  // void action, so an uncaught throw becomes an error screen the admin cannot
-  // navigate away from — which is exactly what was reported. The failure is
-  // reported where it can be read, and the page stays.
-  try {
-    if (included === 'no') {
-      const { error } = await supabase
-        .from('cursus_courses')
-        .delete()
-        .eq('cursus_id', cursus_id)
-        .eq('course_id', course_id)
-        .eq('year_index', year_index);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('cursus_courses').upsert(
-        modes.map((delivery) => ({ cursus_id, course_id, delivery, year_index })),
-        { onConflict: 'cursus_id,course_id,delivery,year_index' },
-      );
-      if (error) throw error;
-    }
-  } catch (cause) {
-    reportError('catalog.cursusYear', cause, { cursus_id, course_id, year_index });
-  }
-
-  revalidatePath('/[locale]/admin/cursus', 'page');
-  revalidatePath('/[locale]/admin/courses/[id]', 'page');
-  refresh();
-}
-
 const cursusSchema = z.object({
   id: z.string().uuid().optional(),
   kind: z.enum(['module', 'approfondi']),

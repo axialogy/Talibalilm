@@ -321,6 +321,7 @@
     "paypalOpening": "Opening PayPal…",
     "cursusLead": "Two ways to study at the institute. You can change your mind until you pay.",
     "formuleLead": "This module alone, or the full cursus — both open the courses they cover.",
+    "formuleNone": "This module is not open for enrolment yet. Write to us to hear about the next session.",
     "buyModule": "Buy this module",
     "buyModuleBody": "this module alone, studied for a year.",
     "buyCursus": "Buy the Cursus Approfondi",
