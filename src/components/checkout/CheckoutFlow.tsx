@@ -82,15 +82,25 @@ export async function CheckoutFlow({
   /**
    * Set when the card is rendered on a module's own page. The module is the
    * subject, so the first step is not "which cursus" in the abstract but the
-   * two ways this subject is bought: **this module**, or the approfondi cursus
-   * that contains it. The module list stays hidden (the module is already
-   * known); choosing the approfondi brings the years step back.
+   * two ways this subject is bought: **this module** (always, once it has a
+   * price), or each approfondi whose programme contains it. The module list
+   * stays hidden (the module is already known); choosing the approfondi brings
+   * the years step back.
    *
    * A selection left over from another module's page is ignored, so this page
    * never shows somebody else's basket — but an approfondi choice is kept: it
-   * is an answer to this page's own first question.
+   * is an answer to this page's own first question. A choice of a route this
+   * page no longer offers is ignored too, for the same reason.
    */
-  moduleContext?: { courseId: string; cursusId: string; title: string };
+  moduleContext?: {
+    courseId: string;
+    cursusId: string;
+    title: string;
+    /** The module has a published tariff, so it can be bought on its own. */
+    hasTariff: boolean;
+    /** The published approfondi cursus whose programme contains this module. */
+    approfondiIds: string[];
+  };
 }) {
   const t = await getTranslations('checkout');
 
@@ -106,10 +116,22 @@ export async function CheckoutFlow({
     moduleContext !== undefined &&
     selection.kind === 'module' &&
     selection.courseId !== moduleContext.courseId;
-  const kind = stale ? null : selection.kind;
-  const delivery = stale ? null : selection.delivery;
-  const cursusId = stale ? null : selection.cursusId;
-  const priced = stale ? null : quote;
+
+  // A cookie can also name a route this page no longer offers — the office
+  // removed the module from the cursus, or unpublished its price. Treated as
+  // unanswered rather than showing a card that is not there.
+  const offered =
+    moduleContext === undefined ||
+    selection.kind === null ||
+    (selection.kind === 'module'
+      ? moduleContext.hasTariff
+      : selection.cursusId !== null && moduleContext.approfondiIds.includes(selection.cursusId));
+
+  const ignored = stale || !offered;
+  const kind = ignored ? null : selection.kind;
+  const delivery = ignored ? null : selection.delivery;
+  const cursusId = ignored ? null : selection.cursusId;
+  const priced = ignored ? null : quote;
 
   const products = delivery ? await listProducts(delivery) : [];
   const isApprofondi = kind === 'approfondi';
@@ -165,84 +187,93 @@ export async function CheckoutFlow({
       lead: moduleContext ? t('formuleLead') : t('cursusLead'),
       complete: kind !== null,
       panel: moduleContext ? (
-        <ul className="grid gap-4 sm:grid-cols-2">
-          <li>
-            <form action={chooseCursus} className="h-full">
-              <input type="hidden" name="kind" value="module" />
-              <input type="hidden" name="cursusId" value={moduleContext.cursusId} />
-              <input type="hidden" name="courseId" value={moduleContext.courseId} />
-              <button
-                type="submit"
-                aria-pressed={kind === 'module'}
-                className={`${CARD} flex h-full w-full flex-col items-start ${
-                  kind === 'module' ? CARD_ON : CARD_OFF
-                }`}
-              >
-                <span
-                  className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
-                  aria-hidden="true"
-                >
-                  <Layers className="size-5" />
-                </span>
-                <span className="mt-4 font-display text-[16px] font-semibold text-ink">
-                  {t('buyModule')}
-                </span>
-                <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
-                  {moduleContext.title} — {t('buyModuleBody')}
-                </span>
-                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
-                  <Award className="size-3.5" aria-hidden="true" />
-                  {t('certificationModule')}
-                </span>
-                <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
-              </button>
-            </form>
-          </li>
-
-          {cursusList
-            .filter((option) => option.kind === 'approfondi')
-            .map((option) => {
-              const on = kind === 'approfondi' && cursusId === option.id;
-              return (
-                <li key={option.id}>
-                  <form action={chooseCursus} className="h-full">
-                    <input type="hidden" name="kind" value="approfondi" />
-                    <input type="hidden" name="cursusId" value={option.id} />
-                    <button
-                      type="submit"
-                      aria-pressed={on}
-                      className={`${CARD} flex h-full w-full flex-col items-start ${
-                        on ? CARD_ON : CARD_OFF
-                      }`}
+        moduleContext.hasTariff || moduleContext.approfondiIds.length > 0 ? (
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {moduleContext.hasTariff && (
+              <li>
+                <form action={chooseCursus} className="h-full">
+                  <input type="hidden" name="kind" value="module" />
+                  <input type="hidden" name="cursusId" value={moduleContext.cursusId} />
+                  <input type="hidden" name="courseId" value={moduleContext.courseId} />
+                  <button
+                    type="submit"
+                    aria-pressed={kind === 'module'}
+                    className={`${CARD} flex h-full w-full flex-col items-start ${
+                      kind === 'module' ? CARD_ON : CARD_OFF
+                    }`}
+                  >
+                    <span
+                      className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+                      aria-hidden="true"
                     >
-                      <span
-                        className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
-                        aria-hidden="true"
+                      <Layers className="size-5" />
+                    </span>
+                    <span className="mt-4 font-display text-[16px] font-semibold text-ink">
+                      {t('buyModule')}
+                    </span>
+                    <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                      {moduleContext.title} — {t('buyModuleBody')}
+                    </span>
+                    <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                      <Award className="size-3.5" aria-hidden="true" />
+                      {t('certificationModule')}
+                    </span>
+                    <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
+                  </button>
+                </form>
+              </li>
+            )}
+
+            {cursusList
+              .filter(
+                (option) =>
+                  option.kind === 'approfondi' && moduleContext.approfondiIds.includes(option.id),
+              )
+              .map((option) => {
+                const on = kind === 'approfondi' && cursusId === option.id;
+                return (
+                  <li key={option.id}>
+                    <form action={chooseCursus} className="h-full">
+                      <input type="hidden" name="kind" value="approfondi" />
+                      <input type="hidden" name="cursusId" value={option.id} />
+                      <button
+                        type="submit"
+                        aria-pressed={on}
+                        className={`${CARD} flex h-full w-full flex-col items-start ${
+                          on ? CARD_ON : CARD_OFF
+                        }`}
                       >
-                        <GraduationCap className="size-5" />
-                      </span>
-                      <span className="mt-4 font-display text-[16px] font-semibold text-ink">
-                        {t('buyCursus')}
-                      </span>
-                      <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
-                        {option.subtitle || t('cursusApprofondiBody')}
-                      </span>
-                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
-                        <Award className="size-3.5" aria-hidden="true" />
-                        {t('certificationApprofondi')}
-                      </span>
-                      {option.yearCount > 1 && (
-                        <span className="mt-2 text-[11px] text-brand-600">
-                          {t('yearLabel', { year: option.yearCount })}
+                        <span
+                          className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+                          aria-hidden="true"
+                        >
+                          <GraduationCap className="size-5" />
                         </span>
-                      )}
-                      <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
-                    </button>
-                  </form>
-                </li>
-              );
-            })}
-        </ul>
+                        <span className="mt-4 font-display text-[16px] font-semibold text-ink">
+                          {t('buyCursus')}
+                        </span>
+                        <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                          {option.subtitle || t('cursusApprofondiBody')}
+                        </span>
+                        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                          <Award className="size-3.5" aria-hidden="true" />
+                          {t('certificationApprofondi')}
+                        </span>
+                        {option.yearCount > 1 && (
+                          <span className="mt-2 text-[11px] text-brand-600">
+                            {t('yearLabel', { year: option.yearCount })}
+                          </span>
+                        )}
+                        <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
+                      </button>
+                    </form>
+                  </li>
+                );
+              })}
+          </ul>
+        ) : (
+          <Empty>{t('formuleNone')}</Empty>
+        )
       ) : cursusList.length === 0 ? (
           <Empty>{t('cursusEmpty')}</Empty>
         ) : (
