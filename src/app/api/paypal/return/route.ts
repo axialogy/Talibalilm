@@ -75,7 +75,9 @@ export async function GET(request: NextRequest) {
     if (thrown instanceof PayPalRefusal) {
       reportError('paypal.capture', thrown, { orderId: order.id, issue: thrown.issue });
       await markOrderFailed(order.id, `capture refused: ${thrown.issue}`);
-      return fail('refused');
+      // "The payment did not go through" — a refusal is not something a retry
+      // fixes, so the student is not told to try again.
+      return fail('not_completed');
     }
 
     return fail('paypalRefused');
