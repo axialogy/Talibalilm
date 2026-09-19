@@ -137,6 +137,7 @@
   },
   "courses": {
     "title": "Tous les modules",
+    "eyebrow": "Le catalogue",
     "lead": "Sciences de la croyance, jurisprudence, sciences du Coran et du hadith, exégèse et langue arabe — en présentiel à Montereau-Fault-Yonne comme en visioconférence.",
     "searchPlaceholder": "Rechercher un module…",
     "searchLabel": "Rechercher un module",
@@ -284,6 +285,7 @@
     "step": "Étape {current} sur {total}",
     "steps": {
       "cursus": "Votre cursus",
+      "formule": "Votre formule",
       "mode": "Présentiel ou distanciel",
       "modules": "Vos modules",
       "info": "Informations",
@@ -318,6 +320,10 @@
     "paypalNote": "Vous réglez chez PayPal, dans une fenêtre sécurisée. Le montant est calculé par nos serveurs.",
     "paypalOpening": "Ouverture de PayPal…",
     "cursusLead": "Deux façons d’étudier à l’institut. Vous pourrez changer tant que vous n’avez pas payé.",
+    "formuleLead": "Ce module seul, ou le cursus complet — les deux ouvrent les cours auxquels ils donnent droit.",
+    "buyModule": "Acheter ce module",
+    "buyModuleBody": "ce module seul, suivi pendant un an.",
+    "buyCursus": "Acheter le Cursus Approfondi",
     "cursusModuleName": "À la carte",
     "cursusModuleBody": "Vous choisissez les modules qui vous intéressent et vous les suivez pendant un an.",
     "cursusApprofondiName": "Cursus Approfondi",

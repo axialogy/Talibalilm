@@ -80,13 +80,17 @@ export async function CheckoutFlow({
   /** `?error=` from the PayPal return route. */
   returnError?: string;
   /**
-   * Set when the card is rendered on a module's own page. The module is then
-   * the subject rather than a choice: the "which cursus" and "which modules"
-   * steps are dropped, and the mode step resolves this course into its product.
-   * A selection left over from another module (or an earlier visit) is ignored
-   * until that happens, so this page never shows somebody else's basket.
+   * Set when the card is rendered on a module's own page. The module is the
+   * subject, so the first step is not "which cursus" in the abstract but the
+   * two ways this subject is bought: **this module**, or the approfondi cursus
+   * that contains it. The module list stays hidden (the module is already
+   * known); choosing the approfondi brings the years step back.
+   *
+   * A selection left over from another module's page is ignored, so this page
+   * never shows somebody else's basket — but an approfondi choice is kept: it
+   * is an answer to this page's own first question.
    */
-  moduleContext?: { courseId: string; cursusId: string };
+  moduleContext?: { courseId: string; cursusId: string; title: string };
 }) {
   const t = await getTranslations('checkout');
 
@@ -95,10 +99,16 @@ export async function CheckoutFlow({
     listCursus(),
   ]);
 
-  const stale = moduleContext !== undefined && selection.courseId !== moduleContext.courseId;
-  const kind = stale ? 'module' : selection.kind;
+  // A basket that belongs to ANOTHER module's page is not this page's. An
+  // approfondi choice is this page's answer even though it names no module, so
+  // it survives; only a module basket for a different course is ignored.
+  const stale =
+    moduleContext !== undefined &&
+    selection.kind === 'module' &&
+    selection.courseId !== moduleContext.courseId;
+  const kind = stale ? null : selection.kind;
   const delivery = stale ? null : selection.delivery;
-  const cursusId = stale ? moduleContext.cursusId : selection.cursusId;
+  const cursusId = stale ? null : selection.cursusId;
   const priced = stale ? null : quote;
 
   const products = delivery ? await listProducts(delivery) : [];
@@ -150,12 +160,90 @@ export async function CheckoutFlow({
   const allSteps: WizardStep[] = [
     {
       key: 'cursus',
-      label: t('steps.cursus'),
-      heading: t('steps.cursus'),
-      lead: t('cursusLead'),
+      label: moduleContext ? t('steps.formule') : t('steps.cursus'),
+      heading: moduleContext ? t('steps.formule') : t('steps.cursus'),
+      lead: moduleContext ? t('formuleLead') : t('cursusLead'),
       complete: kind !== null,
-      panel:
-        cursusList.length === 0 ? (
+      panel: moduleContext ? (
+        <ul className="grid gap-4 sm:grid-cols-2">
+          <li>
+            <form action={chooseCursus} className="h-full">
+              <input type="hidden" name="kind" value="module" />
+              <input type="hidden" name="cursusId" value={moduleContext.cursusId} />
+              <input type="hidden" name="courseId" value={moduleContext.courseId} />
+              <button
+                type="submit"
+                aria-pressed={kind === 'module'}
+                className={`${CARD} flex h-full w-full flex-col items-start ${
+                  kind === 'module' ? CARD_ON : CARD_OFF
+                }`}
+              >
+                <span
+                  className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+                  aria-hidden="true"
+                >
+                  <Layers className="size-5" />
+                </span>
+                <span className="mt-4 font-display text-[16px] font-semibold text-ink">
+                  {t('buyModule')}
+                </span>
+                <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                  {moduleContext.title} — {t('buyModuleBody')}
+                </span>
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                  <Award className="size-3.5" aria-hidden="true" />
+                  {t('certificationModule')}
+                </span>
+                <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
+              </button>
+            </form>
+          </li>
+
+          {cursusList
+            .filter((option) => option.kind === 'approfondi')
+            .map((option) => {
+              const on = kind === 'approfondi' && cursusId === option.id;
+              return (
+                <li key={option.id}>
+                  <form action={chooseCursus} className="h-full">
+                    <input type="hidden" name="kind" value="approfondi" />
+                    <input type="hidden" name="cursusId" value={option.id} />
+                    <button
+                      type="submit"
+                      aria-pressed={on}
+                      className={`${CARD} flex h-full w-full flex-col items-start ${
+                        on ? CARD_ON : CARD_OFF
+                      }`}
+                    >
+                      <span
+                        className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+                        aria-hidden="true"
+                      >
+                        <GraduationCap className="size-5" />
+                      </span>
+                      <span className="mt-4 font-display text-[16px] font-semibold text-ink">
+                        {t('buyCursus')}
+                      </span>
+                      <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                        {option.subtitle || t('cursusApprofondiBody')}
+                      </span>
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                        <Award className="size-3.5" aria-hidden="true" />
+                        {t('certificationApprofondi')}
+                      </span>
+                      {option.yearCount > 1 && (
+                        <span className="mt-2 text-[11px] text-brand-600">
+                          {t('yearLabel', { year: option.yearCount })}
+                        </span>
+                      )}
+                      <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+        </ul>
+      ) : cursusList.length === 0 ? (
           <Empty>{t('cursusEmpty')}</Empty>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
@@ -237,16 +325,11 @@ export async function CheckoutFlow({
               <li key={value}>
                 <form action={chooseDelivery} className="h-full">
                   <input type="hidden" name="delivery" value={value} />
-                  {/* On a module page the module itself travels with the
-                      answer, so the action can resolve it without depending on
-                      a previous click having written the cookie. */}
-                  {moduleContext && (
-                    <>
-                      <input type="hidden" name="courseId" value={moduleContext.courseId} />
-                      <input type="hidden" name="cursusId" value={moduleContext.cursusId} />
-                      <input type="hidden" name="kind" value="module" />
-                    </>
-                  )}
+                  {/* No hidden kind/course here: the first step has already
+                      written them, and posting `kind=module` unconditionally
+                      would silently undo a student who chose the approfondi.
+                      `chooseDelivery` reads the selection when a field is
+                      absent. */}
                   <button
                     type="submit"
                     aria-pressed={on}
@@ -575,12 +658,14 @@ export async function CheckoutFlow({
     },
   ];
 
-  // On a module's own page neither the cursus question nor the module list is
-  // a question: the module is the subject. What remains is mode, details and
-  // payment.
-  const steps = moduleContext
-    ? allSteps.filter((step) => step.key !== 'modules' && step.key !== 'cursus')
-    : allSteps;
+  // On a module's own page the module list is not a question: the module is
+  // the subject. The years step stays, because choosing the approfondi route
+  // means choosing a year. The route question itself is the first step — see
+  // the cursus panel above.
+  const steps =
+    moduleContext && kind !== 'approfondi'
+      ? allSteps.filter((step) => step.key !== 'modules')
+      : allSteps;
 
   return (
     <CheckoutWizard

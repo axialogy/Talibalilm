@@ -99,3 +99,90 @@ test.describe('the module page and who holds it', () => {
     await expect(page.getByText('Inscriptions & paiements')).toHaveCount(0);
   });
 });
+
+/**
+ * The cursus route, same page. A student whose paid cursus covers the module
+ * must be offered the way in too — this is the entitlement the checkout writes
+ * when the approfondi is bought (`scope = 'cursus'` + year + mode), and
+ * `has_course_access` answers it from the programme grid.
+ */
+test.describe('the module page and a cursus that covers it', () => {
+  test.skip(
+    !SUPABASE_URL || !SERVICE_ROLE || !process.env.CI,
+    'needs the CI stack: a live Supabase plus the service role',
+  );
+
+  const email = `e2e-cursus-${Date.now()}@test.fr`;
+  const password = 'E2eCursus!2345';
+  let userId = '';
+  let slug = '';
+
+  const serviceHeaders = {
+    apikey: SERVICE_ROLE ?? '',
+    Authorization: `Bearer ${SERVICE_ROLE ?? ''}`,
+  };
+
+  test.beforeAll(async ({ request }) => {
+    const created = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      headers: { ...serviceHeaders, 'Content-Type': 'application/json' },
+      data: {
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: 'E2E Cursus', locale: 'fr' },
+      },
+    });
+    expect(created.ok(), await created.text()).toBeTruthy();
+    userId = ((await created.json()) as { id: string }).id;
+
+    // A grid row: which course sits in which year of which cursus, in which
+    // mode. The entitlement below mirrors it exactly.
+    const grid = await request.get(
+      `${SUPABASE_URL}/rest/v1/cursus_courses?select=cursus_id,course_id,year_index,delivery,courses(slug)&limit=1`,
+      { headers: serviceHeaders },
+    );
+    expect(grid.ok(), await grid.text()).toBeTruthy();
+    const [row] = (await grid.json()) as {
+      cursus_id: string;
+      course_id: string;
+      year_index: number;
+      delivery: 'presentiel' | 'online';
+      courses: { slug: string };
+    }[];
+    expect(row?.course_id, 'the seed must grid a course into a cursus').toBeTruthy();
+    slug = row.courses.slug;
+
+    const granted = await request.post(`${SUPABASE_URL}/rest/v1/entitlements`, {
+      headers: { ...serviceHeaders, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      data: {
+        user_id: userId,
+        scope: 'cursus',
+        cursus_id: row.cursus_id,
+        year_index: row.year_index,
+        delivery: row.delivery,
+        expires_at: new Date(Date.now() + 365 * 86_400_000).toISOString(),
+      },
+    });
+    expect(granted.ok(), await granted.text()).toBeTruthy();
+  });
+
+  test.afterAll(async ({ request }) => {
+    if (!userId) return;
+    await request.delete(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+      headers: serviceHeaders,
+    });
+  });
+
+  test('a student holding the cursus is offered the way in on its module', async ({ page }) => {
+    await page.goto('/login');
+    await page.locator('input[name="email"]').fill(email);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('form button[type="submit"]').click();
+    await page.waitForURL(/\/dashboard/);
+
+    await page.goto(`/courses/${slug}`);
+
+    await expect(page.getByRole('link', { name: 'Ouvrir le module' })).toBeVisible();
+    await expect(page.getByText('Inscriptions & paiements')).toHaveCount(0);
+  });
+});
