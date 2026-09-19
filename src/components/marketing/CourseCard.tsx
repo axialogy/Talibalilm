@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import Image from 'next/image';
 import { Clock, PlayCircle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,12 @@ import { cn } from '@/lib/utils';
  * The whole card is not one link: the cover, the title and the two actions are.
  * A single wrapping anchor would give a screen reader one target whose
  * accessible name is the title, the instructor and the price run together.
+ *
+ * The cover is the school's own image when one is uploaded (`cover_url`, set
+ * from the module's Contenu step and served from Supabase storage), and the
+ * drawn artwork otherwise. The generated art used to be the only thing this
+ * card ever showed — `CourseArt`'s comment claimed otherwise, and an uploaded
+ * cover appeared on the module's own page and nowhere else.
  *
  * The cover is a link because people click pictures — but it carries
  * `aria-hidden` and `tabIndex={-1}`, so it is a fourth mouse target rather than
@@ -38,12 +45,17 @@ export async function CourseCard({ course, className }: { course: Course; classN
           className="block size-full"
         >
           <div className="size-full transition-transform duration-500 group-hover:scale-[1.04]">
-            <CourseArt
-              titleAr={course.title_ar}
-              title={course.title}
-              kicker={t(`category.${course.category}`)}
-              tone={course.tone}
-            />
+            {course.cover_url ? (
+              <Image
+                src={course.cover_url}
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                className="object-cover"
+              />
+            ) : (
+              <CourseArt titleAr={course.title_ar} title={course.title} tone={course.tone} />
+            )}
           </div>
         </Link>
         <Badge className="absolute start-3 top-3">{t(`level.${course.level}`)}</Badge>

@@ -4,11 +4,11 @@ import { cn } from '@/lib/utils';
 /**
  * Generated cover artwork.
  *
- * `Course.cover_url` wins when the school uploads one. Until then this draws a
- * cover rather than showing a grey box: a catalogue of grey rectangles reads
- * as an unfinished site, a set of coloured titled covers reads as a catalogue.
- * Inline SVG so the self-hosted fonts apply and the Arabic shapes correctly —
- * an external .svg loaded through <img> gets neither.
+ * Drawn when the school has not uploaded a cover: a catalogue of grey
+ * rectangles reads as an unfinished site, a set of coloured titled covers
+ * reads as a catalogue. `CourseCard` shows `cover_url` when it exists and
+ * falls back to this. Inline SVG so the self-hosted fonts apply and the Arabic
+ * shapes correctly — an external .svg loaded through <img> gets neither.
  */
 interface Palette {
   from: string;
@@ -51,13 +51,11 @@ function wrap(text: string, perLine: number, max: number): string[] {
 export function CourseArt({
   titleAr,
   title,
-  kicker,
   tone,
   className,
 }: {
   titleAr: string;
   title: string;
-  kicker?: string;
   tone: ArtTone;
   className?: string;
 }) {
@@ -118,22 +116,6 @@ export function CourseArt({
 
       {/* Gold hairline, the way a bound volume is tooled */}
       <rect x="16" y="16" width="368" height="268" fill="none" stroke="#c4a05a" strokeWidth="1.5" opacity="0.75" />
-
-      {kicker && (
-        <text
-          x="200"
-          y="86"
-          textAnchor="middle"
-          fill={t.ink}
-          opacity="0.72"
-          fontFamily="Alexandria, system-ui, sans-serif"
-          fontSize="13"
-          fontWeight="500"
-          letterSpacing="3"
-        >
-          {kicker.toUpperCase()}
-        </text>
-      )}
 
       <text
         x="200"

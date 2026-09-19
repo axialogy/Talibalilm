@@ -509,7 +509,7 @@ export default async function CoursePage({
             ) : (
               <CheckoutFlow
                 locale={locale}
-                moduleContext={{ courseId: course.id, cursusId: moduleCursusId }}
+                moduleContext={{ courseId: course.id, cursusId: moduleCursusId, title: course.title }}
               />
             )}
           </div>

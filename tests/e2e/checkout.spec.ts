@@ -35,23 +35,29 @@ test.describe('checkout', () => {
     await expect(page.getByText('Step 1 of 5')).toBeVisible();
   });
 
-  test('a module page enrols without asking which module', async ({ page }) => {
-    // The card on a module's own page knows the module. It must not ask which
-    // cursus or which modules, and choosing a mode must put THAT module in the
-    // basket — the failure this catches is a card that silently holds nothing
-    // until the student finds the module again in a list.
+  test('a module page asks how the module is bought, then enrols', async ({ page }) => {
+    // The card on a module's own page knows the module — but not how it is
+    // bought: this module alone, or the approfondi cursus that contains it.
+    // The failure this catches is a card that silently holds nothing until the
+    // student finds the module again in a list.
     await page.goto('/courses/fiqh-al-ibadat#inscription');
 
     const card = page.locator('#inscription');
     const steps = card.locator('nav[aria-label="Inscription"]');
 
-    // Three steps, not five: the cursus and module-list questions are gone.
-    // The headings are asserted rather than the nav labels because below `sm`
-    // the labels are hidden and the numbered buttons carry no accessible name.
-    await expect(steps.getByRole('button')).toHaveCount(3);
-    await expect(card.getByRole('heading', { name: 'Présentiel ou distanciel' })).toBeVisible();
+    // Four steps, not five: the module-list question is gone. The route
+    // question is the first one.
+    await expect(steps.getByRole('button')).toHaveCount(4);
+    await expect(card.getByRole('heading', { name: 'Votre formule' })).toBeVisible();
     await expect(card.getByRole('heading', { name: 'Vos modules' })).toHaveCount(0);
     await expect(card.getByRole('heading', { name: 'Votre cursus' })).toHaveCount(0);
+
+    // "This module": the mode step comes next.
+    await card
+      .locator('button[aria-pressed]')
+      .filter({ hasText: 'Acheter ce module' })
+      .click();
+    await expect(card.getByRole('heading', { name: 'Présentiel ou distanciel' })).toBeVisible();
 
     // The mode choice is a submit button; `aria-pressed` is what tells it apart
     // from the step nav above it.
@@ -66,6 +72,28 @@ test.describe('checkout', () => {
     // course had not been resolved into its product, that panel would hold the
     // empty-basket message and no figure at all.
     await expect(card.getByText(/300\s*€/).first()).toHaveText(/300\s*€/);
+  });
+
+  test('the approfondi route on a module page brings the year step back', async ({ page }) => {
+    await page.goto('/courses/fiqh-al-ibadat#inscription');
+    const card = page.locator('#inscription');
+
+    // The seed publishes two approfondi cursus, so the card is named by the
+    // cursus's own subtitle rather than by "the" approfondi. The one this
+    // module belongs to is the school's: "Un programme structuré sur plusieurs
+    // années".
+    await card
+      .locator('button[aria-pressed]')
+      .filter({ hasText: 'Un programme structuré sur plusieurs années' })
+      .click();
+    await expect(card.getByRole('heading', { name: 'Présentiel ou distanciel' })).toBeVisible();
+
+    await card.locator('button[aria-pressed]').filter({ hasText: 'Distanciel' }).click();
+
+    // Choosing the cursus means choosing a year: the modules step is the year
+    // panel, with that year's price.
+    await expect(card.getByRole('heading', { name: 'Vos modules' })).toBeVisible();
+    await expect(card.getByText(/600\s*€/).first()).toHaveText(/600\s*€/);
   });
 
   test('no amount is posted from the browser', async ({ page }) => {

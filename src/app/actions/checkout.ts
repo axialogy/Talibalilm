@@ -28,6 +28,12 @@ import { clientKey, rateLimit } from '@/lib/rate-limit';
 const kindSchema = z.object({
   kind: z.enum(['module', 'approfondi']),
   cursusId: z.string().uuid(),
+  /**
+   * Present on the module page's "Acheter ce module" card: the course is what
+   * turns into a product once the mode is answered. The approfondi card sends
+   * none, and the selection's courseId is cleared with it.
+   */
+  courseId: z.string().uuid().nullable().catch(null),
 });
 
 const deliverySchema = z.object({
@@ -46,17 +52,22 @@ export async function chooseCursus(formData: FormData): Promise<void> {
   const parsed = kindSchema.safeParse({
     kind: formData.get('kind'),
     cursusId: formData.get('cursusId'),
+    courseId: formData.get('courseId'),
   });
   if (!parsed.success) return;
 
   const current = await readSelection();
+  // An approfondi basket is a cursus, not a module: whatever module page the
+  // student was reading, it must not stay pinned to it.
+  const courseId = parsed.data.kind === 'approfondi' ? null : parsed.data.courseId;
+
   // Changing cursus invalidates everything downstream: the products on offer
   // are different, so keeping the old ids would price a basket the student can
   // no longer see.
   const next: Selection =
     current.cursusId === parsed.data.cursusId
-      ? { ...current, ...parsed.data }
-      : { ...EMPTY_SELECTION, ...parsed.data };
+      ? { ...current, ...parsed.data, courseId }
+      : { ...EMPTY_SELECTION, ...parsed.data, courseId };
 
   await writeSelection(next);
 }

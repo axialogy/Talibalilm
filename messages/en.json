@@ -137,6 +137,7 @@
   },
   "courses": {
     "title": "All modules",
+    "eyebrow": "The catalogue",
     "lead": "Creed, jurisprudence, the sciences of the Qur’an and hadith, exegesis and the Arabic language — on site in Montereau-Fault-Yonne and by video conference.",
     "searchPlaceholder": "Search for a module…",
     "searchLabel": "Search for a module",
@@ -284,6 +285,7 @@
     "step": "Step {current} of {total}",
     "steps": {
       "cursus": "Your cursus",
+      "formule": "Your option",
       "mode": "On site or distance",
       "modules": "Your modules",
       "info": "Your details",
@@ -318,6 +320,10 @@
     "paypalNote": "You pay at PayPal, in a secure window. The amount is worked out by our servers.",
     "paypalOpening": "Opening PayPal…",
     "cursusLead": "Two ways to study at the institute. You can change your mind until you pay.",
+    "formuleLead": "This module alone, or the full cursus — both open the courses they cover.",
+    "buyModule": "Buy this module",
+    "buyModuleBody": "this module alone, studied for a year.",
+    "buyCursus": "Buy the Cursus Approfondi",
     "cursusModuleName": "À la carte",
     "cursusModuleBody": "You choose the modules that interest you and study them for a year.",
     "cursusApprofondiName": "Cursus Approfondi",
