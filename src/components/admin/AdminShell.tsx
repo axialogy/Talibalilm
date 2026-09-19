@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   BookOpen,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -48,6 +49,7 @@ const NAV = [
     section: 'navGroupSetup',
     items: [
       { href: '/admin/courses', icon: BookOpen, key: 'courses', admin: false },
+      { href: '/admin/cursus', icon: GraduationCap, key: 'cursusNav', admin: false },
       { href: '/admin/live', icon: Radio, key: 'liveNav', admin: false },
       { href: '/admin/site', icon: Globe, key: 'siteNav', admin: false },
       // Diagnostic is deliberately absent from this list, not deleted: it is
