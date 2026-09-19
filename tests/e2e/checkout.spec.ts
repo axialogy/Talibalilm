@@ -78,9 +78,13 @@ test.describe('checkout', () => {
     await page.goto('/courses/fiqh-al-ibadat#inscription');
     const card = page.locator('#inscription');
 
+    // The seed publishes two approfondi cursus, so the card is named by the
+    // cursus's own subtitle rather than by "the" approfondi. The one this
+    // module belongs to is the school's: "Un programme structuré sur plusieurs
+    // années".
     await card
       .locator('button[aria-pressed]')
-      .filter({ hasText: 'Acheter le Cursus Approfondi' })
+      .filter({ hasText: 'Un programme structuré sur plusieurs années' })
       .click();
     await expect(card.getByRole('heading', { name: 'Présentiel ou distanciel' })).toBeVisible();
 
