@@ -475,6 +475,61 @@ export async function setProgrammeEntry(formData: FormData): Promise<void> {
   refresh();
 }
 
+/**
+ * Put one module into one year of a cursus, BOTH modes at once.
+ *
+ * The shortcut above the programme grid: pick a module and a year, and it
+ * joins the cursus in the mode the student will choose at enrolment. The grid
+ * itself still writes cell by cell through `setProgrammeEntry`, where
+ * per-mode control is occasionally the point.
+ */
+export async function setCursusYear(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({
+      cursus_id: z.string().uuid(),
+      course_id: z.string().uuid(),
+      year_index: z.coerce.number().int().min(1).max(10),
+      included: z.enum(['yes', 'no']).default('yes'),
+    })
+    .safeParse({
+      cursus_id: formData.get('cursus_id'),
+      course_id: formData.get('course_id'),
+      year_index: formData.get('year_index'),
+      included: formData.get('included') ?? 'yes',
+    });
+  if (!parsed.success) return;
+
+  const supabase = await client();
+  const { cursus_id, course_id, year_index, included } = parsed.data;
+  const modes = ['presentiel', 'online'] as const;
+
+  // A tick that fails must not take the screen down with it: this is a void
+  // action, so an uncaught throw becomes an error page the admin cannot
+  // navigate away from. The failure is reported where it can be read.
+  try {
+    if (included === 'no') {
+      const { error } = await supabase
+        .from('cursus_courses')
+        .delete()
+        .eq('cursus_id', cursus_id)
+        .eq('course_id', course_id)
+        .eq('year_index', year_index);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('cursus_courses').upsert(
+        modes.map((delivery) => ({ cursus_id, course_id, delivery, year_index })),
+        { onConflict: 'cursus_id,course_id,delivery,year_index' },
+      );
+      if (error) throw error;
+    }
+  } catch (cause) {
+    reportError('catalog.cursusYear', cause, { cursus_id, course_id, year_index });
+  }
+
+  revalidatePath('/[locale]/admin/cursus', 'page');
+  refresh();
+}
+
 const cursusSchema = z.object({
   id: z.string().uuid().optional(),
   kind: z.enum(['module', 'approfondi']),

@@ -106,5 +106,10 @@ test.describe('the admin course builder', () => {
     // would untick a cell the checkout spec depends on.
     await page.getByRole('tab', { name: 'Cursus Approfondi' }).first().click();
     await expect(page.locator('button[aria-pressed]').first()).toBeVisible();
+
+    // And the shortcut above it: pick an existing module, pick a year, add it
+    // to the programme in both modes at once.
+    await expect(page.locator('select[name="course_id"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ajouter au programme' })).toBeVisible();
   });
 });
