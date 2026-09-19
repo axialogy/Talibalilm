@@ -105,11 +105,12 @@ test.describe('the admin course builder', () => {
     // Asserted, not toggled: every test shares one database, and a click here
     // would untick a cell the checkout spec depends on.
     await page.getByRole('tab', { name: 'Cursus Approfondi' }).first().click();
-    await expect(page.locator('button[aria-pressed]').first()).toBeVisible();
+    await expect(page.locator('button[aria-pressed]:visible').first()).toBeVisible();
 
-    // And the shortcut above it: pick an existing module, pick a year, add it
-    // to the programme in both modes at once.
-    await expect(page.locator('select[name="course_id"]')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Ajouter au programme' })).toBeVisible();
+    // Creating one starts from a module and prices it: the create tab carries
+    // the module dropdown and the tariff. Nothing is submitted.
+    await page.getByRole('tab', { name: '+ Nouveau cursus' }).click();
+    await expect(page.locator('select[name="course_id"]:visible')).toBeVisible();
+    await expect(page.locator('input[name="price"]:visible')).toBeVisible();
   });
 });

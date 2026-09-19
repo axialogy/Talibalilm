@@ -1,21 +1,17 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Check } from 'lucide-react';
 import { BackLink } from '@/components/admin/BackLink';
-import { setCursusYear, setProgrammeEntry } from '@/app/actions/catalog';
+import { setProgrammeEntry } from '@/app/actions/catalog';
 import { CursusForm } from '@/components/admin/CursusForm';
 import { CursusDeleteButton } from '@/components/admin/CursusDeleteButton';
 import { CursusTariff, type CursusPrice } from '@/components/admin/CursusTariff';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { createClient } from '@/lib/supabase/server';
 import type { DeliveryMode } from '@/lib/supabase/database.types';
 import { requireLocale } from '@/i18n/routing';
 
 const MODES: DeliveryMode[] = ['presentiel', 'online'];
-
-const SELECT =
-  'w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand-400';
 
 /**
  * Programmes.
@@ -104,44 +100,7 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
                 {t('programmeLead')}
               </p>
 
-              {/* A shortcut past the grid: pick the module and the year, and it
-                  joins the cursus in both modes at once. The grid below stays
-                  the place to fine-tune a single mode. */}
-              <form
-                action={setCursusYear}
-                className="mt-3 flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-dashed border-line bg-surface/40 p-4"
-              >
-                <input type="hidden" name="cursus_id" value={option.id} />
-                <label className="block min-w-[220px] flex-1">
-                  <span className="mb-1 block text-[11px] font-medium text-ink-muted">
-                    {t('course')}
-                  </span>
-                  <select name="course_id" className={SELECT}>
-                    {(courses ?? []).map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-[11px] font-medium text-ink-muted">
-                    {t('yearIndex')}
-                  </span>
-                  <select name="year_index" className={SELECT}>
-                    {Array.from({ length: option.year_count }, (_, i) => i + 1).map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Button type="submit" size="sm" variant="outline">
-                  {t('addToProgramme')}
-                </Button>
-              </form>
-
-              <div className="mt-6 space-y-6">
+              <div className="mt-3 space-y-6">
                 {MODES.map((delivery) => (
                   <div key={delivery}>
                     <h4 className="text-[13px] font-medium text-ink">
@@ -227,7 +186,7 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
               {t('cursusDetails')}
             </h3>
             <div className="mt-3">
-              <CursusForm cursus={option} />
+              <CursusForm cursus={option} courses={courses ?? []} />
             </div>
             <CursusDeleteButton cursusId={option.id} />
           </section>
@@ -239,7 +198,7 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
       label: `+ ${t('newCursus')}`,
       content: (
         <div className="max-w-2xl">
-          <CursusForm />
+          <CursusForm courses={courses ?? []} />
         </div>
       ),
     },
