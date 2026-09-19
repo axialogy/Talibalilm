@@ -17,15 +17,17 @@ import {
   settleFreeOrder,
   settleOrder,
   settleInstallmentWithCoupon,
-  releaseHolds,
+  markOrderFailed,
   PackExhaustedError,
 } from '@/lib/commerce/orders';
 import {
   capturePayPalOrder,
   createPayPalOrder,
   getPayPalConfig,
+  PayPalPayerAction,
+  PayPalRefusal,
 } from '@/lib/paypal/client';
-import { siteUrl } from '@/lib/env';
+import { reportError } from '@/lib/observability/report';
 
 /**
  * Payment.
@@ -76,14 +78,6 @@ async function requireUser(): Promise<{ id: string }> {
 async function releaseCoupon(couponId: string): Promise<void> {
   const supabase = createAdminClient();
   await supabase.rpc('release_coupon', { coupon_id: couponId });
-}
-
-async function markOrderFailed(orderId: string, reason: string): Promise<void> {
-  const supabase = createAdminClient();
-  await supabase
-    .from('orders')
-    .update({ status: 'failed', status_reason: reason })
-    .eq('id', orderId);
 }
 
 async function claimCoupon(
@@ -203,7 +197,6 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
 
   if (!config) return { ok: false, error: 'unavailable' };
 
-  const base = siteUrl();
   try {
     const created = await createPayPalOrder({
       config,
@@ -211,8 +204,6 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
       amountCents: order.firstPaymentCents,
       currency: order.currency,
       referenceId: order.id,
-      returnUrl: `${base}/api/paypal/return?order=${order.id}`,
-      cancelUrl: `${base}/api/paypal/cancel?order=${order.id}`,
       description: quote.lines.map((l) => l.title).join(', ') || 'Institut Talib Alim',
     });
     await attachProviderOrder(order.id, created.id);
@@ -221,7 +212,6 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
     // The order exists and is holding a coupon and a pack redemption. Nothing
     // downstream will ever release them, because the student is never going to
     // reach PayPal's cancel route — they are about to see an error instead.
-    await releaseHolds(order.id);
     await markOrderFailed(order.id, 'PayPal would not open the order');
     // Deliberately vague to the student, because the detail here is about our
     // credentials rather than anything they can act on.
@@ -239,7 +229,7 @@ export async function beginPayPalCheckout(): Promise<BeginPayState> {
  */
 export async function completePayPalCheckout(
   paypalOrderId: string,
-): Promise<{ ok: true; orderId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; orderId: string } | { ok: false; error: string; url?: string }> {
   const user = await requireUser();
 
   // Every call is a round trip to PayPal; an authenticated client must not be
@@ -306,7 +296,24 @@ export async function completePayPalCheckout(
             : 'payUnexpected';
       return { ok: false, error };
     }
-  } catch {
+  } catch (thrown) {
+    // The buyer owes one more step at PayPal (a challenge or a review). The
+    // order carries the link; the browser goes there and comes back through
+    // the return route, which captures for real.
+    if (thrown instanceof PayPalPayerAction) {
+      return { ok: false, error: 'payerAction', url: thrown.url };
+    }
+
+    // PayPal named a reason. It goes on the order and into the log where the
+    // office can read it; the student still gets a plain sentence.
+    if (thrown instanceof PayPalRefusal) {
+      reportError('paypal.capture', thrown, { orderId: targetOrderId, issue: thrown.issue });
+      await markOrderFailed(targetOrderId, `capture refused: ${thrown.issue}`);
+      return { ok: false, error: 'paypalRefused' };
+    }
+
+    // A transient failure (network, 5xx). The order stays pending so a retry
+    // or the sweep can deal with it, and the coupon is not released yet.
     return { ok: false, error: 'paypalRefused' };
   }
 
@@ -354,15 +361,12 @@ export async function beginInstallmentPayment(installmentId: string): Promise<Be
   const config = await getPayPalConfig();
   if (!config) return { ok: false, error: 'unavailable' };
 
-  const base = siteUrl();
   try {
     const created = await createPayPalOrder({
       config,
       amountCents: installment.amount_cents,
       currency: order.currency,
       referenceId: order.id,
-      returnUrl: `${base}/api/paypal/return?order=${order.id}`,
-      cancelUrl: `${base}/api/paypal/cancel?order=${order.id}`,
       description: `Institut Talib Alim — échéance ${installment.sequence}`,
     });
 
@@ -488,7 +492,6 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
   // The catalogue disagreed with the page: something in the basket costs money.
   // Give back what the order was holding and send them to pay properly.
   if (order.totalCents !== 0) {
-    await releaseHolds(order.id);
     await markOrderFailed(order.id, 'not a free basket');
     return { error: 'notFree' };
   }
@@ -557,4 +560,36 @@ export async function redeemOfficeCode(_previous: PayState, formData: FormData):
   await settleFreeOrder(order.id);
   await clearSelection();
   redirect({ href: `/checkout/confirmation?order=${order.id}`, locale });
+}
+
+/**
+ * Where a paid order should open.
+ *
+ * A module opens its own page; a cursus opens Mon espace, where every module
+ * it unlocked is listed and each opens its own page. Read through the ordinary
+ * client, so `orders_select_own` decides what a caller can see — an order id
+ * belonging to somebody else resolves to the dashboard and nothing more.
+ */
+export async function checkoutTarget(orderId: string): Promise<string> {
+  const user = await requireUser();
+  const parsed = z.string().uuid().safeParse(orderId);
+  if (!parsed.success) return '/dashboard';
+
+  const supabase = await createClient();
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, user_id, status, order_items ( kind, course_id )')
+    .eq('id', parsed.data)
+    .maybeSingle();
+  if (!order || order.user_id !== user.id || order.status !== 'paid') return '/dashboard';
+
+  const first = order.order_items?.[0];
+  if (!first || first.kind !== 'module' || !first.course_id) return '/dashboard';
+
+  const { data: course } = await supabase
+    .from('courses')
+    .select('slug')
+    .eq('id', first.course_id)
+    .maybeSingle();
+  return course?.slug ? `/courses/${course.slug}` : '/dashboard';
 }
