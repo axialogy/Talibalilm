@@ -17,6 +17,7 @@ import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutWizard, type WizardStep } from '@/components/checkout/CheckoutWizard';
 import { PaymentForms } from '@/components/checkout/PaymentForms';
+import { ReturnErrorDialog } from '@/components/checkout/ReturnErrorDialog';
 import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
 import { CouponForm } from '@/components/checkout/CouponForm';
 import {
@@ -50,6 +51,7 @@ const RETURN_ERRORS: Record<string, string> = {
   not_found: 'payUnexpected',
   unexpected: 'payUnexpected',
   unavailable: 'payUnavailable',
+  refused: 'payRefused',
   paypalRefused: 'payRefused',
 };
 
@@ -410,6 +412,8 @@ export async function CheckoutFlow({
         <Empty>{moduleContext && delivery ? t('moduleNotSoldInMode') : t('emptyBasket')}</Empty>
       ) : (
         <>
+          {errorKey && <ReturnErrorDialog message={t(errorKey)} />}
+
           {errorKey && (
             <p
               role="alert"

@@ -211,7 +211,7 @@ export async function settleOrder(options: {
   if (order.status === 'paid') return { ok: true, alreadyPaid: true, orderId };
 
   if (status !== 'COMPLETED') {
-    await markFailed(orderId, `capture ${status}`);
+    await markOrderFailed(orderId, `capture ${status}`);
     return { ok: false, reason: 'not_completed' };
   }
 
@@ -225,7 +225,7 @@ export async function settleOrder(options: {
       currency,
       expectedCurrency: order.currency,
     });
-    await markFailed(
+    await markOrderFailed(
       orderId,
       `captured ${capturedCents ?? '?'} ${currency ?? '?'}, expected ${order.total_cents} ${order.currency}`,
     );
@@ -475,7 +475,14 @@ export async function releaseHolds(orderId: string): Promise<void> {
   await supabase.rpc('release_order_holds', { oid: orderId });
 }
 
-async function markFailed(orderId: string, reason: string): Promise<void> {
+/**
+ * Mark an order failed and give back everything it was holding.
+ *
+ * Exported because the capture paths need it too: when PayPal definitively
+ * refuses a payment, the order must not stay pending until the sweep, and the
+ * coupon and pack seat it claimed must go back into circulation now.
+ */
+export async function markOrderFailed(orderId: string, reason: string): Promise<void> {
   const supabase = createAdminClient();
   await supabase.from('orders').update({ status: 'failed', status_reason: reason }).eq('id', orderId);
   await releaseHolds(orderId);

@@ -135,6 +135,15 @@ export interface CreatedOrder {
  *
  * The amount is passed in by a caller that has just recomputed it from the
  * catalogue. Nothing that reached us from a browser contributes to it.
+ *
+ * NO `payment_source` HERE, deliberately. An order created with one is an
+ * Expanded Checkout order: its HATEOAS link is `payer-action`, and the buyer
+ * must be sent to PayPal's "Review your purchase" page. The site uses the
+ * JavaScript SDK's popup instead, and that flow requires a plain order — its
+ * link is `approve`. Creating the order with a payment source and approving it
+ * through the SDK leaves the order not approved for the capture, which PayPal
+ * answers with a 422 on every attempt: "the requested action could not be
+ * performed, semantically incorrect, or failed business validation".
  */
 export async function createPayPalOrder(options: {
   config: PayPalConfig;
@@ -142,11 +151,9 @@ export async function createPayPalOrder(options: {
   currency: string;
   /** Our own order id, echoed back on the webhook. */
   referenceId: string;
-  returnUrl: string;
-  cancelUrl: string;
   description: string;
 }): Promise<CreatedOrder> {
-  const { config, amountCents, currency, referenceId, returnUrl, cancelUrl, description } = options;
+  const { config, amountCents, currency, referenceId, description } = options;
   const token = await accessToken(config);
 
   const response = await fetch(`${apiBase(config.environment)}/v2/checkout/orders`, {
@@ -169,16 +176,6 @@ export async function createPayPalOrder(options: {
           amount: { currency_code: currency, value: toPayPalAmount(amountCents) },
         },
       ],
-      payment_source: {
-        paypal: {
-          experience_context: {
-            user_action: 'PAY_NOW',
-            shipping_preference: 'NO_SHIPPING',
-            return_url: returnUrl,
-            cancel_url: cancelUrl,
-          },
-        },
-      },
     }),
   });
 
@@ -207,7 +204,105 @@ export interface CaptureResult {
   paymentMethod: 'paypal' | 'card' | null;
 }
 
-/** Take the money. The caller checks the result against its own order row. */
+/**
+ * PayPal refused the capture, and said why.
+ *
+ * `issue` is PayPal's own code (`INSTRUMENT_DECLINED`, `ORDER_NOT_APPROVED`,
+ * …). It is what the order's failure reason is built from, so the office reads
+ * the real cause in Admin → Orders instead of a guess.
+ */
+export class PayPalRefusal extends Error {
+  constructor(
+    readonly issue: string,
+    readonly detail: string,
+  ) {
+    super(detail);
+    this.name = 'PayPalRefusal';
+  }
+}
+
+/**
+ * The buyer must complete one more step at PayPal before the money can move
+ * (a 3-D Secure challenge, a review). The order carries the link to send them
+ * to; the caller redirects and captures again when they come back.
+ */
+export class PayPalPayerAction extends Error {
+  constructor(readonly url: string) {
+    super('payer action required');
+    this.name = 'PayPalPayerAction';
+  }
+}
+
+interface PayPalOrderBody {
+  status?: string;
+  payment_source?: Record<string, unknown>;
+  purchase_units?: {
+    payments?: {
+      captures?: {
+        id: string;
+        status: string;
+        amount?: { value: string; currency_code: string };
+      }[];
+    };
+  }[];
+  links?: { href: string; rel: string }[];
+}
+
+interface PayPalErrorBody {
+  name?: string;
+  message?: string;
+  details?: { issue?: string; description?: string; field?: string }[];
+}
+
+/** Read a capture (or an order that already holds one) the same way. */
+function readCapture(body: PayPalOrderBody): CaptureResult {
+  const capture = body.purchase_units?.[0]?.payments?.captures?.[0];
+
+  // The keys of `payment_source` are the source: `{ card: {...} }` means a
+  // card, `{ paypal: {...} }` means the balance. Anything else (a wallet, a
+  // credit product) is PayPal-funded and reads as PayPal to the office.
+  const sourceKeys = Object.keys(body.payment_source ?? {});
+  const paymentMethod: 'paypal' | 'card' | null =
+    sourceKeys.length === 0 ? null : sourceKeys.includes('card') ? 'card' : 'paypal';
+
+  return {
+    status: capture?.status ?? body.status ?? 'UNKNOWN',
+    captureId: capture?.id ?? null,
+    amountCents: capture?.amount ? fromPayPalAmount(capture.amount.value) : null,
+    currency: capture?.amount?.currency_code ?? null,
+    paymentMethod,
+  };
+}
+
+/** The order as PayPal holds it, or null when it could not be read. */
+async function readOrder(
+  config: PayPalConfig,
+  paypalOrderId: string,
+): Promise<PayPalOrderBody | null> {
+  const token = await accessToken(config);
+  const response = await fetch(
+    `${apiBase(config.environment)}/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
+  );
+  if (!response.ok) return null;
+  return (await response.json()) as PayPalOrderBody;
+}
+
+/**
+ * Take the money. The caller checks the result against its own order row.
+ *
+ * The 422 body is READ, not assumed. Treating every 422 as "already captured"
+ * was how a refused capture became `capture UNKNOWN` on the order — PayPal's
+ * actual issue was in the body and was thrown away. Three outcomes now:
+ *
+ *   * ORDER_ALREADY_CAPTURED — a retry landing on money that already moved.
+ *     The order is re-read and its real capture returned, so a paid order can
+ *     never be marked failed.
+ *   * PAYER_ACTION_REQUIRED — the buyer owes one more step; the caller sends
+ *     them to the link and captures on return.
+ *   * anything else — `PayPalRefusal` carrying the issue, for the order's
+ *     failure reason and the server log.
+ */
 export async function capturePayPalOrder(
   config: PayPalConfig,
   paypalOrderId: string,
@@ -227,42 +322,36 @@ export async function capturePayPalOrder(
     },
   );
 
-  const body = (await response.json()) as {
-    status?: string;
-    payment_source?: Record<string, unknown>;
-    purchase_units?: {
-      payments?: {
-        captures?: {
-          id: string;
-          status: string;
-          amount?: { value: string; currency_code: string };
-        }[];
-      };
-    }[];
-  };
+  const body = (await response.json().catch(() => ({}))) as PayPalOrderBody & PayPalErrorBody;
 
-  // A 422 carrying ORDER_ALREADY_CAPTURED is not a failure — it is a retry
-  // landing on work already done, which the caller settles against its own row.
-  if (!response.ok && response.status !== 422) {
-    throw new Error(`PayPal refused the capture (${response.status})`);
+  if (!response.ok) {
+    // A 5xx is PayPal having a bad moment, not a verdict on this payment. It
+    // is thrown as a plain error so the caller leaves the order pending for a
+    // retry or the sweep, instead of failing it and releasing its holds.
+    if (response.status >= 500) {
+      throw new Error(`PayPal answered ${response.status} on the capture`);
+    }
+
+    const issue = body.details?.[0]?.issue ?? '';
+    const detail =
+      [body.name, body.message, body.details?.[0]?.description].filter(Boolean).join(' — ') ||
+      `PayPal answered ${response.status}`;
+
+    if (issue === 'ORDER_ALREADY_CAPTURED') {
+      const order = await readOrder(config, paypalOrderId);
+      if (order) return readCapture(order);
+    }
+
+    if (issue === 'PAYER_ACTION_REQUIRED') {
+      const order = await readOrder(config, paypalOrderId);
+      const url = order?.links?.find((link) => link.rel === 'payer-action')?.href;
+      if (url) throw new PayPalPayerAction(url);
+    }
+
+    throw new PayPalRefusal(issue || `HTTP ${response.status}`, detail);
   }
 
-  const capture = body.purchase_units?.[0]?.payments?.captures?.[0];
-
-  // The keys of `payment_source` are the source: `{ card: {...} }` means a
-  // card, `{ paypal: {...} }` means the balance. Anything else (a wallet, a
-  // credit product) is PayPal-funded and reads as PayPal to the office.
-  const sourceKeys = Object.keys(body.payment_source ?? {});
-  const paymentMethod: 'paypal' | 'card' | null =
-    sourceKeys.length === 0 ? null : sourceKeys.includes('card') ? 'card' : 'paypal';
-
-  return {
-    status: capture?.status ?? body.status ?? 'UNKNOWN',
-    captureId: capture?.id ?? null,
-    amountCents: capture?.amount ? fromPayPalAmount(capture.amount.value) : null,
-    currency: capture?.amount?.currency_code ?? null,
-    paymentMethod,
-  };
+  return readCapture(body);
 }
 
 /**

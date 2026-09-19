@@ -1,8 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { capturePayPalOrder, getPayPalConfig } from '@/lib/paypal/client';
-import { settleOrder } from '@/lib/commerce/orders';
+import {
+  capturePayPalOrder,
+  getPayPalConfig,
+  PayPalPayerAction,
+  PayPalRefusal,
+} from '@/lib/paypal/client';
+import { markOrderFailed, settleOrder } from '@/lib/commerce/orders';
 import { createAdminClient } from '@/lib/supabase/server';
+import { reportError } from '@/lib/observability/report';
 import { siteUrl } from '@/lib/env';
 
 /**
@@ -62,9 +68,20 @@ export async function GET(request: NextRequest) {
     });
 
     if (!settled.ok) return fail(settled.reason);
-  } catch {
+  } catch (thrown) {
+    // The buyer owes one more step at PayPal; it brings them back here after.
+    if (thrown instanceof PayPalPayerAction) return NextResponse.redirect(thrown.url);
+
+    if (thrown instanceof PayPalRefusal) {
+      reportError('paypal.capture', thrown, { orderId: order.id, issue: thrown.issue });
+      await markOrderFailed(order.id, `capture refused: ${thrown.issue}`);
+      return fail('refused');
+    }
+
     return fail('paypalRefused');
   }
 
-  return NextResponse.redirect(`${base}/checkout/confirmation?order=${order.id}`);
+  // `welcome=1` is what shows the thank-you dialog on arrival. Only this path
+  // sets it: the popup path already showed its own dialog before navigating.
+  return NextResponse.redirect(`${base}/checkout/confirmation?order=${order.id}&welcome=1`);
 }

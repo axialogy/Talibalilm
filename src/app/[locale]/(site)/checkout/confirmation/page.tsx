@@ -3,6 +3,7 @@ import { CheckCircle2, GraduationCap, Layers } from 'lucide-react';
 import { Link, redirect } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { WelcomeDialog } from '@/components/checkout/WelcomeDialog';
 import { formatPrice } from '@/lib/commerce/quote';
 import { getCourse } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
@@ -26,11 +27,11 @@ export default async function ConfirmationPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ order?: string }>;
+  searchParams: Promise<{ order?: string; welcome?: string }>;
 }) {
   const { locale } = await params;
   requireLocale(locale);
-  const { order: orderId } = await searchParams;
+  const { order: orderId, welcome } = await searchParams;
   setRequestLocale(locale);
 
   if (!supabaseConfigured || !orderId) redirect({ href: '/dashboard', locale });
@@ -61,6 +62,15 @@ export default async function ConfirmationPage({
     : { data: [] };
   const slugById = new Map((courses ?? []).map((course) => [course.id, course.slug]));
 
+  // Where the student lands when they leave this page. A module opens its own
+  // page (which now shows the access panel); a cursus opens Mon espace, where
+  // every module it unlocked is listed and each opens its own page.
+  const firstItem = items[0];
+  const firstSlug = firstItem?.course_id ? slugById.get(firstItem.course_id) : undefined;
+  const landing =
+    firstItem?.kind === 'module' && firstSlug ? `/courses/${firstSlug}` : '/dashboard';
+  const landingLabel = landing.startsWith('/courses/') ? t('confirmOpenModule') : t('confirmCta');
+
   // Where each line should open. The course is read through the public
   // catalogue, so this cannot become a way to reach something the paywall
   // would refuse — the lesson page itself is gated by RLS.
@@ -76,6 +86,8 @@ export default async function ConfirmationPage({
 
   return (
     <>
+      {welcome === '1' && <WelcomeDialog href={landing} ctaLabel={landingLabel} />}
+
       <div className="text-center">
         <span
           className="mx-auto flex size-14 items-center justify-center rounded-full bg-brand-50 text-brand-600"
@@ -139,7 +151,7 @@ export default async function ConfirmationPage({
 
       <div className="mt-8 text-center">
         <Button asChild size="lg">
-          <Link href="/dashboard">{t('confirmCta')}</Link>
+          <Link href={landing}>{landingLabel}</Link>
         </Button>
       </div>
     </>
