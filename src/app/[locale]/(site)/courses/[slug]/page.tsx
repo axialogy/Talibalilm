@@ -10,6 +10,7 @@ import { PlanningTarifs } from '@/components/marketing/PlanningTarifs';
 import { InfoCarousel } from '@/components/courses/InfoCarousel';
 import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
 import { getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
+import { createClient } from '@/lib/supabase/server';
 import { listCursus, listProducts } from '@/lib/data/commerce';
 import { listLiveSessions } from '@/lib/data/live';
 import { institut } from '@/lib/content/institut';
@@ -80,6 +81,22 @@ export default async function CoursePage({
 
   const course = await getCourse(slug);
   if (!course || course.status !== 'published') notFound();
+
+  // Does the signed-in student already hold this module? `has_course_access`
+  // is the same answer the lesson pages are gated by — bought outright, or
+  // covered by a cursus they paid for, in the mode they paid for. A signed-out
+  // visitor never reaches the question.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const owned = user
+    ? (await supabase.rpc('has_course_access', { cid: course.id })).data === true
+    : false;
+  const firstLesson = course.modules.flatMap((module) => module.lessons)[0];
+  const openHref = firstLesson
+    ? `/dashboard/courses/${course.slug}/lessons/${firstLesson.id}`
+    : '/dashboard';
 
   const t = await getTranslations('courses');
   const tCommon = await getTranslations('common');
@@ -458,14 +475,17 @@ export default async function CoursePage({
         </section>
       )}
 
-      {/* Inscriptions & paiements — the whole enrolment, in one card, here. */}
+      {/* Inscriptions & paiements — the whole enrolment, in one card, here.
+          A student who already holds the module (bought it, or it is part of a
+          cursus they paid for) gets the way in instead: offering them the
+          checkout again would be selling what they own. */}
       <section id="inscription" className="scroll-mt-24 py-14 sm:py-16">
         <div className="shell max-w-3xl">
           <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-            {t('detail.enrolment')}
+            {owned ? t('detail.yourAccess') : t('detail.enrolment')}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-[13px] leading-relaxed text-ink-muted">
-            {t('detail.enrolmentLead')}
+            {owned ? t('detail.yourAccessLead') : t('detail.enrolmentLead')}
           </p>
 
           {/* The card knows which module it is standing on, so it does not ask
@@ -474,10 +494,24 @@ export default async function CoursePage({
               the price is read from the products table server-side and the
               browser never posts one. */}
           <div className="mt-8">
-            <CheckoutFlow
-              locale={locale}
-              moduleContext={{ courseId: course.id, cursusId: moduleCursusId }}
-            />
+            {owned ? (
+              <div className="rounded-[var(--radius-card)] border border-line bg-white p-8 text-center shadow-card">
+                <p className="font-display text-lg font-semibold text-ink">
+                  {t('detail.accessTitle')}
+                </p>
+                <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+                  {t('detail.accessLead')}
+                </p>
+                <Button asChild size="lg" className="mt-5">
+                  <Link href={openHref}>{t('detail.openModule')}</Link>
+                </Button>
+              </div>
+            ) : (
+              <CheckoutFlow
+                locale={locale}
+                moduleContext={{ courseId: course.id, cursusId: moduleCursusId }}
+              />
+            )}
           </div>
         </div>
       </section>

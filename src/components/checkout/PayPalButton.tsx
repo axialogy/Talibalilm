@@ -1,12 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import {
   beginInstallmentPayment,
   beginPayPalCheckout,
+  checkoutTarget,
   completePayPalCheckout,
 } from '@/app/actions/pay';
 
@@ -19,9 +22,15 @@ import {
  * The amount and the secret never enter this file, and the browser only ever
  * sees an order id it is not trusted to invent.
  *
- * If the popup cannot open, PayPal falls back to the return_url the server
- * set — the same route the old redirect flow used, so both paths settle
- * identically.
+ * The order is created WITHOUT a payment_source, deliberately — that is what
+ * the SDK popup flow requires. With one, PayPal treats the order as an
+ * Expanded Checkout order whose approval belongs to its own redirect page, and
+ * every capture comes back 422 (see `createPayPalOrder`).
+ *
+ * Both outcomes end in a dialog: a thank-you that takes the student to what
+ * they bought, or the refusal in words they can act on. A student who is sent
+ * to PayPal for one more step (a challenge) is redirected and comes back
+ * through the return route.
  */
 
 interface PayPalButtonsInstance {
@@ -82,12 +91,38 @@ export function PayPalButton({
   const container = useRef<HTMLDivElement>(null);
   const settled = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorOpen, setErrorOpen] = useState(false);
+  const [done, setDone] = useState<{ orderId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [leaving, startLeave] = useTransition();
 
-  const showError = useCallback((key: string) => {
-    setError(t(MESSAGE[key] ?? 'payUnexpected'));
-  }, [t]);
+  const showError = useCallback(
+    (key: string, { dialog = true }: { dialog?: boolean } = {}) => {
+      setError(t(MESSAGE[key] ?? 'payUnexpected'));
+      setErrorOpen(dialog);
+    },
+    [t],
+  );
+
+  /**
+   * Leave the thank-you dialog for what was bought: the module's own page, or
+   * Mon espace when the order was a cursus (where every module it unlocked is
+   * listed). An installment payment has nothing to open — it goes to the
+   * student's space.
+   */
+  const goToAccess = useCallback(() => {
+    if (!done) return;
+    if (installmentId) {
+      router.push('/dashboard');
+      return;
+    }
+    const orderId = done.orderId;
+    startLeave(async () => {
+      const target = await checkoutTarget(orderId);
+      router.push(target);
+    });
+  }, [done, installmentId, router]);
 
   const renderButtons = useCallback(() => {
     const target = container.current;
@@ -103,6 +138,7 @@ export function PayPalButton({
           style: { layout: 'vertical', shape: 'pill', color: 'gold', label: 'paypal', height: 48 },
           createOrder: async () => {
             setError(null);
+            setErrorOpen(false);
             settled.current = false;
             const result = installmentId
               ? await beginInstallmentPayment(installmentId)
@@ -116,7 +152,7 @@ export function PayPalButton({
             // already settled and the student goes to the confirmation.
             if (result.free) {
               settled.current = true;
-              router.push(`/checkout/confirmation?order=${result.orderId}`);
+              setDone({ orderId: result.orderId });
               throw new Error('free');
             }
             return result.paypalOrderId;
@@ -124,18 +160,25 @@ export function PayPalButton({
           onApprove: async (data) => {
             const result = await completePayPalCheckout(data.orderID);
             if (!result.ok) {
+              // One more step at PayPal (a challenge). The order carries the
+              // link; it brings the buyer back through the return route.
+              if (result.error === 'payerAction' && result.url) {
+                window.location.assign(result.url);
+                return;
+              }
               showError(result.error);
               return;
             }
             settled.current = true;
-            router.push(`/checkout/confirmation?order=${result.orderId}`);
+            setDone({ orderId: result.orderId });
           },
           onCancel: () => {
-            if (!settled.current) setError(t('payCancelled'));
+            // A cancellation is not a failure; it is said under the button.
+            if (!settled.current) showError('payCancelled', { dialog: false });
           },
           onError: () => {
             // The deliberate abort for the free branch is not an error to show.
-            if (!settled.current) setError(t('payUnexpected'));
+            if (!settled.current) showError('payUnexpected');
           },
         })
         .render(target)
@@ -145,7 +188,7 @@ export function PayPalButton({
       // not a page error; the payment block reports it like any other outage.
       setFailed(true);
     }
-  }, [installmentId, router, showError, t]);
+  }, [installmentId, showError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,6 +252,30 @@ export function PayPalButton({
           {error}
         </p>
       )}
+
+      <Dialog open={done !== null} title={t('paySuccessTitle')} onClose={goToAccess}>
+        <p>{t('paySuccessBody')}</p>
+        <Button type="button" size="md" onClick={goToAccess} disabled={leaving}>
+          {leaving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+          {t('paySuccessCta')}
+        </Button>
+      </Dialog>
+
+      <Dialog open={errorOpen} title={t('payErrorTitle')} onClose={() => setErrorOpen(false)}>
+        <p>{error}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" size="md" onClick={() => setErrorOpen(false)}>
+            {t('payRetry')}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setErrorOpen(false)}
+            className="text-[13px] text-ink-muted transition-colors hover:text-ink"
+          >
+            {t('payClose')}
+          </button>
+        </div>
+      </Dialog>
     </div>
   );
 }
