@@ -120,6 +120,19 @@ export default async function CoursePage({
     (entry) => entry.kind === 'module' && entry.courseId === course.id,
   );
 
+  // Which cursus this module belongs to, from the programme grid the cursus
+  // screen writes. That is what decides whether the checkout offers the
+  // approfondi route on this page; the à-la-carte route is always offered once
+  // the module has a price, because every module is sold on its own.
+  const { data: gridRows } = await supabase
+    .from('cursus_courses')
+    .select('cursus_id')
+    .eq('course_id', course.id);
+  const inCursus = new Set((gridRows ?? []).map((row) => row.cursus_id));
+  const approfondiIds = cursusList
+    .filter((c) => c.kind === 'approfondi' && inCursus.has(c.id))
+    .map((c) => c.id);
+
   // Which cursus the "à la carte" route belongs to, so the enrolment card opens
   // with step one already answered when a student enrols from here.
   const moduleCursusId = cursusList.find((c) => c.kind === 'module')?.id ?? '';
@@ -509,7 +522,13 @@ export default async function CoursePage({
             ) : (
               <CheckoutFlow
                 locale={locale}
-                moduleContext={{ courseId: course.id, cursusId: moduleCursusId, title: course.title }}
+                moduleContext={{
+                  courseId: course.id,
+                  cursusId: moduleCursusId,
+                  title: course.title,
+                  hasTariff: entries.length > 0,
+                  approfondiIds,
+                }}
               />
             )}
           </div>

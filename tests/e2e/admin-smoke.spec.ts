@@ -86,4 +86,29 @@ test.describe('the admin course builder', () => {
     await expect(page.getByRole('heading', { level: 1, name: course.title })).toBeVisible();
     await expect(page.getByText('Cet écran d’administration n’a pas pu s’afficher')).toHaveCount(0);
   });
+
+  test('the cursus screen renders, with its programme grid', async ({ page }) => {
+    await page.goto('/login');
+    await page.locator('input[name="email"]').fill(email);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('form button[type="submit"]').click();
+    await page.waitForURL(/\/dashboard/);
+
+    await page.goto('/admin/cursus');
+
+    // The screen the module page no longer owns: each cursus, its years, its
+    // prices and the programme that decides which modules it opens.
+    await expect(page.getByRole('heading', { level: 1, name: 'Cursus' })).toBeVisible();
+    await expect(page.getByText('Cet écran d’administration n’a pas pu s’afficher')).toHaveCount(0);
+
+    // The grid lives under an approfondi tab: modules down, years across.
+    // Ticking a cell writes `cursus_courses`, which is what opens that module
+    // to whoever buys that year of the cursus.
+    await page.getByRole('tab', { name: 'Cursus Approfondi' }).first().click();
+    const cell = page.locator('button[aria-pressed]').first();
+    await expect(cell).toBeVisible();
+    const before = await cell.getAttribute('aria-pressed');
+    await cell.click();
+    await expect(cell).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+  });
 });
