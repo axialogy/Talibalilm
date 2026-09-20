@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
-import { saveProduct } from '@/app/actions/catalog';
+import { saveCursusYearPrice } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 import { ActionForm } from '@/components/ui/action-form';
 
@@ -24,12 +24,11 @@ function toEuros(cents: number): string {
 }
 
 /**
- * What a cursus costs, on one line per mode.
+ * What a cursus costs, one line per year.
  *
- * It used to live on a separate price list next to every module price, which
- * meant the fee for a programme was three screens away from the programme —
- * and the same figures were read in two places that could disagree. One line
- * here, beside the thing it prices.
+ * The mode is organisational: on site and online cost the same. Asking twice
+ * invited the two figures to disagree — and the school was left to keep them
+ * in step by hand. One input per year writes both product rows.
  */
 export function CursusTariff({
   cursusId,
@@ -41,62 +40,60 @@ export function CursusTariff({
   prices: CursusPrice[];
 }) {
   const t = useTranslations('admin');
-  const [state, save] = useActionState(saveProduct, EMPTY);
+  const [state, save] = useActionState(saveCursusYearPrice, EMPTY);
 
   const field =
     'rounded-[var(--radius-input)] border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand-400';
 
   const years = Array.from({ length: yearCount }, (_, i) => i + 1);
-  const rows = years.flatMap((year) =>
-    (['online', 'presentiel'] as const).map((delivery) => ({
-      year,
-      delivery,
-      existing: prices.find((p) => p.delivery === delivery && p.yearIndex === year),
-    })),
-  );
 
   return (
     <div className="space-y-2">
-      {rows.map(({ year, delivery, existing }) => (
-        <ActionForm
-          key={`${year}-${delivery}`}
-          action={save}
-          className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-line bg-white px-4 py-3 text-[13px]"
-        >
-          {existing && <input type="hidden" name="id" value={existing.id} />}
-          <input type="hidden" name="kind" value="cursus" />
-          <input type="hidden" name="cursus_id" value={cursusId} />
-          <input type="hidden" name="delivery" value={delivery} />
-          <input type="hidden" name="year_index" value={year} />
-          <input type="hidden" name="duration_days" value={existing?.durationDays ?? 365} />
+      {years.map((year) => {
+        // Either mode's row answers for the year — they are written together.
+        const existing =
+          prices.find((p) => p.yearIndex === year && p.status !== 'archived') ??
+          prices.find((p) => p.yearIndex === year);
 
-          <span className="min-w-40 font-medium text-ink">
-            {yearCount > 1 && `${t('yearIndex')} ${year} · `}
-            {delivery === 'online' ? t('deliveryOnline') : t('deliveryPresentiel')}
-          </span>
+        return (
+          <ActionForm
+            key={year}
+            action={save}
+            className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-line bg-white px-4 py-3 text-[13px]"
+          >
+            <input type="hidden" name="cursus_id" value={cursusId} />
+            <input type="hidden" name="year_index" value={year} />
+            <input type="hidden" name="duration_days" value={existing?.durationDays ?? 365} />
 
-          <label className="flex items-center gap-2">
-            <span className="text-ink-muted">{t('feePrice')}</span>
-            <input
-              name="price"
-              defaultValue={existing ? toEuros(existing.priceCents) : ''}
-              placeholder="900"
-              inputMode="decimal"
-              className={`${field} w-28`}
-            />
-          </label>
+            <span className="min-w-24 font-medium text-ink">
+              {t('yearIndex')} {year}
+            </span>
 
-          <select name="status" defaultValue={existing?.status ?? 'published'} className={field}>
-            <option value="published">{t('published')}</option>
-            <option value="draft">{t('draft')}</option>
-            <option value="archived">{t('archived')}</option>
-          </select>
+            <span className="text-ink-muted">{t('deliveryBoth')}</span>
 
-          <Button type="submit" size="sm" variant="ghost">
-            {existing ? t('save') : t('feeAdd')}
-          </Button>
-        </ActionForm>
-      ))}
+            <label className="flex items-center gap-2">
+              <span className="text-ink-muted">{t('feePrice')}</span>
+              <input
+                name="price"
+                defaultValue={existing ? toEuros(existing.priceCents) : ''}
+                placeholder="900"
+                inputMode="decimal"
+                className={`${field} w-28`}
+              />
+            </label>
+
+            <select name="status" defaultValue={existing?.status ?? 'published'} className={field}>
+              <option value="published">{t('published')}</option>
+              <option value="draft">{t('draft')}</option>
+              <option value="archived">{t('archived')}</option>
+            </select>
+
+            <Button type="submit" size="sm" variant="ghost">
+              {existing ? t('save') : t('feeAdd')}
+            </Button>
+          </ActionForm>
+        );
+      })}
 
       <ActionError state={state} />
     </div>

@@ -281,6 +281,76 @@ export async function deleteProduct(_prev: AdminState, formData: FormData): Prom
   return OK;
 }
 
+/**
+ * One price per year, both modes.
+ *
+ * The school charges the same fee whether the student attends on site or
+ * online — the mode is organisational. So the screen asks for one figure per
+ * year and this writes both product rows, keeping them equal by construction
+ * rather than by the office typing the same number twice.
+ */
+export async function saveCursusYearPrice(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = z
+    .object({
+      cursus_id: z.string().uuid(),
+      year_index: z.coerce.number().int().min(1).max(10),
+      duration_days: z.coerce.number().int().min(1).max(3650).default(365),
+      status: z.enum(['draft', 'published', 'archived']),
+    })
+    .safeParse({
+      cursus_id: formData.get('cursus_id'),
+      year_index: formData.get('year_index'),
+      duration_days: formData.get('duration_days') || 365,
+      status: formData.get('status'),
+    });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const priceCents = toCents(String(formData.get('price') ?? ''));
+  if (priceCents === null || priceCents <= 0) return { ok: false, error: 'priceInvalid' };
+
+  const { cursus_id, year_index, duration_days, status } = parsed.data;
+
+  const supabase = await client();
+
+  for (const delivery of ['presentiel', 'online'] as const) {
+    // The live row for this slot, whatever its status: the unique index only
+    // ignores archived rows, so reviving one of those while a live row exists
+    // would collide. Archived rows stay archived; a fresh row is written.
+    const { data: rows, error: readError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('kind', 'cursus')
+      .eq('cursus_id', cursus_id)
+      .eq('delivery', delivery)
+      .eq('year_index', year_index)
+      .neq('status', 'archived');
+    if (readError) return { ok: false, error: 'saveFailed', detail: errorDetail(readError) };
+
+    const existing = rows?.[0];
+    const { error } = existing
+      ? await supabase
+          .from('products')
+          .update({ price_cents: priceCents, duration_days, status })
+          .eq('id', existing.id)
+      : await supabase.from('products').insert({
+          kind: 'cursus' as const,
+          cursus_id,
+          delivery,
+          year_index,
+          price_cents: priceCents,
+          duration_days,
+          status,
+        });
+    if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+  }
+
+  refresh();
+  return OK;
+}
+
 // ---------------------------------------------------------------------------
 // Bonuses
 //
@@ -420,59 +490,82 @@ export async function saveBonus(_prev: AdminState, formData: FormData): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// The programme — which modules a cursus covers, in which year and mode
+// The programme — which modules a cursus covers, and in which year
+//
+// The mode is organisational, not a second paywall: `has_course_access` never
+// reads `cursus_courses.delivery`, and the RLS suite asserts that an on-site
+// enrolment opens the online programme. So the screen picks modules by year,
+// and both delivery rows are written for every one — the checkout still needs
+// a product in the mode being bought.
 // ---------------------------------------------------------------------------
 
 /**
- * Tick or untick one cell of the programme grid.
+ * Set the modules of one year, from a multi-select.
  *
- * A plain form action rather than a `useActionState` one: the grid is a wall
- * of single-purpose buttons, and threading per-cell error state through it
- * would cost more than it tells anyone. A failure re-renders the grid with the
- * cell unchanged, which is the honest signal.
+ * A diff, not a delete-and-reinsert: `has_course_access` reads this table
+ * live, so a failure halfway through a wipe would lock out everyone enrolled
+ * in that year until the office noticed.
  */
-export async function setProgrammeEntry(formData: FormData): Promise<void> {
+export async function setCursusYearModules(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
   const parsed = z
     .object({
       cursus_id: z.string().uuid(),
-      course_id: z.string().uuid(),
-      delivery: z.enum(['presentiel', 'online']),
       year_index: z.coerce.number().int().min(1).max(10),
-      included: z.enum(['yes', 'no']),
     })
     .safeParse({
       cursus_id: formData.get('cursus_id'),
-      course_id: formData.get('course_id'),
-      delivery: formData.get('delivery'),
       year_index: formData.get('year_index'),
-      included: formData.get('included'),
     });
-  if (!parsed.success) return;
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const ids = z.array(z.string().uuid()).safeParse(formData.getAll('course_ids'));
+  if (!ids.success) return { ok: false, error: 'invalid' };
+
+  const { cursus_id, year_index } = parsed.data;
+  const wanted = new Set(ids.data);
 
   const supabase = await client();
-  const { cursus_id, course_id, delivery, year_index, included } = parsed.data;
+  const { data: current, error: readError } = await supabase
+    .from('cursus_courses')
+    .select('course_id')
+    .eq('cursus_id', cursus_id)
+    .eq('year_index', year_index);
+  if (readError) return { ok: false, error: 'saveFailed', detail: errorDetail(readError) };
 
-  if (included === 'no') {
-    // Removing a module from a programme takes it away from everyone enrolled
-    // in that year — `has_course_access` reads this table live.
-    await supabase
+  const have = new Set((current ?? []).map((row) => row.course_id));
+  const add = [...wanted].filter((course_id) => !have.has(course_id));
+  const remove = [...have].filter((course_id) => !wanted.has(course_id));
+
+  if (add.length > 0) {
+    const { error } = await supabase.from('cursus_courses').upsert(
+      add.flatMap((course_id) =>
+        (['presentiel', 'online'] as const).map((delivery) => ({
+          cursus_id,
+          course_id,
+          delivery,
+          year_index,
+        })),
+      ),
+      { onConflict: 'cursus_id,course_id,delivery,year_index' },
+    );
+    if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+  }
+
+  if (remove.length > 0) {
+    const { error } = await supabase
       .from('cursus_courses')
       .delete()
       .eq('cursus_id', cursus_id)
-      .eq('course_id', course_id)
-      .eq('delivery', delivery)
-      .eq('year_index', year_index);
-  } else {
-    await supabase
-      .from('cursus_courses')
-      .upsert(
-        { cursus_id, course_id, delivery, year_index },
-        { onConflict: 'cursus_id,course_id,delivery,year_index' },
-      );
+      .eq('year_index', year_index)
+      .in('course_id', remove);
+    if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
   }
 
-  revalidatePath('/[locale]/admin/cursus', 'page');
   refresh();
+  return OK;
 }
 
 const cursusSchema = z.object({
