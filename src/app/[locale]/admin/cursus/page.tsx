@@ -1,17 +1,13 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Check } from 'lucide-react';
 import { BackLink } from '@/components/admin/BackLink';
-import { setProgrammeEntry } from '@/app/actions/catalog';
 import { CursusForm } from '@/components/admin/CursusForm';
 import { CursusDeleteButton } from '@/components/admin/CursusDeleteButton';
 import { CursusTariff, type CursusPrice } from '@/components/admin/CursusTariff';
+import { CursusYearPicker } from '@/components/admin/CursusYearPicker';
 import { Badge } from '@/components/ui/badge';
 import { Tabs } from '@/components/ui/tabs';
 import { createClient } from '@/lib/supabase/server';
-import type { DeliveryMode } from '@/lib/supabase/database.types';
 import { requireLocale } from '@/i18n/routing';
-
-const MODES: DeliveryMode[] = ['presentiel', 'online'];
 
 /**
  * Programmes.
@@ -50,9 +46,16 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
         .eq('kind', 'cursus'),
     ]);
 
-  const included = new Set(
-    (programme ?? []).map((r) => `${r.cursus_id}|${r.course_id}|${r.delivery}|${r.year_index}`),
-  );
+  // Per cursus and per year, ignoring the mode: the two delivery rows are
+  // written together, and access never reads the mode anyway.
+  const includedByCursus = new Map<string, Map<number, string[]>>();
+  for (const row of programme ?? []) {
+    const byYear = includedByCursus.get(row.cursus_id) ?? new Map<number, string[]>();
+    const list = byYear.get(row.year_index) ?? [];
+    if (!list.includes(row.course_id)) list.push(row.course_id);
+    byYear.set(row.year_index, list);
+    includedByCursus.set(row.cursus_id, byYear);
+  }
 
   const pricesFor = (cursusId: string): CursusPrice[] =>
     (priceRows ?? [])
@@ -100,82 +103,15 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
                 {t('programmeLead')}
               </p>
 
-              <div className="mt-3 space-y-6">
-                {MODES.map((delivery) => (
-                  <div key={delivery}>
-                    <h4 className="text-[13px] font-medium text-ink">
-                      {delivery === 'presentiel' ? t('deliveryPresentiel') : t('deliveryOnline')}
-                    </h4>
-
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="w-full min-w-[520px] border-collapse text-[13px]">
-                        <caption className="sr-only">
-                          {option.title} — {t('programme')}
-                        </caption>
-                        <thead>
-                          <tr>
-                            <th scope="col" className="p-2 text-start font-medium text-ink-muted">
-                              {t('course')}
-                            </th>
-                            {Array.from({ length: option.year_count }, (_, i) => i + 1).map(
-                              (year) => (
-                                <th
-                                  key={year}
-                                  scope="col"
-                                  className="p-2 text-center font-medium text-ink-muted"
-                                >
-                                  {t('yearIndex')} {year}
-                                </th>
-                              ),
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(courses ?? []).map((course) => (
-                            <tr key={course.id} className="border-t border-line">
-                              <th scope="row" className="p-2 text-start font-normal text-ink">
-                                {course.title}
-                              </th>
-                              {Array.from({ length: option.year_count }, (_, i) => i + 1).map(
-                                (year) => {
-                                  const on = included.has(
-                                    `${option.id}|${course.id}|${delivery}|${year}`,
-                                  );
-                                  return (
-                                    <td key={year} className="p-2 text-center">
-                                      <form action={setProgrammeEntry}>
-                                        <input type="hidden" name="cursus_id" value={option.id} />
-                                        <input type="hidden" name="course_id" value={course.id} />
-                                        <input type="hidden" name="delivery" value={delivery} />
-                                        <input type="hidden" name="year_index" value={year} />
-                                        <input
-                                          type="hidden"
-                                          name="included"
-                                          value={on ? 'no' : 'yes'}
-                                        />
-                                        <button
-                                          type="submit"
-                                          aria-pressed={on}
-                                          aria-label={`${course.title} — ${t('yearIndex')} ${year}`}
-                                          className={`inline-flex size-7 items-center justify-center rounded-md transition-colors ${
-                                            on
-                                              ? 'bg-brand-500 text-white'
-                                              : 'bg-surface text-ink-muted/40 hover:bg-brand-50'
-                                          }`}
-                                        >
-                                          <Check className="size-3.5" aria-hidden="true" />
-                                        </button>
-                                      </form>
-                                    </td>
-                                  );
-                                },
-                              )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+              <div className="mt-3 space-y-3">
+                {Array.from({ length: option.year_count }, (_, i) => i + 1).map((year) => (
+                  <CursusYearPicker
+                    key={year}
+                    cursusId={option.id}
+                    year={year}
+                    courses={courses ?? []}
+                    selected={includedByCursus.get(option.id)?.get(year) ?? []}
+                  />
                 ))}
               </div>
             </section>
