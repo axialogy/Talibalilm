@@ -87,7 +87,7 @@ test.describe('the admin course builder', () => {
     await expect(page.getByText('Cet écran d’administration n’a pas pu s’afficher')).toHaveCount(0);
   });
 
-  test('the cursus screen renders, with its programme grid', async ({ page }) => {
+  test('the cursus screen renders, with its year pickers', async ({ page }) => {
     await page.goto('/login');
     await page.locator('input[name="email"]').fill(email);
     await page.locator('input[name="password"]').fill(password);
@@ -101,11 +101,15 @@ test.describe('the admin course builder', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Cursus' })).toBeVisible();
     await expect(page.getByText('Cet écran d’administration n’a pas pu s’afficher')).toHaveCount(0);
 
-    // The grid lives under an approfondi tab: modules down, years across.
-    // Asserted, not toggled: every test shares one database, and a click here
-    // would untick a cell the checkout spec depends on.
+    // The programme lives under an approfondi tab: one dropdown of modules per
+    // year. Asserted, not toggled: every test shares one database, and saving
+    // here would change what the checkout spec sees.
     await page.getByRole('tab', { name: 'Cursus Approfondi' }).first().click();
-    await expect(page.locator('button[aria-pressed]:visible').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Choisir les modules/ }).first()).toBeVisible();
+    await expect(page.locator('input[name="course_ids"]').first()).toBeAttached();
+
+    // One price per year, both modes in one figure.
+    await expect(page.locator('input[name="price"]:visible').first()).toBeVisible();
 
     // Creating one starts from a module and prices it: the create tab carries
     // the module dropdown and the tariff. Nothing is submitted.
