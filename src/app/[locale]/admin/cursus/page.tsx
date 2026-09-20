@@ -96,6 +96,10 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
           {option.kind === 'approfondi' && (
             <section>
               <h3 className="font-display text-[15px] font-semibold text-ink">{t('programme')}</h3>
+              <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-ink-muted">
+                {t('programmeLead')}
+              </p>
+
               <div className="mt-3 space-y-6">
                 {MODES.map((delivery) => (
                   <div key={delivery}>
@@ -182,7 +186,7 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
               {t('cursusDetails')}
             </h3>
             <div className="mt-3">
-              <CursusForm cursus={option} />
+              <CursusForm cursus={option} courses={courses ?? []} />
             </div>
             <CursusDeleteButton cursusId={option.id} />
           </section>
@@ -194,7 +198,7 @@ export default async function AdminCursusPage({ params }: { params: Promise<{ lo
       label: `+ ${t('newCursus')}`,
       content: (
         <div className="max-w-2xl">
-          <CursusForm />
+          <CursusForm courses={courses ?? []} />
         </div>
       ),
     },

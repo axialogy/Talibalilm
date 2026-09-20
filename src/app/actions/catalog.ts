@@ -477,28 +477,34 @@ export async function setProgrammeEntry(formData: FormData): Promise<void> {
 
 const cursusSchema = z.object({
   id: z.string().uuid().optional(),
-  kind: z.enum(['module', 'approfondi']),
-  title: z.string().min(2).max(200),
-  subtitle: z.string().max(300).default(''),
+  /** Create: the module the cursus is named after and starts from. */
+  course_id: z.string().uuid().optional(),
+  /** Edit: the cursus's own name. */
+  title: z.string().min(2).max(200).optional(),
   description: z.string().max(4000).default(''),
-  /**
-   * The written programme shown in the "Voir le cursus" accordion on the home
-   * page. One entry per line; the card keeps the line breaks.
-   */
-  details: z.string().max(8000).default(''),
   year_count: z.coerce.number().int().min(1).max(10).default(1),
   status: z.enum(['draft', 'published', 'archived']).default('draft'),
   display_order: z.coerce.number().int().min(0).max(9999).default(0),
 });
 
+/**
+ * Create a cursus, or rename one.
+ *
+ * Creation starts from a module the school has already made: the dropdown
+ * names the cursus after it, and that module joins year one in both modes so
+ * the cursus is sellable the moment it is saved. The price typed here becomes
+ * every year's price, in both modes — the tariff lines on the tab can still be
+ * adjusted one by one afterwards.
+ *
+ * Editing leaves `kind` and the written programme alone: the type is settled
+ * at creation, and the programme is the grid below, not a text box.
+ */
 export async function saveCursus(_prev: AdminState, formData: FormData): Promise<AdminState> {
   const parsed = cursusSchema.safeParse({
     id: (formData.get('id') as string) || undefined,
-    kind: formData.get('kind'),
-    title: formData.get('title'),
-    subtitle: formData.get('subtitle') ?? '',
+    course_id: (formData.get('course_id') as string) || undefined,
+    title: (formData.get('title') as string) || undefined,
     description: formData.get('description') ?? '',
-    details: formData.get('details') ?? '',
     year_count: formData.get('year_count') || 1,
     status: formData.get('status') ?? 'draft',
     display_order: formData.get('display_order') || 0,
@@ -506,33 +512,85 @@ export async function saveCursus(_prev: AdminState, formData: FormData): Promise
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'invalid' };
 
   const supabase = await client();
-  const { id, ...row } = parsed.data;
+  const { id, course_id, title, ...fields } = parsed.data;
 
-  let error;
   if (id) {
-    // The address is settled when the cursus is created and kept afterwards,
-    // so renaming it does not break the links students already hold.
-    ({ error } = await supabase.from('cursus').update(row).eq('id', id));
-  } else {
-    const base = slugify(row.title, 52);
-    const { data: siblings } = await supabase
+    if (!title) return { ok: false, error: 'invalid' };
+    const { error } = await supabase
       .from('cursus')
-      .select('slug')
-      .like('slug', `${base || 'cursus'}%`);
-    const slug = pickFreeSlug(
-      base,
-      (siblings ?? []).map((r) => r.slug),
-      'cursus',
-    );
-    ({ error } = await supabase.from('cursus').insert({ ...row, slug }));
+      .update({ ...fields, title })
+      .eq('id', id);
+    if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
+
+    revalidatePath('/[locale]/admin/cursus', 'page');
+    refresh();
+    return OK;
   }
 
-  if (error)
+  if (!course_id) return { ok: false, error: 'invalid' };
+  const { data: course } = await supabase
+    .from('courses')
+    .select('id, title')
+    .eq('id', course_id)
+    .maybeSingle();
+  if (!course) return { ok: false, error: 'invalid' };
+
+  const base = slugify(course.title, 52);
+  const { data: siblings } = await supabase
+    .from('cursus')
+    .select('slug')
+    .like('slug', `${base || 'cursus'}%`);
+  const slug = pickFreeSlug(
+    base,
+    (siblings ?? []).map((r) => r.slug),
+    'cursus',
+  );
+
+  const { data: created, error } = await supabase
+    .from('cursus')
+    .insert({ ...fields, slug, kind: 'approfondi', title: course.title, subtitle: '', details: '' })
+    .select('id')
+    .single();
+  if (error || !created) {
     return {
       ok: false,
-      error: error.code === '23505' ? 'slugTaken' : 'saveFailed',
-      detail: errorDetail(error),
+      error: error?.code === '23505' ? 'slugTaken' : 'saveFailed',
+      detail: error ? errorDetail(error) : 'no row returned',
     };
+  }
+
+  // The module it is named after joins year one, both modes; the grid below
+  // can move it or add more.
+  await supabase.from('cursus_courses').upsert(
+    (['presentiel', 'online'] as const).map((delivery) => ({
+      cursus_id: created.id,
+      course_id,
+      delivery,
+      year_index: 1,
+    })),
+    { onConflict: 'cursus_id,course_id,delivery,year_index' },
+  );
+
+  // One figure, every year, both modes. Blank means the office will price it
+  // from the tab instead.
+  const priceCents = toCents(String(formData.get('price') ?? ''));
+  if (priceCents !== null && priceCents > 0) {
+    const rows = [];
+    for (let year = 1; year <= fields.year_count; year += 1) {
+      for (const delivery of ['presentiel', 'online'] as const) {
+        rows.push({
+          kind: 'cursus' as const,
+          cursus_id: created.id,
+          delivery,
+          year_index: year,
+          price_cents: priceCents,
+          duration_days: 365,
+          status: 'published' as const,
+        });
+      }
+    }
+    await supabase.from('products').insert(rows);
+  }
 
   revalidatePath('/[locale]/admin/cursus', 'page');
   refresh();
