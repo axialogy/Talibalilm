@@ -55,28 +55,6 @@ export async function SiteFooter() {
 
             <dl className="mt-5 space-y-4 text-sm">
               <div>
-                <dt className="font-medium text-ink">{t('address')}</dt>
-                <dd className="mt-0.5 text-ink-muted">
-                  {institut.addressLines.map((line) => (
-                    <span key={line} className="block">
-                      {line}
-                    </span>
-                  ))}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-ink">{t('phone')}</dt>
-                <dd className="mt-0.5">
-                  <a
-                    href={`tel:${institut.phone.replace(/\s/g, '')}`}
-                    dir="ltr"
-                    className="text-ink-muted transition-colors hover:text-brand-600"
-                  >
-                    {institut.phone}
-                  </a>
-                </dd>
-              </div>
-              <div>
                 <dt className="font-medium text-ink">{t('email')}</dt>
                 <dd className="mt-0.5">
                   <a
