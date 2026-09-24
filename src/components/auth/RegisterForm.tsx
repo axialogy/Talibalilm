@@ -1,12 +1,13 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Field } from '@/components/ui/field';
 import { ActionForm } from '@/components/ui/action-form';
 import { FormMessage } from '@/components/auth/AuthCard';
 import { SubmitButton } from '@/components/auth/SubmitButton';
+import { Turnstile, type TurnstileHandle } from '@/components/auth/Turnstile';
 import { register, type ActionState } from '@/app/actions/auth';
 
 const EMPTY: ActionState = { ok: false };
@@ -14,6 +15,13 @@ const EMPTY: ActionState = { ok: false };
 export function RegisterForm() {
   const t = useTranslations('auth');
   const [state, action] = useActionState(register, EMPTY);
+  const captcha = useRef<TurnstileHandle>(null);
+
+  // The action consumes the token. Whatever the outcome, this attempt's token
+  // is spent — a fresh challenge is what makes the next one possible.
+  useEffect(() => {
+    captcha.current?.reset();
+  }, [state]);
 
   return (
     <ActionForm action={action} className="space-y-4" noValidate>
@@ -81,6 +89,8 @@ export function RegisterForm() {
           </p>
         )}
       </div>
+
+      <Turnstile ref={captcha} />
 
       <SubmitButton>{t('submitRegister')}</SubmitButton>
     </ActionForm>

@@ -18,6 +18,7 @@ export type AuthErrorKey =
   | 'databaseError'
   | 'emailSendFailed'
   | 'emailInvalid'
+  | 'captchaFailed'
   | 'serviceUnavailable'
   | 'unexpected';
 
@@ -54,6 +55,11 @@ const PATTERNS: [RegExp, AuthErrorKey][] = [
   // Some addresses are refused outright by the provider, which reads to the
   // visitor as a broken site rather than a typo in their own address.
   [/invalid(_|\s)?email|email address.*invalid|unable to validate email/i, 'emailInvalid'],
+  // Cloudflare's answer when the widget did not run, or the token was already
+  // spent. GoTrue says "captcha protection: request disallowed". Without its
+  // own branch this lands in the catch-all and reads as an outage, when the
+  // answer is almost always "reload the page and try once more".
+  [/captcha/i, 'captchaFailed'],
   // LAST, so it cannot swallow any of the specific cases above.
   //
   // Nothing answered in time. supabase-js reports a network failure as "fetch

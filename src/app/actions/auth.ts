@@ -106,6 +106,20 @@ async function guard(scope: string, limit: number): Promise<ActionState | null> 
   return { ok: false, message: t('rateLimited') };
 }
 
+/**
+ * The Turnstile token, when the browser sent one.
+ *
+ * An unrendered widget still posts its hidden input, as an empty string —
+ * and Supabase treats an empty string as a token it must verify, which fails.
+ * Absent is the honest shape for "no widget on this deployment": with CAPTCHA
+ * off in Supabase the option is ignored, and with it on the refusal names
+ * itself.
+ */
+function captchaTokenFrom(formData: FormData): string | undefined {
+  const value = formData.get('captchaToken');
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
 export async function login(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const limited = await guard('login', 10);
   if (limited) return limited;
@@ -124,6 +138,7 @@ export async function login(_prev: ActionState, formData: FormData): Promise<Act
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
+    options: { captchaToken: captchaTokenFrom(formData) },
   });
   if (error) return { ok: false, message: await authErrorMessage(error.message) };
 
@@ -232,6 +247,7 @@ export async function register(_prev: ActionState, formData: FormData): Promise<
       // notably any `role` claim.
       data: { full_name: parsed.data.fullName, locale: parsed.data.locale },
       emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/dashboard')}`,
+      captchaToken: captchaTokenFrom(formData),
     },
   });
   console.info(`[auth] signUp took ${Date.now() - startedAt}ms`);
@@ -312,6 +328,7 @@ export async function sendMagicLink(_prev: ActionState, formData: FormData): Pro
     email: parsed.data.email,
     options: {
       emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/dashboard')}`,
+      captchaToken: captchaTokenFrom(formData),
     },
   });
   if (error) return { ok: false, message: await authErrorMessage(error.message) };
@@ -335,6 +352,7 @@ export async function forgotPassword(_prev: ActionState, formData: FormData): Pr
     const supabase = await createClient();
     await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/reset-password')}`,
+      captchaToken: captchaTokenFrom(formData),
     });
   }
 

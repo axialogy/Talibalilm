@@ -3,7 +3,7 @@
 The site is reachable at **https://talibalim.com**. Nothing in the code knows
 that — there is no domain string anywhere in `src/`; every URL the app builds
 comes from `siteUrl()`, which reads one variable. What *does* have to be told,
-separately, is six outside services. Five of them fail loudly if they are
+separately, is seven outside services. Six of them fail loudly if they are
 wrong. One fails silently, and it is the one that stops students registering.
 
 Work down the list in order. Each step says how to tell it worked.
@@ -109,7 +109,7 @@ Send the test from that screen **before** turning "Confirm email" back on. Until
 it passes, leave confirmation **off** — the code handles both, and an account
 that cannot be created is worse than one created without a confirmation step.
 
-Note that this is separate from step 7: Supabase sends the confirmation and
+Note that this is separate from step 8: Supabase sends the confirmation and
 password-reset messages, the app sends receipts and notifications, and they are
 two different senders pointed at the same mailbox. When a message does not
 arrive, which of the two sent it is the first thing to establish.
@@ -138,7 +138,20 @@ upload is refused, compare that string with the policy rather than guessing.
 Displaying slides is unaffected — a plain `<img>` is not CORS-checked — so the
 symptom is "uploads stopped working, the deck still shows".
 
-## 5. PayPal — the webhook URL
+## 5. Cloudflare Turnstile — the widget's hostname list
+
+dash.cloudflare.com → Turnstile → the site's widget → Settings → Hostnames:
+`talibalim.com` and `www.talibalim.com` must be on it (keep `localhost` too if
+it is there for development).
+
+A host that is not on this list makes the widget refuse to render, and Supabase
+reads a missing widget as a missing token: sign-ups and logins fail with the
+anti-robot message while every page still looks healthy. The site key in Vercel
+does not change — only this list does.
+
+Check: open `/register`; the Turnstile box appears above the button.
+
+## 6. PayPal — the webhook URL
 
 developer.paypal.com → Apps & Credentials → your app → Webhooks → edit the URL
 to `https://talibalim.com/api/paypal/webhook`.
@@ -154,7 +167,7 @@ the redirect back to the site is cosmetic, the webhook is what settles the sale.
 The return and cancel URLs need no change; they are built per order from
 `NEXT_PUBLIC_SITE_URL`.
 
-## 6. GitHub — the `SWEEP_URL` secret
+## 7. GitHub — the `SWEEP_URL` secret
 
 Repo → Settings → Secrets and variables → Actions → `SWEEP_URL` →
 `https://talibalim.com/api/cron/sweep`.
@@ -162,7 +175,7 @@ Repo → Settings → Secrets and variables → Actions → `SWEEP_URL` →
 `CRON_SECRET` does not change. Verify with Actions → Sweep → Run workflow: a
 green run printing `HTTP 200` and a small JSON body.
 
-## 7. The app's own e-mail — receipts and alerts
+## 8. The app's own e-mail — receipts and alerts
 
 Same mailbox as step 3. In Vercel:
 
@@ -194,15 +207,16 @@ at it — nothing reads them.
 
 ## Checking it worked
 
-1. **Admin → Diagnostic.** *Adresse publique du site* green. (Covers 2.)
-2. **Register a brand-new test account.** It must complete. With confirmation
-   on, the email must link to `talibalim.com` and clicking it must land on the
-   dashboard. (Covers 3.)
+1. **Admin → Diagnostic.** *Adresse publique du site* green, and
+   *Protection anti-robot (Turnstile)* green. (Covers 2 and 5.)
+2. **Register a brand-new test account.** The Turnstile box must appear, and
+   the registration must complete. With confirmation on, the email must link to
+   `talibalim.com` and clicking it must land on the dashboard. (Covers 3 and 5.)
 3. **Admin → a live class → Diapositives → upload an image.** (Covers 4.)
 4. **Buy something in sandbox** and confirm the entitlement appears in
-   Admin → Étudiants — not merely that the success page rendered. (Covers 5.)
-5. **Actions → Sweep → Run workflow** → green. (Covers 6.)
-6. **Pay once and check the inbox** for the receipt. (Covers 7.)
+   Admin → Étudiants — not merely that the success page rendered. (Covers 6.)
+5. **Actions → Sweep → Run workflow** → green. (Covers 7.)
+6. **Pay once and check the inbox** for the receipt. (Covers 8.)
 
 If step 2 lands on the old domain, the redeploy in step 1 was skipped or the
 Supabase list in step 3 was not updated — those are the two usual causes, and
