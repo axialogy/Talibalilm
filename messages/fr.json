@@ -472,6 +472,7 @@
   },
   "authErrors": {
     "accountOpenedSignInFailed": "Votre compte a bien été créé, mais la connexion automatique n’a pas abouti. Connectez-vous avec l’adresse et le mot de passe que vous venez de choisir.",
+    "captchaFailed": "La vérification anti-robot a échoué. Rechargez la page et réessayez.",
     "databaseError": "Votre compte n’a pas pu être créé. L’institut a été prévenu ; réessayez plus tard.",
     "emailInvalid": "Cette adresse e-mail a été refusée. Vérifiez l’orthographe, ou essayez une autre adresse.",
     "emailNotConfirmed": "Votre adresse e-mail n’est pas encore confirmée. Ouvrez le lien que nous vous avons envoyé.",
@@ -1325,8 +1326,6 @@
   "contact": {
     "title": "Contactez-nous",
     "lead": "Une question sur un module, un cursus ou une inscription ? Écrivez-nous, nous répondons sous quelques jours.",
-    "addressTitle": "Adresse",
-    "phoneTitle": "Téléphone",
     "emailTitle": "E-mail",
     "followTitle": "Nous suivre",
     "formTitle": "Nous écrire",

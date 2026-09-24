@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { Metadata } from 'next';
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { PageHero } from '@/components/marketing/PageHero';
 import { ContactForm } from '@/components/marketing/ContactForm';
 import { SocialLinks } from '@/components/layout/SocialLinks';
@@ -20,15 +20,14 @@ export async function generateMetadata({
 }
 
 /**
- * Where to find the school, and how to write to it.
+ * How to write to the school.
  *
  * This replaces the Tarifs page. Prices moved onto each module's own page,
  * beside the enrolment card that charges them, which left a price list that
  * duplicated the catalogue and agreed with it only by accident. What the site
- * did not have was an address and a way to ask a question.
+ * did not have was a way to ask a question.
  *
- * The address and phone number come from `institut.ts` — an address is not
- * translated and does not change — while the social links come from
+ * The e-mail comes from `institut.ts` while the social links come from
  * `site_settings`, so the office edits them once and the footer here agrees.
  */
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -40,34 +39,6 @@ export default async function ContactPage({ params }: { params: Promise<{ locale
   const settings = await getSiteSettings();
 
   const details = [
-    {
-      key: 'address',
-      Icon: MapPin,
-      title: t('addressTitle'),
-      body: (
-        <address className="not-italic">
-          {institut.addressLines.map((line) => (
-            <span key={line} className="block">
-              {line}
-            </span>
-          ))}
-        </address>
-      ),
-    },
-    {
-      key: 'phone',
-      Icon: Phone,
-      title: t('phoneTitle'),
-      body: (
-        <a
-          href={`tel:${institut.phone.replace(/\s/g, '')}`}
-          dir="ltr"
-          className="transition-colors hover:text-brand-600"
-        >
-          {institut.phone}
-        </a>
-      ),
-    },
     {
       key: 'email',
       Icon: Mail,

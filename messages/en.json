@@ -472,6 +472,7 @@
   },
   "authErrors": {
     "accountOpenedSignInFailed": "Your account was created, but signing you in automatically did not work. Log in with the address and password you just chose.",
+    "captchaFailed": "The anti-robot check failed. Reload the page and try again.",
     "databaseError": "Your account could not be created. The institute has been notified; try again later.",
     "emailInvalid": "That email address was refused. Check the spelling, or try another address.",
     "emailNotConfirmed": "Your email address has not been confirmed yet. Open the link we sent you.",
@@ -1325,8 +1326,6 @@
   "contact": {
     "title": "Contact us",
     "lead": "A question about a module, a programme or enrolling? Write to us — we answer within a few days.",
-    "addressTitle": "Address",
-    "phoneTitle": "Phone",
     "emailTitle": "E-mail",
     "followTitle": "Follow us",
     "formTitle": "Write to us",
