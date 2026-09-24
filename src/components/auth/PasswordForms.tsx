@@ -1,11 +1,12 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Field } from '@/components/ui/field';
 import { ActionForm } from '@/components/ui/action-form';
 import { FormMessage } from '@/components/auth/AuthCard';
 import { SubmitButton } from '@/components/auth/SubmitButton';
+import { Turnstile, type TurnstileHandle } from '@/components/auth/Turnstile';
 import { forgotPassword, resetPassword, type ActionState } from '@/app/actions/auth';
 
 const EMPTY: ActionState = { ok: false };
@@ -13,6 +14,11 @@ const EMPTY: ActionState = { ok: false };
 export function ForgotPasswordForm() {
   const t = useTranslations('auth');
   const [state, action] = useActionState(forgotPassword, EMPTY);
+  const captcha = useRef<TurnstileHandle>(null);
+
+  useEffect(() => {
+    captcha.current?.reset();
+  }, [state]);
 
   return (
     <ActionForm action={action} className="space-y-4" noValidate>
@@ -27,6 +33,7 @@ export function ForgotPasswordForm() {
         required
         error={state.fieldErrors?.['email']}
       />
+      <Turnstile ref={captcha} />
       <SubmitButton>{t('submitForgot')}</SubmitButton>
     </ActionForm>
   );

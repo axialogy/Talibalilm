@@ -174,16 +174,18 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // The two money-critical jobs. Their failure used to return before anything
+  // else ran — one missing migration stopped the spam purge, the reminders,
+  // the video retention and the room cleanup with it, and the response said
+  // only "sweep_failed". Now every job runs and the failures are named; the
+  // 500 stays because the workflow watches the status code.
   const { data: swept, error: sweepError } = await supabase.rpc('expire_pending_orders', {
     older_than: '30 minutes',
   });
-  const { data: expired, error: expiryError } = await supabase.rpc('expire_entitlements');
+  if (sweepError) reportError('cron.expirePendingOrders', sweepError);
 
-  const failed = sweepError ?? expiryError;
-  if (failed) {
-    console.error('[cron] sweep failed:', failed.message);
-    return NextResponse.json({ error: 'sweep_failed' }, { status: 500 });
-  }
+  const { data: expired, error: expiryError } = await supabase.rpc('expire_entitlements');
+  if (expiryError) reportError('cron.expireEntitlements', expiryError);
 
   const videosPurged = await purgeExpiredVideos(supabase);
 
@@ -218,12 +220,21 @@ export async function GET(request: NextRequest) {
     unconfirmedPurged,
     liveSessionsClosed: liveClosed ?? 0,
   };
-  if (
-    result.ordersCancelled > 0 ||
-    result.entitlementsExpired > 0 ||
-    result.rateWindowsPruned > 0 ||
-    result.videosPurged > 0
-  ) {
+
+  const failures: string[] = [];
+  if (sweepError) failures.push('expire_pending_orders');
+  if (expiryError) failures.push('expire_entitlements');
+
+  if (failures.length > 0) {
+    return NextResponse.json(
+      { ...result, error: 'sweep_failed', failed: failures },
+      { status: 500 },
+    );
+  }
+
+  // Any count above zero, not only the three this condition started with: a
+  // run that only purged spam or only sent reminders used to log nothing.
+  if (Object.values(result).some((count) => count > 0)) {
     console.info('[cron] sweep:', result);
   }
   return NextResponse.json(result);
