@@ -5,6 +5,7 @@ import { supabaseConfigured, siteUrl } from '@/lib/env';
 import { checkCors, r2Configured, r2Malformed, r2Missing } from '@/lib/storage/r2';
 import { smtpProbe } from '@/lib/email/send';
 import { liveKitConfigured } from '@/lib/live/server';
+import { getPayPalConfig } from '@/lib/paypal/client';
 
 /**
  * Does this deployment have everything it needs?
@@ -378,6 +379,7 @@ const RPC_NAMES = [
   'release_coupon',
   'release_order_holds',
   'revoke_order_entitlements',
+  'unconfirmed_users',
   'unreviewed_student_count',
 ] as const;
 
@@ -648,6 +650,24 @@ export async function runDiagnostics(): Promise<Check[]> {
     });
   }
 
+  // The widget's half of the CAPTCHA setup. Supabase's half is invisible from
+  // here, so this line names it: with the site key missing while Supabase
+  // enforces, every sign-in and sign-up is refused with an anti-robot message
+  // and nothing on the page explains why. Unset in production is therefore a
+  // fault, not a choice — local development and CI are the only places it is
+  // meant to be absent.
+  checks.push({
+    group: 'Configuration',
+    name: 'Protection anti-robot (Turnstile)',
+    state: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? 'ok' : 'unset',
+    detail: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      ? 'la clé de site est configurée : le widget s’affiche sur les formulaires de connexion, d’inscription et de mot de passe oublié. ' +
+        'Vérifiez aussi que la protection est ACTIVÉE dans Supabase (Authentication → Attack Protection) — sinon les robots passent toujours.'
+      : 'NEXT_PUBLIC_TURNSTILE_SITE_KEY n’est pas définie : aucun widget ne s’affiche et aucun jeton n’est envoyé. ' +
+        'Si la protection CAPTCHA est activée dans Supabase, TOUTES les connexions et inscriptions échouent. ' +
+        'Définissez la clé dans Vercel puis REDÉPLOYEZ — une variable NEXT_PUBLIC_ est figée dans le build.',
+  });
+
   const missingR2 = r2Missing();
   const malformedR2 = r2Malformed();
   checks.push({
@@ -708,14 +728,38 @@ export async function runDiagnostics(): Promise<Check[]> {
       : 'NEXT_PUBLIC_LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET',
   });
 
-  const paypal = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  // PayPal, as the money path will actually use it.
+  //
+  // This used to report whether two Vercel variables were present, which is a
+  // different question from "where does a payment go". The two diverge in the
+  // one way that costs real money: variables in Vercel override the
+  // Administration → Paiements screen entirely, and `PAYPAL_ENVIRONMENT`
+  // falls back to sandbox unless it is exactly `live`. So a school that filled
+  // the screen in with live credentials can still be taking SANDBOX payments —
+  // fake money, no card charge, nothing in the business account — while every
+  // page looks correct. Name the source, the environment, and a missing
+  // webhook, because those are the three questions this screen exists for.
+  const paypal = await getPayPalConfig();
+  const paypalFromEnv = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  const paypalSandboxInProduction =
+    paypal?.environment === 'sandbox' && process.env.VERCEL_ENV === 'production';
   checks.push({
     group: 'Configuration',
-    name: 'PayPal (variables)',
-    state: paypal ? 'ok' : 'unset',
+    name: 'PayPal (paiements en ligne)',
+    state: !paypal ? 'unset' : paypalSandboxInProduction ? 'error' : 'ok',
     detail: paypal
-      ? `environnement : ${process.env.PAYPAL_ENVIRONMENT === 'live' ? 'live' : 'sandbox'}`
-      : 'absentes — la configuration vient alors de l’écran Paiements',
+      ? `environnement : ${paypal.environment}` +
+        (paypal.environment === 'sandbox'
+          ? ' — argent FICTIF : aucun prélèvement réel, rien dans le compte business. ' +
+            'Les paiements sandbox se lisent sur developer.paypal.com → Sandbox → Activity.'
+          : '') +
+        ` — source : ${
+          paypalFromEnv
+            ? 'variables Vercel, qui REMPLACENT l’écran Administration → Paiements'
+            : 'écran Administration → Paiements'
+        }` +
+        (paypal.webhookId ? '' : ' — aucun webhook_id : les notifications PayPal seront refusées')
+      : 'aucun identifiant lu : ni PAYPAL_CLIENT_ID/SECRET dans Vercel, ni configuration activée dans Administration → Paiements',
   });
 
   const smtpHost = process.env.SMTP_HOST?.trim();

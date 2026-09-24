@@ -20,6 +20,8 @@ describe('classifying Supabase auth errors', () => {
     ['Signups not allowed for this instance', 'signupsDisabled'],
     ['Database error saving new user', 'databaseError'],
     ['Database error granting user', 'databaseError'],
+    ['captcha protection: request disallowed (captcha_failed)', 'captchaFailed'],
+    ['invalid captcha token', 'captchaFailed'],
   ])('reads %j as %s', (raw, expected) => {
     expect(classifyAuthError(raw)).toBe(expected);
   });
