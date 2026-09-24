@@ -25,16 +25,25 @@ import { clientKey, rateLimit } from '@/lib/rate-limit';
  * sees the new `furthest` and moves itself on.
  */
 
-const kindSchema = z.object({
-  kind: z.enum(['module', 'approfondi']),
-  cursusId: z.string().uuid(),
-  /**
-   * Present on the module page's "Acheter ce module" card: the course is what
-   * turns into a product once the mode is answered. The approfondi card sends
-   * none, and the selection's courseId is cleared with it.
-   */
-  courseId: z.string().uuid().nullable().catch(null),
-});
+const kindSchema = z
+  .object({
+    kind: z.enum(['module', 'approfondi']),
+    /**
+     * The approfondi route is a cursus and cannot exist without one. The
+     * standalone module route names no cursus at all: a module is sold on its
+     * own whether or not any cursus lists it, and requiring the "Par module"
+     * row here meant a project without it could not sell a single module —
+     * the click was dropped without a word.
+     */
+    cursusId: z.string().uuid().nullable().catch(null),
+    /**
+     * Present on the module page's "Acheter ce module" card: the course is what
+     * turns into a product once the mode is answered. The approfondi card sends
+     * none, and the selection's courseId is cleared with it.
+     */
+    courseId: z.string().uuid().nullable().catch(null),
+  })
+  .refine((v) => v.kind !== 'approfondi' || v.cursusId !== null, { message: 'cursusRequired' });
 
 const deliverySchema = z.object({
   delivery: z.enum(['presentiel', 'online']),

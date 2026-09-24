@@ -12,6 +12,7 @@ import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
 import { getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
 import { listCursus, listProducts } from '@/lib/data/commerce';
+import { moduleRoutes } from '@/lib/commerce/module-modes';
 import { listLiveSessions } from '@/lib/data/live';
 import { institut } from '@/lib/content/institut';
 import { lessonCount } from '@/lib/content/types';
@@ -133,9 +134,11 @@ export default async function CoursePage({
     .filter((c) => c.kind === 'approfondi' && inCursus.has(c.id))
     .map((c) => c.id);
 
-  // Which cursus the "à la carte" route belongs to, so the enrolment card opens
-  // with step one already answered when a student enrols from here.
-  const moduleCursusId = cursusList.find((c) => c.kind === 'module')?.id ?? '';
+  // How this module is sold, from its own price lines: a module that costs
+  // nothing opens directly, one that costs anything goes through the checkout.
+  // No cursus row is consulted — a module is sold on its own whether or not
+  // any cursus lists it, which is exactly what used to fail in silence.
+  const { free: freeModes, paid: paidModes } = moduleRoutes(entries);
 
   const upcoming = liveSessions.filter((s) => s.status === 'scheduled' || s.status === 'live');
   const lessons = lessonCount(course);
@@ -524,10 +527,12 @@ export default async function CoursePage({
                 locale={locale}
                 moduleContext={{
                   courseId: course.id,
-                  cursusId: moduleCursusId,
+                  slug: course.slug,
                   title: course.title,
                   hasTariff: entries.length > 0,
                   approfondiIds,
+                  freeModes,
+                  paidModes,
                 }}
               />
             )}
