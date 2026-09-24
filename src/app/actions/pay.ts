@@ -10,7 +10,8 @@ import { clientKey, rateLimit } from '@/lib/rate-limit';
 import { getStudentProfile, isApproved, profileComplete } from '@/lib/data/profile';
 import { loadBasket } from '@/lib/commerce/basket';
 import { couponDiscount, MixedCurrencyError } from '@/lib/commerce/quote';
-import { clearSelection } from '@/lib/commerce/selection';
+import { clearSelection, EMPTY_SELECTION, writeSelection } from '@/lib/commerce/selection';
+import { listProducts } from '@/lib/data/commerce';
 import {
   createPendingOrder,
   attachProviderOrder,
@@ -443,7 +444,7 @@ export async function redeemInstallmentCode(
 }
 
 /**
- * Take a course the school is giving away.
+ * The rows a free enrolment leaves, whichever door the student came through.
  *
  * A free course is not a discount and not a coupon — the catalogue simply
  * prices it at zero. It still produces a real order and real entitlements
@@ -451,24 +452,26 @@ export async function redeemInstallmentCode(
  * `has_course_access()` is what opens the lessons and it knows nothing about
  * how the sale was funded.
  *
- * It exists as its own route because `startPayPalCheckout` refuses before it
- * ever reaches the zero-total branch when PayPal is not configured — so a
- * school that had not linked PayPal could not give anything away.
- *
  * The zero is never taken from the request. `loadBasket` reprices the selection
  * from the catalogue and `createPendingOrder` computes the total again; if that
  * total is not zero, the order is rolled back and the caller is sent to pay.
+ *
+ * Shared by the wizard's claim button and the module page's direct access, so
+ * both leave identical rows and neither can drift from the other.
  */
-export async function claimFreeCourse(_previous: PayState, _formData: FormData): Promise<PayState> {
-  const locale = await getLocale();
+async function claimFreeBasket(): Promise<
+  { ok: true; orderId: string } | { ok: false; error: string }
+> {
   const user = await requireUser();
 
-  if (!(await throttle('checkout-start', 20, user.id))) return { error: 'rateLimited' };
-  if (!(await isApproved())) return { error: 'notApproved' };
-  if (!profileComplete(await getStudentProfile())) return { error: 'profileRequired' };
+  if (!(await throttle('checkout-start', 20, user.id))) return { ok: false, error: 'rateLimited' };
+  if (!(await isApproved())) return { ok: false, error: 'notApproved' };
+  if (!profileComplete(await getStudentProfile())) {
+    return { ok: false, error: 'profileRequired' };
+  }
 
   const { selection, quote } = await loadBasket();
-  if (!quote || !selection.delivery) redirect({ href: '/checkout', locale });
+  if (!quote || !selection.delivery) return { ok: false, error: 'emptyBasket' };
 
   const afterOffers = quote.subtotalCents - (quote.discountCents - quote.couponDiscountCents);
   const coupon = await claimCoupon(selection.couponCode, afterOffers);
@@ -485,21 +488,81 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
     });
   } catch (cause) {
     if (coupon) await releaseCoupon(coupon.id);
-    if (cause instanceof PackExhaustedError) return { error: 'packExhausted' };
-    if (cause instanceof MixedCurrencyError) return { error: 'mixedCurrency' };
+    if (cause instanceof PackExhaustedError) return { ok: false, error: 'packExhausted' };
+    if (cause instanceof MixedCurrencyError) return { ok: false, error: 'mixedCurrency' };
     throw cause;
   }
 
   // The catalogue disagreed with the page: something in the basket costs money.
-  // Give back what the order was holding and send them to pay properly.
   if (order.totalCents !== 0) {
     await markOrderFailed(order.id, 'not a free basket');
-    return { error: 'notFree' };
+    return { ok: false, error: 'notFree' };
   }
 
   await settleFreeOrder(order.id);
   await clearSelection();
-  redirect({ href: `/checkout/confirmation?order=${order.id}`, locale });
+  return { ok: true, orderId: order.id };
+}
+
+/**
+ * Take a course the school is giving away, from the checkout wizard.
+ *
+ * It exists as its own route because `beginPayPalCheckout` refuses before it
+ * ever reaches the zero-total branch when PayPal is not configured — so a
+ * school that had not linked PayPal could not give anything away.
+ */
+export async function claimFreeCourse(_previous: PayState, _formData: FormData): Promise<PayState> {
+  const locale = await getLocale();
+  const result = await claimFreeBasket();
+  if (!result.ok) {
+    if (result.error === 'emptyBasket') redirect({ href: '/checkout', locale });
+    return { error: result.error };
+  }
+
+  redirect({ href: `/checkout/confirmation?order=${result.orderId}`, locale });
+}
+
+/**
+ * Direct access to a free module, from the module's own page.
+ *
+ * The page has already told the student the module costs nothing; this is the
+ * one button that acts on it. It resolves the published product for the chosen
+ * mode and checks its price HERE — the page is not trusted to say what is free
+ * — then writes the same selection the wizard would have written and settles
+ * through the same `claimFreeBasket`. A module that turns out to cost money is
+ * refused with `notFree` rather than quietly given away.
+ */
+export async function claimFreeModule(_previous: PayState, formData: FormData): Promise<PayState> {
+  const locale = await getLocale();
+
+  const parsed = z
+    .object({
+      courseId: z.string().uuid(),
+      delivery: z.enum(['presentiel', 'online']),
+    })
+    .safeParse({ courseId: formData.get('courseId'), delivery: formData.get('delivery') });
+  if (!parsed.success) return { error: 'payUnexpected' };
+
+  const offered = await listProducts(parsed.data.delivery);
+  const product = offered.find(
+    (entry) => entry.kind === 'module' && entry.courseId === parsed.data.courseId,
+  );
+  if (!product || product.priceCents !== 0) return { error: 'notFree' };
+
+  await writeSelection({
+    ...EMPTY_SELECTION,
+    kind: 'module',
+    courseId: parsed.data.courseId,
+    delivery: parsed.data.delivery,
+    productIds: [product.id],
+  });
+
+  const result = await claimFreeBasket();
+  if (!result.ok) return { error: result.error };
+
+  // Straight to the module, not to a confirmation page: there is no payment to
+  // announce, and the lessons are already open.
+  redirect({ href: await checkoutTarget(result.orderId), locale });
 }
 
 const codeSchema = z

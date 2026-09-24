@@ -16,6 +16,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { PendingSpinner } from '@/components/ui/pending-spinner';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutWizard, type WizardStep } from '@/components/checkout/CheckoutWizard';
+import { FreeModuleClaim } from '@/components/checkout/FreeModuleClaim';
 import { PaymentForms } from '@/components/checkout/PaymentForms';
 import { ReturnErrorDialog } from '@/components/checkout/ReturnErrorDialog';
 import { CheckoutProfileForm } from '@/components/checkout/CheckoutProfileForm';
@@ -94,12 +95,20 @@ export async function CheckoutFlow({
    */
   moduleContext?: {
     courseId: string;
-    cursusId: string;
+    /** The module's public path — the sign-in round trip returns here. */
+    slug: string;
     title: string;
     /** The module has a published tariff, so it can be bought on its own. */
     hasTariff: boolean;
     /** The published approfondi cursus whose programme contains this module. */
     approfondiIds: string[];
+    /**
+     * Modes whose published price is zero, and modes priced above zero. The
+     * first decides whether the page offers direct access; the second keeps
+     * the ordinary checkout when anything about the module costs money.
+     */
+    freeModes: ('presentiel' | 'online')[];
+    paidModes: ('presentiel' | 'online')[];
   };
 }) {
   const t = await getTranslations('checkout');
@@ -174,6 +183,80 @@ export async function CheckoutFlow({
   // approved can fill everything in and see the total; it cannot pay.
   const approved = signedIn ? await isApproved() : false;
 
+  // A module the school gives away does not go through a checkout that will
+  // never ask for money: one button, and the lessons are open. The enrolment
+  // details are still required — the institute keeps a record of who is
+  // enrolled — so an incomplete profile gets the form itself, in place.
+  //
+  // Only when NOTHING about the module is priced: a module free in one mode
+  // and paid in the other still needs both figures in front of the student.
+  if (
+    moduleContext &&
+    moduleContext.paidModes.length === 0 &&
+    moduleContext.freeModes.length > 0
+  ) {
+    return (
+      <div className="rounded-[var(--radius-card)] border border-brand-200 bg-brand-50/40 p-6 text-center sm:p-8">
+        <span
+          className="mx-auto flex size-11 items-center justify-center rounded-full bg-brand-100 text-brand-600"
+          aria-hidden="true"
+        >
+          <Gift className="size-5" />
+        </span>
+        <h3 className="mt-4 font-display text-lg font-semibold text-ink">
+          {t('freeModuleTitle')}
+        </h3>
+        <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+          {t('freeModuleLead')}
+        </p>
+
+        {!signedIn ? (
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button asChild size="md">
+              <Link
+                href={`/login?next=${encodeURIComponent(`/courses/${moduleContext.slug}`)}`}
+              >
+                {t('loginCta')}
+              </Link>
+            </Button>
+            <Button asChild size="md" variant="outline">
+              <Link href="/register">{t('registerCta')}</Link>
+            </Button>
+          </div>
+        ) : !approved ? (
+          <div className="mx-auto mt-6 max-w-md rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/60 p-5 text-start">
+            <p className="text-[13px] font-medium text-ink">{t('approvalPendingTitle')}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+              {t('approvalPendingBody')}
+            </p>
+          </div>
+        ) : !detailsComplete ? (
+          <div className="mx-auto mt-6 max-w-xl text-start">
+            <p className="mb-4 text-[13px] text-ink-muted">{t('profileRequired')}</p>
+            <CheckoutProfileForm profile={profile} email={profile?.email ?? null} />
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            {moduleContext.freeModes.map((mode) => (
+              <FreeModuleClaim
+                key={mode}
+                courseId={moduleContext.courseId}
+                delivery={mode}
+                label={
+                  moduleContext.freeModes.length === 1
+                    ? t('freeAccess')
+                    : mode === 'presentiel'
+                      ? t('modePresentiel')
+                      : t('modeOnline')
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Public config only — the client id, the currency and the environment. The
   // secret never leaves the server module it is read in.
   const paypal = await getPayPalPublicConfig();
@@ -193,7 +276,6 @@ export async function CheckoutFlow({
               <li>
                 <form action={chooseCursus} className="h-full">
                   <input type="hidden" name="kind" value="module" />
-                  <input type="hidden" name="cursusId" value={moduleContext.cursusId} />
                   <input type="hidden" name="courseId" value={moduleContext.courseId} />
                   <button
                     type="submit"
@@ -274,61 +356,97 @@ export async function CheckoutFlow({
         ) : (
           <Empty>{t('formuleNone')}</Empty>
         )
-      ) : cursusList.length === 0 ? (
-          <Empty>{t('cursusEmpty')}</Empty>
-        ) : (
+      ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
-            {cursusList.map((option) => {
-              const on = cursusId === option.id;
-              const Icon = option.kind === 'approfondi' ? GraduationCap : Layers;
-              return (
-                <li key={option.id}>
-                  <form action={chooseCursus} className="h-full">
-                    <input type="hidden" name="kind" value={option.kind} />
-                    <input type="hidden" name="cursusId" value={option.id} />
-                    <button
-                      type="submit"
-                      aria-pressed={on}
-                      className={`${CARD} flex h-full w-full flex-col items-start ${on ? CARD_ON : CARD_OFF}`}
-                    >
-                      <span
-                        className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
-                        aria-hidden="true"
+            {/*
+              The standalone route is structure, not content. It used to be
+              drawn from a `cursus` row of kind 'module', which a project that
+              never ran the seed migration does not have — and then no module
+              could be sold on its own, silently, because the card that should
+              have said so did not exist. It is drawn here instead, and any
+              such row is deliberately not drawn a second time.
+            */}
+            <li>
+              <form action={chooseCursus} className="h-full">
+                <input type="hidden" name="kind" value="module" />
+                <button
+                  type="submit"
+                  aria-pressed={kind === 'module'}
+                  className={`${CARD} flex h-full w-full flex-col items-start ${
+                    kind === 'module' ? CARD_ON : CARD_OFF
+                  }`}
+                >
+                  <span
+                    className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+                    aria-hidden="true"
+                  >
+                    <Layers className="size-5" />
+                  </span>
+                  <span className="mt-4 font-display text-[16px] font-semibold text-ink">
+                    {t('cursusModuleName')}
+                  </span>
+                  <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                    {t('cursusModuleBody')}
+                  </span>
+                  <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                    <Award className="size-3.5" aria-hidden="true" />
+                    {t('certificationModule')}
+                  </span>
+                  <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
+                </button>
+              </form>
+            </li>
+
+            {cursusList
+              .filter((option) => option.kind === 'approfondi')
+              .map((option) => {
+                const on = kind === 'approfondi' && cursusId === option.id;
+                return (
+                  <li key={option.id}>
+                    <form action={chooseCursus} className="h-full">
+                      <input type="hidden" name="kind" value="approfondi" />
+                      <input type="hidden" name="cursusId" value={option.id} />
+                      <button
+                        type="submit"
+                        aria-pressed={on}
+                        className={`${CARD} flex h-full w-full flex-col items-start ${
+                          on ? CARD_ON : CARD_OFF
+                        }`}
                       >
-                        <Icon className="size-5" />
-                      </span>
-                      <span className="mt-4 font-display text-[16px] font-semibold text-ink">
-                        {option.title}
-                      </span>
-                      <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
-                        {option.subtitle ||
-                          (option.kind === 'approfondi'
-                            ? t('cursusApprofondiBody')
-                            : t('cursusModuleBody'))}
-                      </span>
-                      {/*
-                        What the student leaves with. It is the clearest
-                        difference between the two routes and the question the
-                        office is asked most, so it belongs on the card where
-                        the choice is made rather than three steps later.
-                      */}
-                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
-                        <Award className="size-3.5" aria-hidden="true" />
-                        {option.kind === 'approfondi'
-                          ? t('certificationApprofondi')
-                          : t('certificationModule')}
-                      </span>
-                      {option.yearCount > 1 && (
-                        <span className="mt-2 text-[11px] text-brand-600">
-                          {t('yearLabel', { year: option.yearCount })}
+                        <span
+                          className="flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+                          aria-hidden="true"
+                        >
+                          <GraduationCap className="size-5" />
                         </span>
-                      )}
-                      <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
-                    </button>
-                  </form>
-                </li>
-              );
-            })}
+                        <span className="mt-4 font-display text-[16px] font-semibold text-ink">
+                          {option.title}
+                        </span>
+                        <span className="mt-2 text-[13px] leading-relaxed text-ink-muted">
+                          {option.subtitle || t('cursusApprofondiBody')}
+                        </span>
+                        {/*
+                          What the student leaves with. It is the clearest
+                          difference between the two routes and the question
+                          the office is asked most, so it belongs on the card
+                          where the choice is made rather than three steps
+                          later.
+                        */}
+                        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                          <Award className="size-3.5" aria-hidden="true" />
+                          {t('certificationApprofondi')}
+                        </span>
+                        {option.yearCount > 1 && (
+                          <span className="mt-2 text-[11px] text-brand-600">
+                            {t('yearLabel', { year: option.yearCount })}
+                          </span>
+                        )}
+                        <PendingSpinner className="absolute end-4 top-4 text-brand-600" />
+                      </button>
+                    </form>
+                  </li>
+                );
+              })}
           </ul>
         ),
     },
