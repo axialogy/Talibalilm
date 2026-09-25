@@ -3,14 +3,14 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { KeyRound, ShieldAlert } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { Field } from '@/components/ui/field';
 import { ActionForm } from '@/components/ui/action-form';
 import { savePaymentSettings } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 export interface PaymentStatus {
   environment: 'sandbox' | 'live';
@@ -40,7 +40,7 @@ export function PaymentSettingsForm({
   envOverride: boolean;
 }) {
   const t = useTranslations('admin');
-  const [state, action] = useActionState(savePaymentSettings, EMPTY);
+  const [state, action] = useActionState(savePaymentSettings, IDLE);
 
   return (
     <ActionForm
@@ -125,14 +125,7 @@ export function PaymentSettingsForm({
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="md">
-          {t('save')}
-        </Button>
-        {state.ok && !state.error && (
-          <span role="status" className="text-[12px] text-brand-600">
-            {t('saved')}
-          </span>
-        )}
+        <SaveButton state={state} label={t('save')} size="md" />
         <ActionError state={state} />
       </div>
     </ActionForm>

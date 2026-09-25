@@ -92,6 +92,7 @@ const COLUMNS: [string, string][] = [
   ['courses', 'department, department_body, requirements, highlights, gallery'],
   ['live_sessions', 'require_approval, chat_enabled, student_camera, student_screen'],
   ['live_participants', 'muted, camera_allowed, screen_allowed, banned_at'],
+  ['events', 'phase'],
 ];
 
 /**
@@ -354,6 +355,7 @@ async function authSettingsChecks(): Promise<Check[]> {
  */
 const RPC_NAMES = [
   'admin_anonymise_user',
+  'admin_delete_coupons',
   'admin_generate_coupons',
   'admin_grant_entitlement',
   'admin_mark_reviewed',

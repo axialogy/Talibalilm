@@ -3,13 +3,13 @@
 import { useActionState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Field } from '@/components/ui/field';
-import { SubmitButton } from '@/components/auth/SubmitButton';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { updateCourse, type AdminState } from '@/app/actions/admin';
 import { formatBullets, formatHighlights, type Highlight } from '@/lib/content/presentation';
 import { ActionError } from '@/components/admin/ActionError';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 const LEVELS = ['all', 'beginner', 'intermediate', 'advanced'] as const;
 const FORMATS = ['presentiel', 'visio', 'hybride'] as const;
@@ -38,7 +38,7 @@ export function CourseSettingsForm({
 }) {
   const t = useTranslations('admin');
   const tc = useTranslations('courses');
-  const [state, action] = useActionState(updateCourse, EMPTY);
+  const [state, action] = useActionState(updateCourse, IDLE);
   const formRef = useRef<HTMLFormElement>(null);
 
   // A refusal used to say "invalid" and leave the office to guess which of a
@@ -131,13 +131,8 @@ export function CourseSettingsForm({
       </fieldset>
 
       <ActionError state={state} />
-      {state.ok && !state.error && (
-        <p className="text-[11px] text-brand-600" role="status">
-          {t('saved')}
-        </p>
-      )}
 
-      <SubmitButton size="md">{t('save')}</SubmitButton>
+      <SaveButton state={state} label={t('save')} size="md" />
     </ActionForm>
   );
 }

@@ -2,14 +2,14 @@
 
 import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { Field } from '@/components/ui/field';
 import { ActionForm } from '@/components/ui/action-form';
 import { grantEntitlement } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 export interface Option {
   id: string;
@@ -33,7 +33,7 @@ export function GrantForm({
   cursus: Option[];
 }) {
   const t = useTranslations('admin');
-  const [state, action] = useActionState(grantEntitlement, EMPTY);
+  const [state, action] = useActionState(grantEntitlement, IDLE);
   const [scope, setScope] = useState<'course' | 'cursus' | 'site'>('course');
 
   return (
@@ -129,15 +129,8 @@ export function GrantForm({
 
       <Field label={t('grantReason')} name="reason" required maxLength={200} />
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" size="sm">
-          {t('grantSubmit')}
-        </Button>
-        {state.ok && !state.error && (
-          <span role="status" className="text-[11px] text-brand-600">
-            {t('saved')}
-          </span>
-        )}
+      <div className="flex flex-wrap items-center gap-3">
+        <SaveButton state={state} label={t('grantSubmit')} size="sm" />
         <ActionError state={state} />
       </div>
     </ActionForm>

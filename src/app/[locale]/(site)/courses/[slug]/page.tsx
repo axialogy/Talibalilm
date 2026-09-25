@@ -11,6 +11,7 @@ import { InfoCarousel } from '@/components/courses/InfoCarousel';
 import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
 import { getCourse, getInstructor, relatedCourses } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
+import { currentViewer, isStaff } from '@/lib/auth/guards';
 import { listCursus, listProducts } from '@/lib/data/commerce';
 import { moduleRoutes } from '@/lib/commerce/module-modes';
 import { listLiveSessions } from '@/lib/data/live';
@@ -87,12 +88,17 @@ export default async function CoursePage({
   // is the same answer the lesson pages are gated by — bought outright, or
   // covered by a cursus they paid for, in the mode they paid for. A signed-out
   // visitor never reaches the question.
+  //
+  // Staff are a second answer to the same question. Their access comes from
+  // `is_staff()` in the policies, not from an entitlement — every lesson is
+  // already readable to them — so the enrolment card was offering the teacher
+  // a course they can already open. They get the access card instead, never
+  // the checkout.
+  const viewer = await currentViewer();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const owned = user
-    ? (await supabase.rpc('has_course_access', { cid: course.id })).data === true
+  const owned = viewer
+    ? isStaff(viewer) ||
+      (await supabase.rpc('has_course_access', { cid: course.id })).data === true
     : false;
   const firstLesson = course.modules.flatMap((module) => module.lessons)[0];
   const openHref = firstLesson

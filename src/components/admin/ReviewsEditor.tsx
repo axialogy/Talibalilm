@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
-import { SubmitButton } from '@/components/auth/SubmitButton';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { deleteReview, saveReview, setReviewStatus } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { ReviewView } from '@/lib/data/site';
@@ -163,10 +163,8 @@ function ReviewForm({ review, onDone }: { review?: ReviewView; onDone?: () => vo
 
       <ActionError state={state} />
 
-      <div className="flex items-center gap-3">
-        <SubmitButton size="sm" block={false}>
-          {review ? t('save') : t('add')}
-        </SubmitButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <SaveButton state={state} label={review ? t('save') : t('add')} size="sm" />
         {onDone && (
           <Button type="button" size="sm" variant="ghost" onClick={onDone}>
             {t('cancel')}
@@ -179,7 +177,7 @@ function ReviewForm({ review, onDone }: { review?: ReviewView; onDone?: () => vo
 
 function StatusButton({ id, published }: { id: string; published: boolean }) {
   const t = useTranslations('admin');
-  const [, action] = useActionState(setReviewStatus, IDLE);
+  const [state, action] = useActionState(setReviewStatus, IDLE);
   return (
     <form action={action}>
       <input type="hidden" name="id" value={id} />
@@ -187,13 +185,14 @@ function StatusButton({ id, published }: { id: string; published: boolean }) {
       <Button type="submit" size="sm" variant={published ? 'outline' : 'primary'}>
         {published ? t('unpublish') : t('publish')}
       </Button>
+      <ActionError state={state} />
     </form>
   );
 }
 
 function DeleteButton({ id }: { id: string }) {
   const t = useTranslations('admin');
-  const [, action] = useActionState(deleteReview, IDLE);
+  const [state, action] = useActionState(deleteReview, IDLE);
   return (
     <form
       action={action}
@@ -206,6 +205,7 @@ function DeleteButton({ id }: { id: string }) {
         <Trash2 className="size-3.5" aria-hidden="true" />
         {t('delete')}
       </Button>
+      <ActionError state={state} />
     </form>
   );
 }

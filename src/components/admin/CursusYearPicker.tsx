@@ -3,13 +3,13 @@
 import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { setCursusYearModules } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 /**
  * The modules of one year, from a dropdown of checkboxes.
@@ -36,7 +36,7 @@ export function CursusYearPicker({
   selected: string[];
 }) {
   const t = useTranslations('admin');
-  const [state, save] = useActionState(setCursusYearModules, EMPTY);
+  const [state, save] = useActionState(setCursusYearModules, IDLE);
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(selected));
 
@@ -76,9 +76,7 @@ export function CursusYearPicker({
           />
         </button>
 
-        <Button type="submit" size="sm" variant="ghost">
-          {t('save')}
-        </Button>
+        <SaveButton state={state} label={t('save')} size="sm" variant="ghost" />
       </div>
 
       <div

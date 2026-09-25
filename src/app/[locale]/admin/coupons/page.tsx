@@ -1,10 +1,10 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
-import { Badge } from '@/components/ui/badge';
 import { CouponGenerator } from '@/components/admin/CouponGenerator';
+import { CouponTable } from '@/components/admin/CouponTable';
 import { Tabs } from '@/components/ui/tabs';
 import { BonusEditor, type BonusRow, type ProductChoice } from '@/components/admin/BonusEditor';
-import { ExportCsvButton, VoidCouponButton, type CsvRow } from '@/components/admin/CouponActions';
+import { ExportCsvButton, type CsvRow } from '@/components/admin/CouponActions';
 import { formatPrice } from '@/lib/commerce/quote';
 import { couponBatches, listCoupons } from '@/lib/data/admin';
 import { requireAdmin } from '@/lib/auth/guards';
@@ -153,48 +153,7 @@ export default async function AdminCouponsPage({
                       {t('couponsEmpty')}
                     </p>
                   ) : (
-                    <div className="mt-4 overflow-x-auto rounded-[var(--radius-card)] border border-line">
-                      <table className="w-full min-w-[620px] border-collapse text-[13px]">
-                        <thead>
-                          <tr className="bg-surface/60 text-left text-[11px] tracking-wide text-ink-muted uppercase">
-                            <th className="p-3 font-medium">{t('colCode')}</th>
-                            <th className="p-3 font-medium">{t('colDiscount')}</th>
-                            <th className="p-3 font-medium">{t('colUses')}</th>
-                            <th className="p-3 font-medium">{t('colBatch')}</th>
-                            <th className="p-3 font-medium">{t('colStatus')}</th>
-                            <th className="p-3"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-line">
-                          {coupons.map((c) => (
-                            <tr key={c.id} className="transition-colors hover:bg-brand-50/40">
-                              <td className="p-3 font-mono text-ink">
-                                {c.code}
-                                {c.isOffice && (
-                                  <Badge variant="gold" className="ml-2">
-                                    {t('couponOffice')}
-                                  </Badge>
-                                )}
-                              </td>
-                              <td className="p-3 text-ink">{discount(c)}</td>
-                              <td className="p-3 text-ink-muted tabular-nums">
-                                {c.redeemedCount}
-                                {c.maxRedemptions !== null && ` / ${c.maxRedemptions}`}
-                              </td>
-                              <td className="p-3 text-ink-muted">{c.batch || '—'}</td>
-                              <td className="p-3">
-                                <Badge variant={c.spent ? 'muted' : 'success'}>
-                                  {c.spent ? t('couponSpent') : t('couponAvailable')}
-                                </Badge>
-                              </td>
-                              <td className="p-3 text-right">
-                                {!c.spent && <VoidCouponButton couponId={c.id} />}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <CouponTable rows={coupons} locale={locale} />
                   )}
                 </>
               ),

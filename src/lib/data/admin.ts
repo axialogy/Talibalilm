@@ -243,6 +243,8 @@ export interface StudentSummary {
   anonymisedAt: string | null;
   /** When the office marked this registration as seen. Null means new. */
   reviewedAt: string | null;
+  /** When the office let the account order. Null means it is not activated. */
+  approvedAt: string | null;
   activeEntitlements: number;
   /**
    * What they are enrolled on, in words — the module titles, or the cursus.
@@ -284,7 +286,7 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
   // wrong in the count, and one careless click away from the erase button.
   let query = supabase
     .from('profiles')
-    .select('id, full_name, role, created_at, anonymised_at, reviewed_at')
+    .select('id, full_name, role, created_at, anonymised_at, reviewed_at, approved_at')
     .eq('role', 'student')
     .order('created_at', { ascending: false })
     .limit(200);
@@ -301,6 +303,7 @@ export async function listStudents(search?: string): Promise<StudentSummary[]> {
     createdAt: p.created_at,
     anonymisedAt: p.anonymised_at,
     reviewedAt: p.reviewed_at,
+    approvedAt: p.approved_at,
   }));
 
   const withEmail = await attachEmails(supabase, rows);
@@ -417,6 +420,7 @@ export async function getStudent(userId: string): Promise<{
       createdAt: profile.created_at,
       anonymisedAt: profile.anonymised_at,
       reviewedAt: profile.reviewed_at,
+      approvedAt: profile.approved_at,
       activeEntitlements: (ents ?? []).filter(
         (e) => e.status === 'active' && new Date(e.expires_at).getTime() > now,
       ).length,

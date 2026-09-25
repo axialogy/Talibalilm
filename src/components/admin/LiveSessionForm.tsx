@@ -2,13 +2,13 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { createLiveSession } from '@/app/actions/live';
 import type { AdminState } from '@/app/actions/admin';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 /**
  * Schedule a class against a course. The course is what decides who may attend.
@@ -25,7 +25,7 @@ export function LiveSessionForm({
   fixedCourseId?: string;
 }) {
   const t = useTranslations('admin');
-  const [state, action] = useActionState(createLiveSession, EMPTY);
+  const [state, action] = useActionState(createLiveSession, IDLE);
 
   const field =
     'w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 text-sm text-ink outline-none focus:border-brand-400';
@@ -76,10 +76,8 @@ export function LiveSessionForm({
         </label>
       </div>
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" size="sm">
-          {t('liveCreate')}
-        </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <SaveButton state={state} label={t('liveCreate')} size="sm" />
         <ActionError state={state} />
       </div>
     </ActionForm>

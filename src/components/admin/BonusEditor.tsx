@@ -3,14 +3,14 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Gift, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { Badge } from '@/components/ui/badge';
 import { deletePack, saveBonus } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 export interface ProductChoice {
   id: string;
@@ -53,8 +53,8 @@ export function BonusEditor({
   bonuses: BonusRow[];
 }) {
   const t = useTranslations('admin');
-  const [state, save] = useActionState(saveBonus, EMPTY);
-  const [, remove] = useActionState(deletePack, EMPTY);
+  const [state, save] = useActionState(saveBonus, IDLE);
+  const [, remove] = useActionState(deletePack, IDLE);
 
   const select =
     'rounded-[var(--radius-input)] border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand-400';
@@ -121,9 +121,7 @@ export function BonusEditor({
                   <option value="archived">{t('archived')}</option>
                 </select>
 
-                <Button type="submit" size="sm" variant="ghost">
-                  {t('save')}
-                </Button>
+                <SaveButton state={state} label={t('save')} size="sm" variant="ghost" />
                 </ActionForm>
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -169,9 +167,7 @@ export function BonusEditor({
         </select>
 
         <input type="hidden" name="status" value="published" />
-        <Button type="submit" size="sm">
-          {t('bonusAdd')}
-        </Button>
+        <SaveButton state={state} label={t('bonusAdd')} size="sm" />
       </ActionForm>
 
       <ActionError state={state} />
