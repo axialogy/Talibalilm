@@ -4,9 +4,11 @@ import { expect, test } from '@playwright/test';
  * The module page knows who already holds the module.
  *
  * A student who bought it — or whose paid cursus covers it — must not be shown
- * the checkout again: `has_course_access` is asked on the server, and the
- * enrolment card becomes the way in. A signed-out visitor still sees the
- * enrolment card, because that is the only way to buy.
+ * the checkout again, and must not be handed a card asking them to open what
+ * they hold: `has_course_access` is asked on the server, the enrolment section
+ * disappears, and every lesson in the programme becomes a link to its lesson.
+ * A signed-out visitor still sees the enrolment card, because that is the only
+ * way to buy.
  *
  * CI only: it creates a student and an entitlement through the service role,
  * which must never happen against a real project.
@@ -83,7 +85,7 @@ test.describe('the module page and who holds it', () => {
     await expect(page.getByText('Ouvrir le module')).toHaveCount(0);
   });
 
-  test('a student who holds it is offered the way in', async ({ page }) => {
+  test('a student who holds it gets the lessons themselves', async ({ page }) => {
     await page.goto('/login');
     await page.locator('input[name="email"]').fill(email);
     await page.locator('input[name="password"]').fill(password);
@@ -92,11 +94,18 @@ test.describe('the module page and who holds it', () => {
 
     await page.goto(`/courses/${slug}`);
 
-    await expect(page.getByRole('heading', { name: 'Votre accès' })).toBeVisible();
-    const open = page.getByRole('link', { name: 'Ouvrir le module' });
-    await expect(open).toBeVisible();
-    await expect(open).toHaveAttribute('href', new RegExp(`/dashboard/courses/${slug}/lessons/`));
+    // No card, no button, no enrolment: the programme above IS the way in.
     await expect(page.getByText('Inscriptions & paiements')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Votre accès' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Ouvrir le module' })).toHaveCount(0);
+
+    // Every lesson is a link to its own page, not a locked row.
+    const lesson = page.getByRole('link', { name: 'Les eaux et les impuretés' });
+    await expect(lesson).toBeVisible();
+    await expect(lesson).toHaveAttribute(
+      'href',
+      new RegExp(`/dashboard/courses/${slug}/lessons/`),
+    );
   });
 });
 
@@ -136,9 +145,10 @@ test.describe('the module page and a cursus that covers it', () => {
     userId = ((await created.json()) as { id: string }).id;
 
     // A grid row: which course sits in which year of which cursus, in which
-    // mode. The entitlement below mirrors it exactly.
+    // mode. The entitlement below mirrors it exactly. Pinned to the e2e
+    // approfondi so the course has a syllabus the test can assert on.
     const grid = await request.get(
-      `${SUPABASE_URL}/rest/v1/cursus_courses?select=cursus_id,course_id,year_index,delivery,courses(slug)&limit=1`,
+      `${SUPABASE_URL}/rest/v1/cursus_courses?select=cursus_id,course_id,year_index,delivery,courses(slug)&cursus_id=eq.e2e30000-0000-4000-8000-000000000002&order=position&limit=1`,
       { headers: serviceHeaders },
     );
     expect(grid.ok(), await grid.text()).toBeTruthy();
@@ -173,7 +183,7 @@ test.describe('the module page and a cursus that covers it', () => {
     });
   });
 
-  test('a student holding the cursus is offered the way in on its module', async ({ page }) => {
+  test('a student holding the cursus gets the lessons of its module', async ({ page }) => {
     await page.goto('/login');
     await page.locator('input[name="email"]').fill(email);
     await page.locator('input[name="password"]').fill(password);
@@ -182,7 +192,14 @@ test.describe('the module page and a cursus that covers it', () => {
 
     await page.goto(`/courses/${slug}`);
 
-    await expect(page.getByRole('link', { name: 'Ouvrir le module' })).toBeVisible();
     await expect(page.getByText('Inscriptions & paiements')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Ouvrir le module' })).toHaveCount(0);
+
+    const lesson = page.getByRole('link', { name: 'Les eaux et les impuretés' });
+    await expect(lesson).toBeVisible();
+    await expect(lesson).toHaveAttribute(
+      'href',
+      new RegExp(`/dashboard/courses/${slug}/lessons/`),
+    );
   });
 });

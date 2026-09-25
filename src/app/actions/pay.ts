@@ -519,7 +519,8 @@ export async function claimFreeCourse(_previous: PayState, _formData: FormData):
     return { error: result.error };
   }
 
-  redirect({ href: `/checkout/confirmation?order=${result.orderId}`, locale });
+  // Straight to what they now hold — no receipt page, no "open my module".
+  redirect({ href: await checkoutTarget(result.orderId), locale });
 }
 
 /**
@@ -623,16 +624,18 @@ export async function redeemOfficeCode(_previous: PayState, formData: FormData):
 
   await settleFreeOrder(order.id);
   await clearSelection();
-  redirect({ href: `/checkout/confirmation?order=${order.id}`, locale });
+  redirect({ href: await checkoutTarget(order.id), locale });
 }
 
 /**
  * Where a paid order should open.
  *
- * A module opens its own page; a cursus opens Mon espace, where every module
- * it unlocked is listed and each opens its own page. Read through the ordinary
- * client, so `orders_select_own` decides what a caller can see — an order id
- * belonging to somebody else resolves to the dashboard and nothing more.
+ * A module opens its own page, where every lesson is a link because the
+ * student holds it. A cursus opens the cursus page on the mode that was
+ * bought, where every module of the programme is listed and each opens its
+ * own page. Read through the ordinary client, so `orders_select_own` decides
+ * what a caller can see — an order id belonging to somebody else resolves to
+ * the dashboard and nothing more.
  */
 export async function checkoutTarget(orderId: string): Promise<string> {
   const user = await requireUser();
@@ -642,13 +645,24 @@ export async function checkoutTarget(orderId: string): Promise<string> {
   const supabase = await createClient();
   const { data: order } = await supabase
     .from('orders')
-    .select('id, user_id, status, order_items ( kind, course_id )')
+    .select('id, user_id, status, order_items ( kind, course_id, cursus_id, delivery )')
     .eq('id', parsed.data)
     .maybeSingle();
   if (!order || order.user_id !== user.id || order.status !== 'paid') return '/dashboard';
 
   const first = order.order_items?.[0];
-  if (!first || first.kind !== 'module' || !first.course_id) return '/dashboard';
+  if (!first) return '/dashboard';
+
+  if (first.kind === 'cursus' && first.cursus_id) {
+    const { data: cursus } = await supabase
+      .from('cursus')
+      .select('slug')
+      .eq('id', first.cursus_id)
+      .maybeSingle();
+    return cursus?.slug ? `/cursus/${cursus.slug}?mode=${first.delivery}` : '/dashboard';
+  }
+
+  if (first.kind !== 'module' || !first.course_id) return '/dashboard';
 
   const { data: course } = await supabase
     .from('courses')

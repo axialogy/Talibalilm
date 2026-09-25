@@ -37,8 +37,31 @@ test.describe('public catalogue', () => {
     await expect(page.getByRole('article').first()).toBeVisible();
   });
 
+  test('a cursus page lists its programme and its modules', async ({ page }) => {
+    await page.goto('/cursus/e2e-cursus-approfondi');
+
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Cursus Approfondi');
+    await expect(page.getByText('Année 1')).toBeVisible();
+
+    // Every module of the programme is a link to its own page.
+    const moduleLink = page.getByRole('link', { name: /Jurisprudence islamique/ });
+    await expect(moduleLink).toBeVisible();
+    await expect(moduleLink).toHaveAttribute('href', '/courses/fiqh-al-ibadat');
+
+    // The mode switch is a plain link, so the page needs no JavaScript.
+    await expect(page.getByRole('link', { name: 'Distanciel' })).toHaveAttribute(
+      'href',
+      '/cursus/e2e-cursus-approfondi?mode=online',
+    );
+  });
+
   test('unknown course slugs 404 rather than rendering an empty shell', async ({ page }) => {
     const response = await page.goto('/courses/ce-cours-nexiste-pas');
+    expect(response?.status()).toBe(404);
+  });
+
+  test('an unknown cursus slug 404s too', async ({ page }) => {
+    const response = await page.goto('/cursus/ce-cursus-nexiste-pas');
     expect(response?.status()).toBe(404);
   });
 
@@ -87,6 +110,8 @@ test.describe('SEO', () => {
     expect(body).toContain('/courses/fiqh-al-ibadat');
     // Both locales are listed, not only the default one.
     expect(body).toContain('/en/courses/fiqh-al-ibadat');
+    // The cursus pages are part of the catalogue too.
+    expect(body).toContain('/cursus/e2e-cursus-approfondi');
 
     const robots = await request.get('/robots.txt');
     expect(robots.ok()).toBeTruthy();

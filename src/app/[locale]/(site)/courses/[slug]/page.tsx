@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CourseCard } from '@/components/marketing/CourseCard';
+import { CursusProgramme } from '@/components/marketing/CursusProgramme';
 import { PlanningTarifs } from '@/components/marketing/PlanningTarifs';
 import { InfoCarousel } from '@/components/courses/InfoCarousel';
 import { CheckoutFlow } from '@/components/checkout/CheckoutFlow';
@@ -92,18 +93,17 @@ export default async function CoursePage({
   // Staff are a second answer to the same question. Their access comes from
   // `is_staff()` in the policies, not from an entitlement — every lesson is
   // already readable to them — so the enrolment card was offering the teacher
-  // a course they can already open. They get the access card instead, never
-  // the checkout.
+  // a course they can already open.
+  //
+  // `owned` is what the page turns into access: the lesson list becomes links
+  // and the enrolment section is not rendered at all. A student who has just
+  // paid lands here, not on a card asking them to open what they now hold.
   const viewer = await currentViewer();
   const supabase = await createClient();
   const owned = viewer
     ? isStaff(viewer) ||
       (await supabase.rpc('has_course_access', { cid: course.id })).data === true
     : false;
-  const firstLesson = course.modules.flatMap((module) => module.lessons)[0];
-  const openHref = firstLesson
-    ? `/dashboard/courses/${course.slug}/lessons/${firstLesson.id}`
-    : '/dashboard';
 
   const t = await getTranslations('courses');
   const tCommon = await getTranslations('common');
@@ -139,6 +139,17 @@ export default async function CoursePage({
   const approfondiIds = cursusList
     .filter((c) => c.kind === 'approfondi' && inCursus.has(c.id))
     .map((c) => c.id);
+
+  // The cursus programmes this module belongs to, when there is something to
+  // show — the office's poster and/or the written outline. Shown under the
+  // module's own programme, so a student reading what is taught here also sees
+  // the whole cursus it is part of.
+  const cursusProgrammes = cursusList.filter(
+    (c) =>
+      c.kind === 'approfondi' &&
+      inCursus.has(c.id) &&
+      (c.imageUrl !== null || c.details.trim() !== ''),
+  );
 
   // How this module is sold, from its own price lines: a module that costs
   // nothing opens directly, one that costs anything goes through the checkout.
@@ -372,34 +383,62 @@ export default async function CoursePage({
                   </div>
 
                   <ul className="divide-y divide-line px-5">
-                    {module.lessons.map((lesson) => (
-                      <li key={lesson.id} className="flex items-center gap-3 py-3">
-                        {lesson.is_preview ? (
-                          <PlayCircle
-                            className="size-4 shrink-0 text-brand-500"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <Lock className="size-4 shrink-0 text-ink-muted/50" aria-hidden="true" />
-                        )}
-                        <span
-                          className={cn(
-                            'flex-1 text-[13px]',
-                            lesson.is_preview ? 'text-ink' : 'text-ink-muted',
+                    {module.lessons.map((lesson) =>
+                      owned ? (
+                        // Held: the lesson is the way in, from the page the
+                        // student is already reading. Nothing to click twice.
+                        <li key={lesson.id}>
+                          <Link
+                            href={`/dashboard/courses/${course.slug}/lessons/${lesson.id}`}
+                            className="group flex items-center gap-3 py-3 transition-colors hover:bg-brand-50/40"
+                          >
+                            <PlayCircle
+                              className="size-4 shrink-0 text-brand-500"
+                              aria-hidden="true"
+                            />
+                            <span className="flex-1 text-[13px] text-ink group-hover:text-brand-600">
+                              {lesson.title}
+                            </span>
+                            {lesson.is_preview && (
+                              <Badge variant="soft">{t('detail.previewBadge')}</Badge>
+                            )}
+                            <span className="text-[11px] text-ink-muted tabular-nums">
+                              {formatMinutes(lesson.duration_seconds)}
+                            </span>
+                          </Link>
+                        </li>
+                      ) : (
+                        <li key={lesson.id} className="flex items-center gap-3 py-3">
+                          {lesson.is_preview ? (
+                            <PlayCircle
+                              className="size-4 shrink-0 text-brand-500"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Lock
+                              className="size-4 shrink-0 text-ink-muted/50"
+                              aria-hidden="true"
+                            />
                           )}
-                        >
-                          {lesson.title}
-                        </span>
-                        {lesson.is_preview ? (
-                          <Badge variant="soft">{t('detail.previewBadge')}</Badge>
-                        ) : (
-                          <span className="sr-only">{t('detail.lockedLabel')}</span>
-                        )}
-                        <span className="text-[11px] text-ink-muted tabular-nums">
-                          {formatMinutes(lesson.duration_seconds)}
-                        </span>
-                      </li>
-                    ))}
+                          <span
+                            className={cn(
+                              'flex-1 text-[13px]',
+                              lesson.is_preview ? 'text-ink' : 'text-ink-muted',
+                            )}
+                          >
+                            {lesson.title}
+                          </span>
+                          {lesson.is_preview ? (
+                            <Badge variant="soft">{t('detail.previewBadge')}</Badge>
+                          ) : (
+                            <span className="sr-only">{t('detail.lockedLabel')}</span>
+                          )}
+                          <span className="text-[11px] text-ink-muted tabular-nums">
+                            {formatMinutes(lesson.duration_seconds)}
+                          </span>
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </li>
               ))}
@@ -429,7 +468,34 @@ export default async function CoursePage({
               </div>
             )}
 
-            <p className="mt-6 text-center text-xs text-ink-muted">{t('detail.lockedHint')}</p>
+            {!owned && (
+              <p className="mt-6 text-center text-xs text-ink-muted">{t('detail.lockedHint')}</p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* The cursus programmes this module belongs to. The poster the office
+          uploaded and the written outline, so a student reading the module's
+          own programme also sees the whole programme it is part of. */}
+      {cursusProgrammes.length > 0 && (
+        <section className="py-14 sm:py-16">
+          <div className="shell max-w-3xl">
+            {cursusProgrammes.map((cursus, index) => (
+              <div key={cursus.id} className={index > 0 ? 'mt-12' : ''}>
+                <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+                  {t('detail.cursusProgramme')}
+                </h2>
+                <p className="mt-3 text-center font-display text-[16px] font-semibold text-ink">
+                  {cursus.title}
+                </p>
+                <CursusProgramme
+                  alt={cursus.title}
+                  imageUrl={cursus.imageUrl}
+                  details={cursus.details}
+                />
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -498,37 +564,25 @@ export default async function CoursePage({
       )}
 
       {/* Inscriptions & paiements — the whole enrolment, in one card, here.
-          A student who already holds the module (bought it, or it is part of a
-          cursus they paid for) gets the way in instead: offering them the
+          Not rendered at all for a student who already holds the module: the
+          programme above is the access, every lesson a link, and offering the
           checkout again would be selling what they own. */}
-      <section id="inscription" className="scroll-mt-24 py-14 sm:py-16">
-        <div className="shell max-w-3xl">
-          <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
-            {owned ? t('detail.yourAccess') : t('detail.enrolment')}
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-[13px] leading-relaxed text-ink-muted">
-            {owned ? t('detail.yourAccessLead') : t('detail.enrolmentLead')}
-          </p>
+      {!owned && (
+        <section id="inscription" className="scroll-mt-24 py-14 sm:py-16">
+          <div className="shell max-w-3xl">
+            <h2 className="text-center font-display text-[clamp(1.5rem,3.4vw,2rem)] font-semibold text-gold-600">
+              {t('detail.enrolment')}
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-[13px] leading-relaxed text-ink-muted">
+              {t('detail.enrolmentLead')}
+            </p>
 
-          {/* The card knows which module it is standing on, so it does not ask
-              — no "which cursus", no list of every module the school sells.
-              The mode step resolves this course into its published product;
-              the price is read from the products table server-side and the
-              browser never posts one. */}
-          <div className="mt-8">
-            {owned ? (
-              <div className="rounded-[var(--radius-card)] border border-line bg-white p-8 text-center shadow-card">
-                <p className="font-display text-lg font-semibold text-ink">
-                  {t('detail.accessTitle')}
-                </p>
-                <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
-                  {t('detail.accessLead')}
-                </p>
-                <Button asChild size="lg" className="mt-5">
-                  <Link href={openHref}>{t('detail.openModule')}</Link>
-                </Button>
-              </div>
-            ) : (
+            {/* The card knows which module it is standing on, so it does not ask
+                — no "which cursus", no list of every module the school sells.
+                The mode step resolves this course into its published product;
+                the price is read from the products table server-side and the
+                browser never posts one. */}
+            <div className="mt-8">
               <CheckoutFlow
                 locale={locale}
                 moduleContext={{
@@ -541,10 +595,10 @@ export default async function CoursePage({
                   paidModes,
                 }}
               />
-            )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Who teaches it, and what to read next */}
       {(instructor || related.length > 0) && (

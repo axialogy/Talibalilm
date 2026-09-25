@@ -7,6 +7,7 @@ import {
   PayPalRefusal,
 } from '@/lib/paypal/client';
 import { markOrderFailed, settleOrder } from '@/lib/commerce/orders';
+import { checkoutTarget } from '@/app/actions/pay';
 import { createAdminClient } from '@/lib/supabase/server';
 import { reportError } from '@/lib/observability/report';
 import { siteUrl } from '@/lib/env';
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
   if (order.provider_order_id !== paypalOrderId) return fail('unexpected');
 
   if (order.status === 'paid') {
-    return NextResponse.redirect(`${base}/checkout/confirmation?order=${order.id}`);
+    return NextResponse.redirect(`${base}${await checkoutTarget(order.id)}`);
   }
 
   const config = await getPayPalConfig();
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
     return fail('paypalRefused');
   }
 
-  // `welcome=1` is what shows the thank-you dialog on arrival. Only this path
-  // sets it: the popup path already showed its own dialog before navigating.
-  return NextResponse.redirect(`${base}/checkout/confirmation?order=${order.id}&welcome=1`);
+  // Straight to what was bought — the module page, or the cursus page on the
+  // mode that was paid for. No thank-you dialog, no receipt to click past.
+  return NextResponse.redirect(`${base}${await checkoutTarget(order.id)}`);
 }
