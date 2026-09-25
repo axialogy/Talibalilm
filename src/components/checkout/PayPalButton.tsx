@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
@@ -92,10 +92,8 @@ export function PayPalButton({
   const settled = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [errorOpen, setErrorOpen] = useState(false);
-  const [done, setDone] = useState<{ orderId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [leaving, startLeave] = useTransition();
 
   const showError = useCallback(
     (key: string, { dialog = true }: { dialog?: boolean } = {}) => {
@@ -106,23 +104,20 @@ export function PayPalButton({
   );
 
   /**
-   * Leave the thank-you dialog for what was bought: the module's own page, or
-   * Mon espace when the order was a cursus (where every module it unlocked is
-   * listed). An installment payment has nothing to open — it goes to the
-   * student's space.
+   * Straight to what was bought, with no thank-you dialog in between: the
+   * module's own page, or the cursus page on the mode that was paid for. An
+   * installment payment has nothing to open — it goes to the student's space.
    */
-  const goToAccess = useCallback(() => {
-    if (!done) return;
-    if (installmentId) {
-      router.push('/dashboard');
-      return;
-    }
-    const orderId = done.orderId;
-    startLeave(async () => {
-      const target = await checkoutTarget(orderId);
-      router.push(target);
-    });
-  }, [done, installmentId, router]);
+  const goToAccess = useCallback(
+    async (orderId: string) => {
+      if (installmentId) {
+        router.push('/dashboard');
+        return;
+      }
+      router.push(await checkoutTarget(orderId));
+    },
+    [installmentId, router],
+  );
 
   const renderButtons = useCallback(() => {
     const target = container.current;
@@ -149,10 +144,10 @@ export function PayPalButton({
             }
             // A coupon can take the basket to zero between the page rendering
             // and the button being pressed. Nothing to capture: the order is
-            // already settled and the student goes to the confirmation.
+            // already settled, so the student goes straight to it.
             if (result.free) {
               settled.current = true;
-              setDone({ orderId: result.orderId });
+              await goToAccess(result.orderId);
               throw new Error('free');
             }
             return result.paypalOrderId;
@@ -170,7 +165,7 @@ export function PayPalButton({
               return;
             }
             settled.current = true;
-            setDone({ orderId: result.orderId });
+            await goToAccess(result.orderId);
           },
           onCancel: () => {
             // A cancellation is not a failure; it is said under the button.
@@ -188,7 +183,7 @@ export function PayPalButton({
       // not a page error; the payment block reports it like any other outage.
       setFailed(true);
     }
-  }, [installmentId, showError]);
+  }, [installmentId, showError, goToAccess]);
 
   useEffect(() => {
     let cancelled = false;
@@ -252,14 +247,6 @@ export function PayPalButton({
           {error}
         </p>
       )}
-
-      <Dialog open={done !== null} title={t('paySuccessTitle')} onClose={goToAccess}>
-        <p>{t('paySuccessBody')}</p>
-        <Button type="button" size="md" onClick={goToAccess} disabled={leaving}>
-          {leaving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-          {t('paySuccessCta')}
-        </Button>
-      </Dialog>
 
       <Dialog open={errorOpen} title={t('payErrorTitle')} onClose={() => setErrorOpen(false)}>
         <p>{error}</p>
