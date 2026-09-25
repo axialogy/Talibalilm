@@ -32,9 +32,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
 
 update public.profiles set role = 'admin' where id = 'a0000000-0000-0000-0000-000000000002';
 
-insert into public.events (id, title, status) values
-  ('b0000000-0000-0000-0000-000000000001', 'Portes ouvertes', 'published'),
-  ('b0000000-0000-0000-0000-000000000002', 'Brouillon',       'draft');
+insert into public.events (id, title, status, phase) values
+  ('b0000000-0000-0000-0000-000000000001', 'Portes ouvertes', 'published', 'upcoming'),
+  ('b0000000-0000-0000-0000-000000000002', 'Brouillon',       'draft',     'finished');
 
 insert into public.reviews (id, author_name, quote, status) values
   ('c0000000-0000-0000-0000-000000000001', 'Fatima', 'Un enseignement clair et exigeant.', 'published'),
@@ -57,6 +57,10 @@ begin
   perform public.assert(
     not exists (select 1 from public.events where status = 'draft'),
     'a DRAFT event is invisible — the status filter in the page is not the gate');
+  perform public.assert(
+    (select phase from public.events
+      where id = 'b0000000-0000-0000-0000-000000000001') = 'upcoming',
+    'the event phase travels with the published row, à venir to terminé');
 
   perform public.assert(
     (select count(*) from public.reviews) = 1,

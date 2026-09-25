@@ -4,7 +4,7 @@ import { createClient, createPublicClient } from '@/lib/supabase/server';
 import { supabaseConfigured } from '@/lib/env';
 import { institut } from '@/lib/content/institut';
 import { reportError } from '@/lib/observability/report';
-import type { CatalogStatus } from '@/lib/supabase/database.types';
+import type { CatalogStatus, EventPhase } from '@/lib/supabase/database.types';
 
 /**
  * The parts of the site the office writes: the announcement strip, the social
@@ -112,11 +112,13 @@ export interface EventView {
   location: string;
   href: string;
   status: CatalogStatus;
+  /** Where the event is in its own life — à venir, en cours, terminé. */
+  phase: EventPhase;
   displayOrder: number;
 }
 
 const EVENT_SELECT =
-  'id, title, title_ar, excerpt, body, image_url, starts_at, location, href, status, display_order';
+  'id, title, title_ar, excerpt, body, image_url, starts_at, location, href, status, phase, display_order';
 
 function toEvent(row: {
   id: string;
@@ -129,6 +131,7 @@ function toEvent(row: {
   location: string;
   href: string;
   status: CatalogStatus;
+  phase: EventPhase;
   display_order: number;
 }): EventView {
   return {
@@ -142,6 +145,7 @@ function toEvent(row: {
     location: row.location,
     href: row.href,
     status: row.status,
+    phase: row.phase,
     displayOrder: row.display_order,
   };
 }

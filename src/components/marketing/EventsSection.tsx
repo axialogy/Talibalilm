@@ -19,6 +19,11 @@ export async function EventsSection({ events, locale }: { events: EventView[]; l
 
   const t = await getTranslations('home');
   const dateFmt = new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: 'long', timeStyle: 'short' });
+  const phaseLabels = {
+    upcoming: t('events.phaseUpcoming'),
+    ongoing: t('events.phaseOngoing'),
+    finished: t('events.phaseFinished'),
+  } as const;
 
   return (
     <section className="pattern-islamic py-16 sm:py-20">
@@ -39,6 +44,7 @@ export async function EventsSection({ events, locale }: { events: EventView[]; l
               excerpt={event.excerpt}
               imageUrl={event.imageUrl}
               dateLabel={event.startsAt ? dateFmt.format(new Date(event.startsAt)) : null}
+              phaseLabel={phaseLabels[event.phase]}
               location={event.location}
               href={event.href}
               labels={{

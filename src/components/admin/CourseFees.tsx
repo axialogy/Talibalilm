@@ -3,13 +3,13 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { deleteProduct, saveProduct } from '@/app/actions/catalog';
 import type { AdminState } from '@/app/actions/admin';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 export interface CourseFee {
   id: string;
@@ -44,8 +44,8 @@ function toEuros(cents: number): string {
  */
 export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseFee[] }) {
   const t = useTranslations('admin');
-  const [addState, add] = useActionState(saveProduct, EMPTY);
-  const [, remove] = useActionState(deleteProduct, EMPTY);
+  const [addState, add] = useActionState(saveProduct, IDLE);
+  const [, remove] = useActionState(deleteProduct, IDLE);
 
   const field =
     'w-full rounded-[var(--radius-input)] border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand-400';
@@ -113,9 +113,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
                   </select>
                 </label>
 
-                <Button type="submit" size="sm" variant="ghost">
-                  {t('save')}
-                </Button>
+                <SaveButton state={addState} label={t('save')} size="sm" variant="ghost" />
 
                 {/* The timetable a student reads on the public pricing page.
                     Folded away because most courses never set it, but it has to
@@ -224,9 +222,7 @@ export function CourseFees({ courseId, fees }: { courseId: string; fees: CourseF
             <input name="price" placeholder="300" inputMode="decimal" className={`${field} w-28`} />
           </label>
 
-          <Button type="submit" size="sm">
-            {t('feeAdd')}
-          </Button>
+          <SaveButton state={addState} label={t('feeAdd')} size="sm" />
 
           <p className="w-full text-[11px] text-ink-muted">{t('feeHint')}</p>
         </ActionForm>

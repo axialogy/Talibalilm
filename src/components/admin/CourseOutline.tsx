@@ -19,10 +19,11 @@ import {
   updateLesson,
   type AdminState,
 } from '@/app/actions/admin';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { cn } from '@/lib/utils';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 export interface OutlineLesson {
   id: string;
@@ -62,7 +63,7 @@ export function CourseOutline({
   modules: OutlineModule[];
 }) {
   const t = useTranslations('admin');
-  const [, addModuleAction] = useActionState(addModule, EMPTY);
+  const [addState, addModuleAction] = useActionState(addModule, IDLE);
 
   return (
     <div>
@@ -83,10 +84,13 @@ export function CourseOutline({
       >
         <input type="hidden" name="courseId" value={courseId} />
         <Field label={t('moduleTitle')} name="title" required className="min-w-[220px] flex-1" />
-        <Button type="submit" variant="outline" size="md">
-          <Plus className="size-4" aria-hidden="true" />
-          {t('addModule')}
-        </Button>
+        <SaveButton
+          state={addState}
+          label={t('addModule')}
+          variant="outline"
+          size="md"
+          icon={<Plus aria-hidden="true" />}
+        />
       </ActionForm>
     </div>
   );
@@ -102,10 +106,10 @@ function ModuleCard({
   next: OutlineModule | undefined;
 }) {
   const t = useTranslations('admin');
-  const [, renameAction] = useActionState(renameModule, EMPTY);
-  const [, deleteAction] = useActionState(deleteModule, EMPTY);
-  const [, moveAction] = useActionState(moveModule, EMPTY);
-  const [, addLessonAction] = useActionState(addLesson, EMPTY);
+  const [renameState, renameAction] = useActionState(renameModule, IDLE);
+  const [, deleteAction] = useActionState(deleteModule, IDLE);
+  const [, moveAction] = useActionState(moveModule, IDLE);
+  const [addLessonState, addLessonAction] = useActionState(addLesson, IDLE);
 
   return (
     <li className="rounded-[var(--radius-card)] border border-line bg-white">
@@ -120,9 +124,7 @@ function ModuleCard({
             aria-label={t('moduleTitle')}
             className="min-w-0 flex-1 rounded-[var(--radius-input)] border border-transparent bg-transparent px-2 py-1.5 font-display text-[15px] font-semibold text-ink transition-colors hover:border-line focus:border-brand-400 focus:outline-none"
           />
-          <Button type="submit" size="sm" variant="ghost">
-            {t('save')}
-          </Button>
+          <SaveButton state={renameState} label={t('save')} size="sm" variant="ghost" />
         </ActionForm>
 
         <MoveButtons formAction={moveAction} item={module} previous={previous} next={next} />
@@ -154,10 +156,13 @@ function ModuleCard({
       <ActionForm action={addLessonAction} className="flex flex-wrap items-end gap-3 p-4">
         <input type="hidden" name="moduleId" value={module.id} />
         <Field label={t('lessonTitle')} name="title" required className="min-w-[200px] flex-1" />
-        <Button type="submit" size="sm" variant="outline">
-          <Plus className="size-3.5" aria-hidden="true" />
-          {t('addLesson')}
-        </Button>
+        <SaveButton
+          state={addLessonState}
+          label={t('addLesson')}
+          size="sm"
+          variant="outline"
+          icon={<Plus aria-hidden="true" />}
+        />
       </ActionForm>
     </li>
   );
@@ -174,7 +179,7 @@ function LessonRow({
 }) {
   const t = useTranslations('admin');
   const [open, setOpen] = useState(false);
-  const [state, updateAction] = useActionState(updateLesson, EMPTY);
+  const [state, updateAction] = useActionState(updateLesson, IDLE);
   const formRef = useRef<HTMLFormElement>(null);
   const [filling, startFill] = useTransition();
   const [fillNote, setFillNote] = useState<string | null>(null);
@@ -208,8 +213,8 @@ function LessonRow({
       setFillNote(t('lessonFilled'));
     });
   };
-  const [, deleteAction] = useActionState(deleteLesson, EMPTY);
-  const [, moveAction] = useActionState(moveLesson, EMPTY);
+  const [, deleteAction] = useActionState(deleteLesson, IDLE);
+  const [, moveAction] = useActionState(moveLesson, IDLE);
 
   return (
     <li className="p-4">
@@ -372,16 +377,7 @@ function LessonRow({
             {t('isPreview')}
           </label>
 
-          <div className="flex items-center gap-3">
-            <Button type="submit" size="sm">
-              {t('save')}
-            </Button>
-            {state.ok && !state.error && (
-              <span role="status" className="text-[11px] text-brand-600">
-                {t('saved')}
-              </span>
-            )}
-          </div>
+          <SaveButton state={state} label={t('save')} size="sm" />
         </ActionForm>
       )}
     </li>

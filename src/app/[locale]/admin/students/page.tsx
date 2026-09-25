@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BackLink } from '@/components/admin/BackLink';
 import { LiveSearch } from '@/components/admin/LiveSearch';
+import { ConfirmStudentButton } from '@/components/admin/ConfirmStudentButton';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { listStudents } from '@/lib/data/admin';
@@ -21,7 +22,9 @@ export default async function AdminStudentsPage({
 
   const t = await getTranslations('admin');
   const students = await listStudents(q?.trim() || undefined);
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  // The hour matters here: two registrations on the same day are told apart by
+  // it when the office is looking for the one that just arrived.
+  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
     <div>
@@ -44,7 +47,7 @@ export default async function AdminStudentsPage({
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-[var(--radius-card)] border border-line">
-          <table className="w-full min-w-[620px] border-collapse text-[13px]">
+          <table className="w-full min-w-[760px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-surface/60 text-left text-[11px] tracking-wide text-ink-muted uppercase">
                 <th className="p-3 font-medium">{t('colName')}</th>
@@ -52,6 +55,7 @@ export default async function AdminStudentsPage({
                 <th className="p-3 font-medium">{t('colEnrolledIn')}</th>
                 <th className="p-3 font-medium">{t('colAccess')}</th>
                 <th className="p-3 font-medium">{t('colJoined')}</th>
+                <th className="p-3 font-medium">{t('colAction')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -109,6 +113,22 @@ export default async function AdminStudentsPage({
                   </td>
                   <td className="p-3 whitespace-nowrap text-ink-muted">
                     {dateFmt.format(new Date(s.createdAt))}
+                  </td>
+                  {/* The registration action, where the office already is.
+                      Confirming the e-mail also activates the account and
+                      clears the Nouveau flag, so this one button is the whole
+                      of the decision — and it is idempotent, which is why it
+                      can sit on a row without reading auth.users first. */}
+                  <td className="p-3 whitespace-nowrap">
+                    {s.role === 'student' && s.approvedAt === null && !s.anonymisedAt ? (
+                      <ConfirmStudentButton
+                        userId={s.userId}
+                        label={t('confirmCta')}
+                        variant="outline"
+                      />
+                    ) : (
+                      <span className="text-ink-muted">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
