@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Field } from '@/components/ui/field';
-import { SubmitButton } from '@/components/auth/SubmitButton';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { saveSiteSettings } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { SiteSettings } from '@/lib/data/site';
@@ -74,15 +74,8 @@ export function AnnouncementSettings({ settings }: { settings: SiteSettings }) {
       </div>
 
       <ActionError state={state} />
-      {state.ok && (
-        <p role="status" className="text-[12px] text-brand-600">
-          {t('saved')}
-        </p>
-      )}
 
-      <SubmitButton size="md" block={false}>
-        {t('save')}
-      </SubmitButton>
+      <SaveButton state={state} label={t('save')} size="md" />
     </ActionForm>
   );
 }

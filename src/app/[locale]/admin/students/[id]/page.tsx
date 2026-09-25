@@ -110,7 +110,6 @@ export default async function AdminStudentDetailPage({
               phone={account.phone}
               phoneLandline={account.phoneLandline}
               locale={account.locale}
-              reviewed={student.reviewedAt !== null}
               approved={account.approvedAt !== null}
               details={{
                 civility: account.civility,

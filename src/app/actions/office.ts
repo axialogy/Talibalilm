@@ -118,6 +118,35 @@ export async function voidCoupon(_prev: AdminState, formData: FormData): Promise
 }
 
 /**
+ * Delete coupon codes outright, from the list's selection.
+ *
+ * The office asked for used codes to leave the list, and a code is not a
+ * record of a sale: `orders.coupon_id` and `installments.coupon_id` are both
+ * `on delete set null`, so the money rows survive and only the link to the
+ * code goes. The RPC is the control and the audit — one `coupon.delete` row
+ * per code, written from the rows the DELETE returns, because after it there
+ * is nothing left to name.
+ */
+export async function deleteCoupons(ids: string[]): Promise<AdminState> {
+  const parsed = z.array(z.string().uuid()).min(1).max(500).safeParse(ids);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await admin();
+  const { error } = await supabase.rpc('admin_delete_coupons', { ids: parsed.data });
+  if (error) {
+    reportError('coupons.delete', error);
+    return {
+      ok: false,
+      error: error.code === '42501' ? 'notAdmin' : 'saveFailed',
+      detail: errorDetail(error),
+    };
+  }
+
+  revalidatePath('/[locale]/admin/coupons', 'page');
+  return OK;
+}
+
+/**
  * Correct a student's details.
  *
  * Through the ordinary client, so `profiles_update_admin` is the control — and
@@ -246,6 +275,10 @@ export async function correctOrder(_prev: AdminState, formData: FormData): Promi
 /**
  * Let a registration in, or put it back in the queue.
  *
+ * Shared by the approval button and the confirm-e-mail action, because
+ * confirming an address IS activation now — the two must leave the same row
+ * and the same messages.
+ *
  * The RPC is the control and the audit: it checks `is_admin()`, records who
  * decided and when, and returns the student's e-mail only when something
  * actually changed — so a second press cannot send a second message. The two
@@ -256,19 +289,10 @@ export async function correctOrder(_prev: AdminState, formData: FormData): Promi
  * committed when the mail is attempted; a mail server that is down must not
  * leave the admin believing nothing happened.
  */
-export async function setStudentApproval(
-  _prev: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const parsed = z
-    .object({ userId: z.string().uuid(), approve: z.enum(['yes', 'no']) })
-    .safeParse({ userId: formData.get('userId'), approve: formData.get('approve') });
-  if (!parsed.success) return { ok: false, error: 'invalid' };
-
-  const approve = parsed.data.approve === 'yes';
+async function applyApproval(userId: string, approve: boolean): Promise<AdminState> {
   const supabase = await admin();
   const { data: email, error } = await supabase.rpc('admin_set_approval', {
-    uid: parsed.data.userId,
+    uid: userId,
     approve,
   });
   if (error) return { ok: false, error: 'saveFailed', detail: errorDetail(error) };
@@ -278,21 +302,25 @@ export async function setStudentApproval(
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, locale')
-      .eq('id', parsed.data.userId)
+      .eq('id', userId)
       .maybeSingle();
     const fullName = profile?.full_name ?? '';
 
-    try {
-      await sendMail(
-        studentApproved({
-          to: email,
-          fullName,
-          locale: profile?.locale ?? 'fr',
-          spaceUrl: `${siteUrl()}/dashboard`,
-        }),
-      );
-    } catch (cause) {
-      reportError('approval.student.mail', cause, { userId: parsed.data.userId });
+    // Only an approval is good news. Sending "your registration is approved"
+    // to somebody who was just put back in the queue was worse than silence.
+    if (approve) {
+      try {
+        await sendMail(
+          studentApproved({
+            to: email,
+            fullName,
+            locale: profile?.locale ?? 'fr',
+            spaceUrl: `${siteUrl()}/dashboard`,
+          }),
+        );
+      } catch (cause) {
+        reportError('approval.student.mail', cause, { userId });
+      }
     }
 
     try {
@@ -305,9 +333,24 @@ export async function setStudentApproval(
         }),
       );
     } catch (cause) {
-      reportError('approval.office.mail', cause, { userId: parsed.data.userId });
+      reportError('approval.office.mail', cause, { userId });
     }
   }
+
+  return OK;
+}
+
+export async function setStudentApproval(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = z
+    .object({ userId: z.string().uuid(), approve: z.enum(['yes', 'no']) })
+    .safeParse({ userId: formData.get('userId'), approve: formData.get('approve') });
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const state = await applyApproval(parsed.data.userId, parsed.data.approve === 'yes');
+  if (!state.ok) return state;
 
   revalidatePath('/[locale]/admin/students/[id]', 'page');
   revalidatePath('/[locale]/admin/students', 'page');
@@ -367,48 +410,7 @@ export async function deleteStudent(_prev: AdminState, formData: FormData): Prom
 }
 
 /**
- * Mark a registration as seen.
- *
- * This is a notification being dismissed, nothing more: it clears the badge in
- * the sidebar and the "Nouveau" flag on the row, and changes nothing at all for
- * the student, who could already enrol and pay before anybody pressed it.
- *
- * The write happens in `admin_mark_reviewed`, a SECURITY DEFINER function, for
- * two reasons: it checks `is_admin()` itself, and it can call
- * `record_admin_action`, which is revoked from every session role — so "who
- * cleared this" is answerable, which it would not be if the update were a
- * plain UPDATE through a policy.
- *
- * Idempotent in the database rather than here: the function only touches a row
- * whose `reviewed_at` is null, so a second press writes no second audit row.
- */
-export async function markStudentReviewed(
-  _prev: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const parsed = z.object({ userId: z.string().uuid() }).safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { ok: false, error: 'invalid' };
-
-  const { userId } = parsed.data;
-  const supabase = await admin();
-
-  const { error } = await supabase.rpc('admin_mark_reviewed', { uid: userId });
-
-  if (error) {
-    reportError('students.markReviewed', error, { userId });
-    return {
-      ok: false,
-      error: error.code === '42501' ? 'notAdmin' : 'saveFailed',
-      detail: errorDetail(error),
-    };
-  }
-
-  revalidatePath('/[locale]/admin/students', 'layout');
-  return OK;
-}
-
-/**
- * Confirm a student's e-mail address by hand.
+ * Confirm a student's e-mail address by hand, and activate the account.
  *
  * Supabase refuses a sign-in until the address is confirmed, and confirming it
  * means receiving a message. When the mail path is broken — an unverified
@@ -416,21 +418,26 @@ export async function markStudentReviewed(
  * amount of retrying by them fixes something that is not theirs to fix. The
  * office should be able to open the account instead of waiting.
  *
+ * One press does the whole registration: the address is confirmed, the account
+ * is approved (the audited RPC, with its two e-mails) and the "Nouveau" flag is
+ * cleared. Two buttons for one decision left students who could sign in but
+ * not buy, because the second press was easy to forget.
+ *
  * The service role is the only way to touch `auth.users`, and this is one of
  * the few legitimate uses of it: `requireAdmin()` has already passed, the id
  * has been through Zod, and the row is checked to be a student before anything
  * is written — a staff account is not activated from the student list.
  *
- * Idempotent. Confirming an already-confirmed address changes nothing, so the
- * button can sit on every student without the page having to read `auth.users`
- * to decide whether to draw it.
+ * Idempotent, every step of it. Confirming an already-confirmed address changes
+ * nothing, approving an approved account returns no e-mail to send, and marking
+ * a seen registration writes no second audit row — so the button can sit on
+ * every row of the list without the page having to read `auth.users`.
  *
- * NOT in `admin_audit`, unlike the grant and revoke operations, and the reason
- * is worth stating rather than leaving as an oversight: `record_admin_action`
- * is revoked from `public` and granted to nobody, so it is callable only from
- * inside another SECURITY DEFINER function. Auditing this one properly means a
- * definer function of its own. Until then the fact is written here rather than
- * implied by silence.
+ * The confirmation itself is NOT in `admin_audit`, and the reason is worth
+ * stating rather than leaving as an oversight: `record_admin_action` is revoked
+ * from `public` and granted to nobody, so it is callable only from inside
+ * another SECURITY DEFINER function. Auditing it properly means a definer
+ * function of its own. The approval it now performs IS audited.
  */
 export async function confirmStudentEmail(
   _prev: AdminState,
@@ -461,7 +468,19 @@ export async function confirmStudentEmail(
     return { ok: false, error: 'saveFailed', detail: errorDetail(cause) };
   }
 
+  // Activation, through the same audited RPC the approval button uses. A
+  // failure here does not undo the confirmation — retrying is idempotent.
+  const approved = await applyApproval(userId, true);
+  if (!approved.ok) return approved;
+
+  // The registration is dealt with, so the notification goes too. A failure
+  // here is a badge that stays, not an account that did not open.
+  const { error: seenError } = await supabase.rpc('admin_mark_reviewed', { uid: userId });
+  if (seenError) reportError('students.confirmEmail.markReviewed', seenError, { userId });
+
   revalidatePath('/[locale]/admin/students/[id]', 'page');
+  revalidatePath('/[locale]/admin/students', 'page');
+  revalidatePath('/[locale]/admin', 'page');
   return OK;
 }
 

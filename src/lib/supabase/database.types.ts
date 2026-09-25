@@ -22,6 +22,7 @@ export type DeliveryMode = 'presentiel' | 'online';
 export type CursusKind = 'module' | 'approfondi';
 export type ProductKind = 'module' | 'cursus';
 export type CatalogStatus = 'draft' | 'published' | 'archived';
+export type EventPhase = 'upcoming' | 'ongoing' | 'finished';
 export type EntitlementScope = 'course' | 'cursus' | 'site';
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
 export type PaymentRoute = 'paypal' | 'office' | 'free';
@@ -155,6 +156,7 @@ export interface Database {
           location: string;
           href: string;
           status: CatalogStatus;
+          phase: EventPhase;
           display_order: number;
           created_at: string;
           updated_at: string;
@@ -1285,6 +1287,10 @@ export interface Database {
         Args: { coupon_id: string; reason: string };
         Returns: boolean;
       };
+      admin_delete_coupons: {
+        Args: { ids: string[] };
+        Returns: number;
+      };
       claim_confirmation_email: {
         Args: { oid: string };
         Returns: boolean;
@@ -1355,6 +1361,7 @@ export interface Database {
       cursus_kind: CursusKind;
       product_kind: ProductKind;
       catalog_status: CatalogStatus;
+      event_phase: EventPhase;
       entitlement_scope: EntitlementScope;
       order_status: OrderStatus;
       payment_route: PaymentRoute;

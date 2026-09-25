@@ -3,14 +3,14 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Wrench } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { ActionError } from '@/components/admin/ActionError';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { ActionForm } from '@/components/ui/action-form';
 import { correctOrder } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 
-const EMPTY: AdminState = { ok: true };
+const IDLE: AdminState = { ok: false };
 
 /**
  * Swapping a wrongly bought access for the right one.
@@ -29,7 +29,7 @@ export function CorrectOrderForm({
   targets: { value: string; label: string }[];
 }) {
   const t = useTranslations('admin');
-  const [state, action] = useActionState(correctOrder, EMPTY);
+  const [state, action] = useActionState(correctOrder, IDLE);
 
   if (granted.length === 0 || targets.length === 0) return null;
 
@@ -76,15 +76,8 @@ export function CorrectOrderForm({
         <Field label={t('grantReason')} name="reason" required maxLength={500} />
       </div>
 
-      <div className="mt-3 flex items-center gap-3">
-        <Button type="submit" size="sm">
-          {t('correctCta')}
-        </Button>
-        {state.ok && !state.error && (
-          <span role="status" className="text-[11px] text-brand-600">
-            {t('saved')}
-          </span>
-        )}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <SaveButton state={state} label={t('correctCta')} size="sm" />
         <ActionError state={state} />
       </div>
     </ActionForm>

@@ -23,6 +23,7 @@ export function EventCard({
   excerpt,
   imageUrl,
   dateLabel,
+  phaseLabel,
   location,
   href,
   labels,
@@ -32,6 +33,8 @@ export function EventCard({
   excerpt: string;
   imageUrl: string | null;
   dateLabel: string | null;
+  /** À venir, en cours or terminé — set by the office, not derived from the date. */
+  phaseLabel: string;
   location: string;
   href: string;
   labels: { cta: string; imageLabel: string; imageClose: string };
@@ -87,10 +90,19 @@ export function EventCard({
       </div>
 
       <div className="flex flex-1 flex-col p-5">
-        {dateLabel && (
-          <p className="flex items-center gap-1.5 text-[11px] tracking-[0.08em] text-gold-600 uppercase">
-            <CalendarDays className="size-3.5" aria-hidden="true" />
-            {dateLabel}
+        {(dateLabel || phaseLabel) && (
+          <p className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.08em] text-gold-600 uppercase">
+            {dateLabel && (
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="size-3.5" aria-hidden="true" />
+                {dateLabel}
+              </span>
+            )}
+            {phaseLabel && (
+              <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium tracking-normal text-brand-700">
+                {phaseLabel}
+              </span>
+            )}
           </p>
         )}
 

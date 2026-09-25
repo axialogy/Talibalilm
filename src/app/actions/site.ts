@@ -94,6 +94,10 @@ const eventSchema = z.object({
     .transform((v) => (v === '' ? null : new Date(v).toISOString()))
     .nullable()
     .catch(null),
+  // Where the event is in its own life. Independent of `status`, which decides
+  // whether it is shown at all: a finished event stays published because its
+  // page is still worth reading.
+  phase: z.enum(['upcoming', 'ongoing', 'finished']).default('upcoming'),
   display_order: z.coerce.number().int().min(0).max(9999).default(0),
 });
 

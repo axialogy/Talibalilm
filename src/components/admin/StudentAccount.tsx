@@ -2,39 +2,26 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
+import { ConfirmStudentButton } from '@/components/admin/ConfirmStudentButton';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
-import {
-  confirmStudentEmail,
-  markStudentReviewed,
-  setStudentApproval,
-  updateStudent,
-} from '@/app/actions/office';
+import { setStudentApproval, updateStudent } from '@/app/actions/office';
 import type { AdminState } from '@/app/actions/admin';
 import { ActionForm } from '@/components/ui/action-form';
 
-const EMPTY: AdminState = { ok: true };
-
-/**
- * For the one form that reports success.
- *
- * `EMPTY` above is `ok: true`, which is fine for forms that only ever show an
- * error — and wrong here, where `ok` would make a freshly opened panel claim
- * the account had just been activated.
- */
 const IDLE: AdminState = { ok: false };
 
 /**
- * Correcting and removing a student account.
+ * Correcting a student account, and opening or closing it.
  *
- * Deleting is offered only where it is actually possible: an account that has
- * bought something cannot be removed — `orders.user_id` is `on delete restrict`
- * so the sale is never orphaned — and for those, erasure is the right tool. The
- * button says which case applies rather than letting the office find out from a
- * failed save.
+ * One registration button, not three. `ConfirmStudentButton` confirms the
+ * address AND activates the account AND clears the "Nouveau" flag — the three
+ * used to be separate controls, and forgetting the second left a student who
+ * could sign in but not buy. What is left here is the correction form, plus a
+ * way back for a decision that has to be undone: a mistake, a dispute.
  */
 export function StudentAccount({
   userId,
@@ -42,7 +29,6 @@ export function StudentAccount({
   phone,
   phoneLandline,
   locale,
-  reviewed,
   approved,
   details,
 }: {
@@ -51,8 +37,6 @@ export function StudentAccount({
   phone: string;
   phoneLandline: string;
   locale: string;
-  /** Has the office looked at this registration yet? */
-  reviewed: boolean;
   /** Has the office let this account buy? */
   approved: boolean;
   /** The enrolment form's fields, so the office can correct a typo. */
@@ -68,10 +52,8 @@ export function StudentAccount({
   };
 }) {
   const t = useTranslations('admin');
-  const [saveState, save] = useActionState(updateStudent, EMPTY);
-  const [approvalState, setApproval] = useActionState(setStudentApproval, EMPTY);
-  const [confirmState, confirmEmail] = useActionState(confirmStudentEmail, IDLE);
-  const [seenState, markSeen] = useActionState(markStudentReviewed, IDLE);
+  const [saveState, save] = useActionState(updateStudent, IDLE);
+  const [approvalState, setApproval] = useActionState(setStudentApproval, IDLE);
 
   return (
     <div className="space-y-4">
@@ -89,23 +71,23 @@ export function StudentAccount({
           </Badge>
         </div>
         <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-          {t('studentApprovalLead')}
+          {t('studentActivateNote')}
         </p>
 
-        <form action={setApproval} className="mt-3">
-          <input type="hidden" name="userId" value={userId} />
-          <input type="hidden" name="approve" value={approved ? 'no' : 'yes'} />
-          <Button type="submit" size="sm" variant={approved ? 'outline' : 'primary'}>
-            {approved ? t('unapproveCta') : t('approveCta')}
-          </Button>
-        </form>
-
-        {approvalState.ok && !approvalState.error && (
-          <p role="status" className="mt-2 text-[12px] text-brand-600">
-            {t('saved')}
-          </p>
+        {approved ? (
+          <form action={setApproval} className="mt-3">
+            <input type="hidden" name="userId" value={userId} />
+            <input type="hidden" name="approve" value="no" />
+            <Button type="submit" size="sm" variant="outline">
+              {t('deactivateCta')}
+            </Button>
+            <ActionError state={approvalState} />
+          </form>
+        ) : (
+          <div className="mt-3">
+            <ConfirmStudentButton userId={userId} label={t('studentActivateCta')} />
+          </div>
         )}
-        <ActionError state={approvalState} />
       </div>
 
       <ActionForm
@@ -202,86 +184,13 @@ export function StudentAccount({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button type="submit" size="sm">
-            {t('save')}
-          </Button>
-          {saveState.ok && !saveState.error && (
-            <span role="status" className="text-[11px] text-brand-600">
-              {t('saved')}
-            </span>
-          )}
+        <div className="flex flex-wrap items-center gap-3">
+          <SaveButton state={saveState} label={t('save')} size="sm" />
           <ActionError state={saveState} />
         </div>
 
         <p className="text-[11px] leading-relaxed text-ink-muted">{t('studentEmailNote')}</p>
       </ActionForm>
-
-      {/*
-        A registration nobody has opened yet.
-
-        This clears a notification and nothing else — the student could already
-        enrol and pay before anybody pressed it. Once pressed the panel is gone
-        rather than switching to a second state, because there is no second
-        thing to say: the badge existed to be cleared.
-      */}
-      {!reviewed && (
-        <form
-          action={markSeen}
-          className="rounded-[var(--radius-card)] border border-gold-300 bg-gold-50/60 p-5"
-        >
-          <input type="hidden" name="userId" value={userId} />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[13px] font-medium text-ink">{t('studentNew')}</p>
-            <Badge variant="warn">{t('studentPending')}</Badge>
-          </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{t('studentNewNote')}</p>
-
-          <Button type="submit" size="sm" className="mt-3">
-            <Check className="size-3.5" aria-hidden="true" />
-            {t('studentSeenCta')}
-          </Button>
-
-          <ActionError state={seenState} />
-        </form>
-      )}
-
-      {/*
-        Opening an account whose confirmation e-mail never arrived.
-
-        Supabase will not let a student sign in until the address is confirmed,
-        and confirming it means receiving a message — so a broken mail path
-        strands somebody who can do nothing about it themselves. Idempotent, so
-        it is harmless on an account that is already active.
-      */}
-      <form
-        action={confirmEmail}
-        className="rounded-[var(--radius-card)] border border-line bg-white p-5"
-      >
-        <input type="hidden" name="userId" value={userId} />
-        <p className="text-[13px] font-medium text-ink">{t('studentActivate')}</p>
-        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-          {t('studentActivateNote')}
-        </p>
-        <Button type="submit" size="sm" variant="outline" className="mt-3">
-          <MailCheck className="size-3.5" aria-hidden="true" />
-          {t('studentActivateCta')}
-        </Button>
-        <ActionError state={confirmState} />
-        {confirmState.ok && (
-          <p role="status" className="mt-2 text-[12px] text-brand-600">
-            {t('studentActivated')}
-          </p>
-        )}
-      </form>
-
-      {/*
-        Deleting the account outright is gone from here on purpose: the
-        Effacement section below does the same job and explains itself, and two
-        buttons that remove a person, one of them unlabelled, is one too many.
-        `studentHasOrdersNote` still appears there.
-      */}
     </div>
   );
 }

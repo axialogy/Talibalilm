@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/admin/ActionError';
 import { Badge } from '@/components/ui/badge';
 import { Field } from '@/components/ui/field';
-import { SubmitButton } from '@/components/auth/SubmitButton';
+import { SaveButton } from '@/components/admin/SaveButton';
 import { deleteEvent, saveEvent, setEventStatus, uploadEventImage } from '@/app/actions/site';
 import type { AdminState } from '@/app/actions/admin';
 import type { EventView } from '@/lib/data/site';
@@ -85,6 +85,9 @@ export function EventsEditor({ events, locale }: { events: EventView[]; locale: 
                     <Badge variant={event.status === 'published' ? 'success' : 'muted'}>
                       {event.status === 'published' ? t('publish') : t('statusDraft')}
                     </Badge>
+                    <Badge variant={event.phase === 'ongoing' ? 'gold' : 'soft'}>
+                      {phaseLabel(t, event.phase)}
+                    </Badge>
                   </div>
                   {event.startsAt && (
                     <p className="mt-0.5 text-[11px] text-ink-muted">
@@ -117,6 +120,16 @@ export function EventsEditor({ events, locale }: { events: EventView[]; locale: 
       )}
     </div>
   );
+}
+
+/** The phase, as the office reads it. */
+function phaseLabel(
+  t: (key: 'phaseUpcoming' | 'phaseOngoing' | 'phaseFinished') => string,
+  phase: EventView['phase'],
+): string {
+  if (phase === 'ongoing') return t('phaseOngoing');
+  if (phase === 'finished') return t('phaseFinished');
+  return t('phaseUpcoming');
 }
 
 /** `datetime-local` wants `YYYY-MM-DDTHH:mm` in local time, not an ISO string. */
@@ -183,6 +196,18 @@ function EventForm({ event, onDone }: { event?: EventView; onDone?: () => void }
         />
         <Field label={t('eventLocation')} name="location" defaultValue={event?.location ?? ''} />
         <Field label={t('eventHref')} name="href" defaultValue={event?.href ?? ''} />
+        <label className="block">
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">{t('eventPhase')}</span>
+          <select
+            name="phase"
+            defaultValue={event?.phase ?? 'upcoming'}
+            className="w-full rounded-[var(--radius-input)] border border-line bg-white px-4 py-3 text-sm text-ink outline-none focus:border-brand-400"
+          >
+            <option value="upcoming">{t('phaseUpcoming')}</option>
+            <option value="ongoing">{t('phaseOngoing')}</option>
+            <option value="finished">{t('phaseFinished')}</option>
+          </select>
+        </label>
         <Field
           label={t('displayOrder')}
           name="display_order"
@@ -194,10 +219,8 @@ function EventForm({ event, onDone }: { event?: EventView; onDone?: () => void }
 
       <ActionError state={state} />
 
-      <div className="flex items-center gap-3">
-        <SubmitButton size="sm" block={false}>
-          {event ? t('save') : t('add')}
-        </SubmitButton>
+      <div className="flex flex-wrap items-center gap-3">
+        <SaveButton state={state} label={event ? t('save') : t('add')} size="sm" />
         {onDone && (
           <Button type="button" size="sm" variant="ghost" onClick={onDone}>
             {t('cancel')}
@@ -210,7 +233,7 @@ function EventForm({ event, onDone }: { event?: EventView; onDone?: () => void }
 
 function StatusButton({ id, published }: { id: string; published: boolean }) {
   const t = useTranslations('admin');
-  const [, action] = useActionState(setEventStatus, IDLE);
+  const [state, action] = useActionState(setEventStatus, IDLE);
   return (
     <form action={action}>
       <input type="hidden" name="id" value={id} />
@@ -218,6 +241,7 @@ function StatusButton({ id, published }: { id: string; published: boolean }) {
       <Button type="submit" size="sm" variant={published ? 'outline' : 'primary'}>
         {published ? t('unpublish') : t('publish')}
       </Button>
+      <ActionError state={state} />
     </form>
   );
 }
@@ -257,7 +281,7 @@ function ImageButton({ id }: { id: string }) {
 
 function DeleteButton({ id }: { id: string }) {
   const t = useTranslations('admin');
-  const [, action] = useActionState(deleteEvent, IDLE);
+  const [state, action] = useActionState(deleteEvent, IDLE);
   return (
     <form
       action={action}
@@ -270,6 +294,7 @@ function DeleteButton({ id }: { id: string }) {
         <Trash2 className="size-3.5" aria-hidden="true" />
         {t('delete')}
       </Button>
+      <ActionError state={state} />
     </form>
   );
 }
