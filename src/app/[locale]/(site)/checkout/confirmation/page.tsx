@@ -3,7 +3,6 @@ import { CheckCircle2, GraduationCap, Layers } from 'lucide-react';
 import { Link, redirect } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { WelcomeDialog } from '@/components/checkout/WelcomeDialog';
 import { formatPrice } from '@/lib/commerce/quote';
 import { getCourse } from '@/lib/data/courses';
 import { createClient } from '@/lib/supabase/server';
@@ -27,11 +26,11 @@ export default async function ConfirmationPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ order?: string; welcome?: string }>;
+  searchParams: Promise<{ order?: string }>;
 }) {
   const { locale } = await params;
   requireLocale(locale);
-  const { order: orderId, welcome } = await searchParams;
+  const { order: orderId } = await searchParams;
   setRequestLocale(locale);
 
   if (!supabaseConfigured || !orderId) redirect({ href: '/dashboard', locale });
@@ -43,7 +42,7 @@ export default async function ConfirmationPage({
     .from('orders')
     .select(
       `id, status, total_cents, currency,
-       order_items ( product_id, title, schedule_label, kind, is_free, course_id, cursus_id, year_index )`,
+       order_items ( product_id, title, schedule_label, kind, is_free, course_id, cursus_id, year_index, delivery )`,
     )
     .eq('id', orderId)
     .maybeSingle();
@@ -62,20 +61,45 @@ export default async function ConfirmationPage({
     : { data: [] };
   const slugById = new Map((courses ?? []).map((course) => [course.id, course.slug]));
 
+  // The cursus slugs, the same way: the order carries the id, the catalogue is
+  // public.
+  const cursusIds = items
+    .map((item) => item.cursus_id)
+    .filter((id): id is string => id !== null);
+  const { data: cursusRows } = cursusIds.length
+    ? await supabase.from('cursus').select('id, slug').in('id', cursusIds)
+    : { data: [] };
+  const cursusSlugById = new Map((cursusRows ?? []).map((row) => [row.id, row.slug]));
+
   // Where the student lands when they leave this page. A module opens its own
-  // page (which now shows the access panel); a cursus opens Mon espace, where
-  // every module it unlocked is listed and each opens its own page.
+  // page; a cursus opens its page on the mode that was bought, where every
+  // module of the programme is listed.
   const firstItem = items[0];
   const firstSlug = firstItem?.course_id ? slugById.get(firstItem.course_id) : undefined;
+  const firstCursusSlug = firstItem?.cursus_id
+    ? cursusSlugById.get(firstItem.cursus_id)
+    : undefined;
   const landing =
-    firstItem?.kind === 'module' && firstSlug ? `/courses/${firstSlug}` : '/dashboard';
-  const landingLabel = landing.startsWith('/courses/') ? t('confirmOpenModule') : t('confirmCta');
+    firstItem?.kind === 'module' && firstSlug
+      ? `/courses/${firstSlug}`
+      : firstItem?.kind === 'cursus' && firstCursusSlug
+        ? `/cursus/${firstCursusSlug}?mode=${firstItem.delivery}`
+        : '/dashboard';
+  const landingLabel = landing.startsWith('/courses/')
+    ? t('confirmOpenModule')
+    : landing.startsWith('/cursus/')
+      ? t('confirmOpenCursus')
+      : t('confirmCta');
 
   // Where each line should open. The course is read through the public
   // catalogue, so this cannot become a way to reach something the paywall
   // would refuse — the lesson page itself is gated by RLS.
   const targets = await Promise.all(
     items.map(async (item) => {
+      if (item.kind === 'cursus' && item.cursus_id) {
+        const slug = cursusSlugById.get(item.cursus_id);
+        return slug ? `/cursus/${slug}?mode=${item.delivery}` : null;
+      }
       const slug = item.course_id ? slugById.get(item.course_id) : undefined;
       if (item.kind !== 'module' || !slug) return null;
       const course = await getCourse(slug);
@@ -86,8 +110,6 @@ export default async function ConfirmationPage({
 
   return (
     <>
-      {welcome === '1' && <WelcomeDialog href={landing} ctaLabel={landingLabel} />}
-
       <div className="text-center">
         <span
           className="mx-auto flex size-14 items-center justify-center rounded-full bg-brand-50 text-brand-600"
